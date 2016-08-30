@@ -6,7 +6,7 @@ module item_mod
 
   type item
     private
-    character(len=*)    :: name
+    character(len=64)   :: name
     class(*),   pointer :: value => null()
     type(item), pointer :: next  => null()
   contains
@@ -19,6 +19,8 @@ module item_mod
     module procedure item_constructor
   end interface
 
+contains
+
   function item_constructor(name, value, next)
     character(len=*):: name
     class(*):: value
@@ -26,8 +28,8 @@ module item_mod
     class(item), pointer:: item_constructor
 
     allocate(item_constructor)
-    item_constructor => next
-    allocate(item_constructor%name,  source=name)
+    item_constructor%next => next
+    item_constructor%name = name
     allocate(item_constructor%value, source=value)
   end function
 
@@ -50,6 +52,6 @@ module item_mod
     class(*), pointer :: get_item
 
     get_item => self%value
-  end function getValue
+  end function
 
 end module

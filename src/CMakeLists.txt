@@ -43,6 +43,7 @@ set(FABM_LIBRARIES fabm)
 set(FABM_INCLUDE_DIRS ${CMAKE_CURRENT_BINARY_DIR}/fabm/modules)
 
 add_executable(ice-host WIN32
+               main.F90
                ice_host.F90
                input.F90
                item_mod.F90
