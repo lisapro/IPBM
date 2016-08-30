@@ -1,4 +1,5 @@
 module item_mod
+  use types
 
   implicit none
   private
@@ -6,13 +7,12 @@ module item_mod
 
   type item
     private
-    character(len=64)   :: name
-    class(*),   pointer :: value => null()
-    type(item), pointer :: next  => null()
+    class(variable),pointer:: var => null()
+    type(item),pointer:: next => null()
   contains
-    procedure, non_overridable:: next_item
-    procedure, non_overridable:: set_next_item
-    procedure, non_overridable:: get_item
+    procedure,non_overridable:: next_item
+    procedure,non_overridable:: set_next_item
+    procedure,non_overridable:: get_item
   end type
 
   interface item
@@ -21,37 +21,34 @@ module item_mod
 
 contains
 
-  function item_constructor(name, value, next)
-    character(len=*):: name
-    class(*):: value
-    class(item), pointer:: next
-    class(item), pointer:: item_constructor
+  function item_constructor(var,next)
+    class(variable):: var
+    class(item),pointer:: next
+    class(item),pointer:: item_constructor
 
     allocate(item_constructor)
     item_constructor%next => next
-    item_constructor%name = name
-    allocate(item_constructor%value, source=value)
+    allocate(item_constructor%var,source=var)
   end function
 
   function next_item(self)
     class(item):: self
-    class(item), pointer:: next_item
+    class(item),pointer:: next_item
 
     next_item => self%next
   end function
 
-  subroutine set_next_item(self, next)
-    class(item) :: self
-    class(item), pointer :: next
+  subroutine set_next_item(self,next)
+    class(item):: self
+    class(item),pointer:: next
 
     self%next => next
   end subroutine
 
   function get_item(self)
-    class(item) :: self
-    class(*), pointer :: get_item
+    class(item):: self
+    class(variable),pointer:: get_item
 
-    get_item => self%value
+    get_item => self%var
   end function
-
 end module
