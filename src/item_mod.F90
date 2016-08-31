@@ -1,5 +1,4 @@
 module item_mod
-  use types
 
   implicit none
   private
@@ -7,7 +6,7 @@ module item_mod
 
   type item
     private
-    class(variable),pointer:: var => null()
+    class(*),pointer:: var => null()
     type(item),pointer:: next => null()
   contains
     procedure,non_overridable:: next_item
@@ -22,13 +21,13 @@ module item_mod
 contains
 
   function item_constructor(var,next)
-    class(variable):: var
+    class(*):: var
     class(item),pointer:: next
     class(item),pointer:: item_constructor
 
     allocate(item_constructor)
-    item_constructor%next => next
     allocate(item_constructor%var,source=var)
+    item_constructor%next => next
   end function
 
   function next_item(self)
@@ -47,7 +46,7 @@ contains
 
   function get_item(self)
     class(item):: self
-    class(variable),pointer:: get_item
+    class(*),pointer:: get_item
 
     get_item => self%var
   end function

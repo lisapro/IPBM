@@ -46,6 +46,7 @@ add_executable(ice-host WIN32
                main.F90
                ice_host.F90
                input.F90
+               list_mod.F90
                item_mod.F90
                types.F90)
 

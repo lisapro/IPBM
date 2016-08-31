@@ -1,24 +1,26 @@
 module input
   use types
-  use item_mod
+  use list_mod
   use netcdf
 
   implicit none
   private
   public type_input
 
-  type type_input
-    private
-    class(item), pointer:: first_item => null()
-    class(item), pointer:: current_item => null()
-    class(item), pointer:: last_item => null()
+  type,extends(list):: type_input
   contains
     private
     procedure:: initialize
-    procedure:: add_item
+    procedure:: add_input
     !procedure, public:: get
   end type
 
+  type,extends(list):: type_netcdf_dimension
+  contains
+    private
+    procedure:: add_netcdf_dimension
+  end type
+  
   interface type_input
     module procedure type_input_constructor
   end interface
@@ -36,29 +38,40 @@ contains
     class(type_input):: self
     character(len=*),intent(in):: infile
 
+    type(netcdf_dimension):: alone_dim
+    type(type_netcdf_dimension):: list_dim
+    
     type(alone_variable):: alone_var
     type(variable_1d):: var_1d
     type(variable_2d):: var_2d
-    real(rk):: value
-    real(rk),allocatable,dimension(:):: value_1d
-    real(rk),allocatable,dimension(:,:):: value_2d
 
-    character(len=64):: vname,xname,yname
-    integer:: i
-    integer:: ncid,xtype,ndims,varid
-    integer:: dimids(2)
-    integer:: nx,ny
+    integer:: ncid        !NetCDF ID
+    integer:: ndims       !number of dimensions
+    integer:: nvars       !number of variables
+    integer:: nglobalatts !number of global attributes
+    integer:: unlimdimid  !ID of the unlimited dimension
+    integer:: i           !Dimension ID, Variable ID
+    integer:: len_dim     !Returned length of dimension
+    integer:: xtype       !Returned variable type
+    !dimids - Returned vector of *ndimsp dimension 
+    !IDs corresponding to the variable dimensions
+    integer,dimension(NF90_MAX_VAR_DIMS):: dimids
+    character(len=NF90_MAX_NAME):: name  !Returned dimension name
+    character(len=NF90_MAX_NAME):: vname !Returned variable name
 
     call check(nf90_open(infile,nf90_nowrite,ncid))
-    call check(nf90_inquire_dimension(ncid,1,xname,nx))
-    call check(nf90_inquire_dimension(ncid,2,xname,ny))
+    call check(nf90_inquire(ncid,ndims,nvars,nglobalatts,unlimdimid))
+    
+    !Dimension ID
+    do i=1,ndims
+      call check(nf90_inquire_dimension(ncid,i,name,len_dim))
+      alone_dim = netcdf_dimension(name,ncid,len_dim)
+      call list_dim%add_netcdf_dimension(alone_dim)
+    end do
 
-    allocate(value_1d(nx))
-    allocate(value_2d(nx,ny))
-
-    i=1
-    do while (check_while(nf90_inquire_variable(&
-              ncid,i,vname,xtype,ndims,dimids)))
+    !Variable ID
+    do i=1,nvars 
+      call check(nf90_inquire_variable(ncid,i,vname,xtype,ndims,dimids))
     !  call check(nf90_inq_varid(ncid, vname, varid))
     !  call check(nf90_get_var(ncid, varid, value))
     !
@@ -66,29 +79,18 @@ contains
     !  1d_var = variable()
     !
     !  call self%add_item(vname, var)
-      i=i+1
     end do
-
-    deallocate(value_1d)
-    deallocate(value_2d)
 
     call check(nf90_close(ncid))
   end subroutine
 
-  subroutine add_item(self, var)
+  subroutine add_input(self, var)
     class(type_input):: self
     class(variable):: var
-    class(item), pointer:: new_item
+    class(*),allocatable:: temp
 
-    if (.not. associated(self%first_item)) then
-      self%first_item => item(var, null())
-      self%current_item => self%first_item
-      self%last_item => self%first_item
-    else
-      new_item => item(var, null())
-      call self%last_item%set_next_item(new_item)
-      self%last_item => new_item
-    end if
+    allocate(temp,source=var)
+    call self%add_item(temp)
   end subroutine
 
   !function get(self, inname)
@@ -98,6 +100,15 @@ contains
   ! get_item
 
   !end function
+  
+  subroutine add_netcdf_dimension(self, var)
+    class(type_netcdf_dimension):: self
+    class(netcdf_dimension):: var
+    class(*),allocatable:: temp
+
+    allocate(temp,source=var)
+    call self%add_item(temp)
+  end subroutine
 
   subroutine check(status)
     integer, intent(in):: status
@@ -108,13 +119,13 @@ contains
     end if
   end subroutine
 
-  function check_while(status)
-    logical check_while
-    integer, intent(in):: status
+  !function check_while(status)
+  !  logical check_while
+  !  integer, intent(in):: status
 
-    check_while = .true.
-    if (status .ne. NF90_NOERR) then
-      check_while = .false.
-    end if
-  end function
+  !  check_while = .true.
+  !  if (status .ne. NF90_NOERR) then
+  !    check_while = .false.
+  !  end if
+  !end function
 end module

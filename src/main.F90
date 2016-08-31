@@ -19,7 +19,8 @@ program main
   !call fabm_model%set_bottom_index(host_model%number_of_layers)
 
   !forall(i = 1:host_model%number_of_layers)
-  !  call fabm_link_bulk_state_data(fabm_model,i,host_model%state_variables(i))
+  !  call fabm_link_bulk_state_data(&
+  !    fabm_model,i,host_model%state_variables(i))
   !end forall
 
   !!linking bulk variables
@@ -29,7 +30,8 @@ program main
   !  fabm_model,standard_variables%practical_salinity,&
   !  host_model%practical_salinity)
   !call fabm_link_bulk_data(&
-  !  fabm_model,standard_variables%downwelling_photosynthetic_radiative_flux,&
+  !  fabm_model,&
+  !  standard_variables%downwelling_photosynthetic_radiative_flux,&
   !  host_model%downwelling_photosynthetic_radiative_flux)
   !call fabm_link_bulk_data(&
   !  fabm_model,standard_variables%density,host_model%density)
