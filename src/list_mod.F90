@@ -9,10 +9,12 @@ module list_mod
     private
     class(item), pointer:: first_item => null()
     class(item), pointer:: current_item => null()
-    class(item), pointer:: last_item => null()
   contains
-    procedure:: add_item
-    procedure:: get_item
+    procedure,non_overridable:: add_item
+    procedure,non_overridable:: get_item
+    procedure,non_overridable:: next
+    procedure,non_overridable:: moreitems
+    procedure,non_overridable:: reset
   end type
 
 contains
@@ -22,14 +24,11 @@ contains
     class(*):: var
     class(item), pointer:: new_item
 
-    if (.not. associated(self%first_item)) then
+    if (.not.associated(self%first_item)) then
       self%first_item => item(var, null())
-      self%current_item => self%first_item
-      self%last_item => self%first_item
     else
-      new_item => item(var, null())
-      call self%last_item%set_next_item(new_item)
-      self%last_item => new_item
+      new_item => item(var,self%first_item)
+      self%first_item => new_item
     end if
   end subroutine
 
@@ -39,4 +38,23 @@ contains
 
     get_item => self%current_item%get_item()
   end function
+  
+  subroutine next(self)
+    class(list) :: self
+    
+    self%current_item => self%current_item%next_item()
+  end subroutine
+
+  function moreitems(self)
+    class(list) :: self
+    logical moreitems
+    
+    moreitems = associated(self%current_item)
+  end function
+
+  subroutine reset(self)
+    class(list) :: self
+    
+    self%current_item => self%first_item
+  end subroutine
 end module

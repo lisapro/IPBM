@@ -23,11 +23,11 @@ module types
   type,extends(variable):: variable_2d
     real(rk),allocatable,dimension(:,:):: value
   end type
-  
+
   type:: netcdf_dimension
     character(len=64):: name = ''
     integer:: dim_id
     integer:: dim_len
   end type
-  
+
 end module

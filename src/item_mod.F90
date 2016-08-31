@@ -10,7 +10,7 @@ module item_mod
     type(item),pointer:: next => null()
   contains
     procedure,non_overridable:: next_item
-    procedure,non_overridable:: set_next_item
+!    procedure,non_overridable:: set_next_item
     procedure,non_overridable:: get_item
   end type
 
@@ -33,16 +33,16 @@ contains
   function next_item(self)
     class(item):: self
     class(item),pointer:: next_item
-
+  
     next_item => self%next
   end function
-
-  subroutine set_next_item(self,next)
-    class(item):: self
-    class(item),pointer:: next
-
-    self%next => next
-  end subroutine
+  !
+  !subroutine set_next_item(self,next)
+  !  class(item):: self
+  !  class(item),pointer:: next
+  !
+  !  self%next => next
+  !end subroutine
 
   function get_item(self)
     class(item):: self
