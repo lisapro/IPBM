@@ -9,6 +9,11 @@ module ice_host
     type(alone_variable):: dt
     type(alone_variable):: wind_speed
     type(alone_variable):: mole_fraction_of_carbon_dioxide_in_air
+    type(alone_variable):: year
+    type(alone_variable):: day
+    type(alone_variable):: number_of_layers
+    type(alone_variable):: number_of_ice_layers
+    type(alone_variable):: number_of_state_variables
 
     type(variable_1d):: ice_thickness
     type(variable_1d):: snow_thickness
@@ -27,11 +32,6 @@ module ice_host
 
     type(state_variable),allocatable,dimension(:):: state_variables
 
-    integer:: year
-    integer:: day
-    integer:: number_of_layers
-    integer:: number_of_ice_layers
-    integer:: number_of_state_variables
   contains
     private
     procedure:: initialize
@@ -56,7 +56,8 @@ contains
     type(type_input):: kara_input
 
     kara_input = type_input('KaraSea.nc')
-    !self%number_of_layers => kara_input%get('')
+    !self%number_of_layers = kara_input%get_input('h')
+    !allocate(self%number_of_layers,source=kara_input%get_input('h'))
     !self%number_of_ice_layers => kara_input%get('')
     !self%number_of_state_variables => kara_input%get('')
     !self%ice_thickness = kara_input%get('')
