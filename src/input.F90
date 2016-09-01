@@ -12,7 +12,12 @@ module input
     private
     procedure:: initialize
     procedure:: add_input
-    procedure, public:: get_input
+    procedure:: get_one_item
+    procedure:: get_input_alone_variable
+    procedure:: get_input_variable_1d
+    procedure:: get_input_variable_2d
+    generic,public:: get_input => get_input_alone_variable,&
+      get_input_variable_1d, get_input_variable_2d
   end type
 
   type,extends(list):: type_netcdf_dimension
@@ -111,26 +116,53 @@ contains
     call self%add_item(temp)
   end subroutine
 
-  function get_input(self, inname)
+  function get_one_item(self,inname)
     class(type_input):: self
-    character(len=*), intent(in):: inname
-    class(variable),allocatable :: get_input
-    class(*),pointer            :: curr
-    
+    character(len=*),intent(in):: inname
+    class(*),pointer:: get_one_item
+
     call self%reset()
     do while(self%moreitems())
-      curr => self%get_item()
-      select type(curr)
-      type is (alone_variable)
-        if (trim(curr%name)==trim(inname)) then
-          allocate(get_input,source=curr)
-          return
-        end if
+      get_one_item => self%get_item()
+      select type(get_one_item)
+      class is (variable)
+        if (trim(get_one_item%name)==trim(inname)) return
       end select
       call self%next()
     end do
-  end function   
-  
+    !call ERROR
+  end function
+
+  subroutine get_input_alone_variable(self,inname,get_alone_variable)
+    class(type_input):: self
+    character(len=*),intent(in):: inname
+    type(alone_variable),allocatable,intent(out):: get_alone_variable
+    class(*),pointer:: curr
+
+    curr => self%get_one_item(inname)
+    allocate(get_alone_variable,source=curr)
+  end subroutine
+
+  subroutine get_input_variable_1d(self,inname,get_variable_1d)
+    class(type_input):: self
+    character(len=*),intent(in):: inname
+    type(variable_1d),allocatable,intent(out):: get_variable_1d
+    class(*),pointer:: curr
+
+    curr => self%get_one_item(inname)
+    allocate(get_variable_1d,source=curr)
+  end subroutine
+
+  subroutine get_input_variable_2d(self,inname,get_variable_2d)
+    class(type_input):: self
+    character(len=*),intent(in):: inname
+    type(variable_2d),allocatable,intent(out):: get_variable_2d
+    class(*),pointer:: curr
+
+    curr => self%get_one_item(inname)
+    allocate(get_variable_2d,source=curr)
+  end subroutine
+
   subroutine add_netcdf_dimension(self, var)
     class(type_netcdf_dimension):: self
     class(netcdf_dimension):: var
@@ -139,14 +171,14 @@ contains
     allocate(temp,source=var)
     call self%add_item(temp)
   end subroutine
-  
+
   function get_netcdf_dimension(self, indim_id_1, indim_id_2)
     class(type_netcdf_dimension):: self
     integer,intent(in)          :: indim_id_1
     integer,optional,intent(in) :: indim_id_2
     integer,dimension(2)        :: get_netcdf_dimension
     class(*),pointer            :: curr
-    
+
     call self%reset()
     do while(self%moreitems())
       curr => self%get_item()

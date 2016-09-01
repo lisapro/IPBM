@@ -38,23 +38,23 @@ contains
 
     get_item => self%current_item%get_item()
   end function
-  
+
   subroutine next(self)
     class(list) :: self
-    
+
     self%current_item => self%current_item%next_item()
   end subroutine
 
   function moreitems(self)
     class(list) :: self
     logical moreitems
-    
+
     moreitems = associated(self%current_item)
   end function
 
   subroutine reset(self)
     class(list) :: self
-    
+
     self%current_item => self%first_item
   end subroutine
 end module

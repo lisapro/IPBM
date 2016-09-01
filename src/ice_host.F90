@@ -6,29 +6,29 @@ module ice_host
   public type_host_model
 
   type type_host_model
-    type(alone_variable):: dt
-    type(alone_variable):: wind_speed
-    type(alone_variable):: mole_fraction_of_carbon_dioxide_in_air
-    type(alone_variable):: year
-    type(alone_variable):: day
-    type(alone_variable):: number_of_layers
-    type(alone_variable):: number_of_ice_layers
-    type(alone_variable):: number_of_state_variables
+    type(alone_variable),allocatable:: dt
+    type(alone_variable),allocatable:: wind_speed
+    type(alone_variable),allocatable:: mole_fraction_of_carbon_dioxide_in_air
+    type(alone_variable),allocatable:: year
+    type(alone_variable),allocatable:: day
+    type(alone_variable),allocatable:: number_of_layers
+    type(alone_variable),allocatable:: number_of_ice_layers
+    type(alone_variable),allocatable:: number_of_state_variables
 
-    type(variable_1d):: ice_thickness
-    type(variable_1d):: snow_thickness
-    type(variable_1d):: ice_temperature
+    type(variable_1d),allocatable:: ice_thickness
+    type(variable_1d),allocatable:: snow_thickness
+    type(variable_1d),allocatable:: ice_temperature
 
-    type(variable_1d):: z
-    type(variable_1d):: dz
-    type(variable_1d):: pressure
-    type(variable_1d):: downwelling_photosynthetic_radiative_flux
-    type(variable_1d):: kz_bio
+    type(variable_1d),allocatable:: z
+    type(variable_1d),allocatable:: dz
+    type(variable_1d),allocatable:: pressure
+    type(variable_1d),allocatable:: downwelling_photosynthetic_radiative_flux
+    type(variable_1d),allocatable:: kz_bio
 
-    type(variable_2d):: temperature
-    type(variable_2d):: practical_salinity
-    type(variable_2d):: density
-    type(variable_2d):: kz
+    type(variable_2d),allocatable:: temperature
+    type(variable_2d),allocatable:: practical_salinity
+    type(variable_2d),allocatable:: density
+    type(variable_2d),allocatable:: kz
 
     type(state_variable),allocatable,dimension(:):: state_variables
 
@@ -56,12 +56,6 @@ contains
     type(type_input):: kara_input
 
     kara_input = type_input('KaraSea.nc')
-    !self%number_of_layers = kara_input%get_input('h')
-    !allocate(self%number_of_layers,source=kara_input%get_input('h'))
-    !self%number_of_ice_layers => kara_input%get('')
-    !self%number_of_state_variables => kara_input%get('')
-    !self%ice_thickness = kara_input%get('')
-    !
-    !allocate(self%temperature%value, source=kara_imput%get(''))
+    call kara_input%get_input('temp',self%temperature)
   end subroutine
 end module
