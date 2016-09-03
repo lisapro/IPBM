@@ -140,7 +140,12 @@ contains
     class(*),pointer:: curr
 
     curr => self%get_one_item(inname)
-    allocate(get_alone_variable,source=curr)
+    select type(curr)
+    type is (alone_variable)
+      allocate(get_alone_variable,source=curr)
+      return
+    end select
+    !call ERROR
   end subroutine
 
   subroutine get_input_variable_1d(self,inname,get_variable_1d)
@@ -150,7 +155,12 @@ contains
     class(*),pointer:: curr
 
     curr => self%get_one_item(inname)
-    allocate(get_variable_1d,source=curr)
+    select type(curr)
+    type is (variable_1d)
+      allocate(get_variable_1d,source=curr)
+      return
+    end select
+    !call ERROR
   end subroutine
 
   subroutine get_input_variable_2d(self,inname,get_variable_2d)
@@ -160,7 +170,12 @@ contains
     class(*),pointer:: curr
 
     curr => self%get_one_item(inname)
-    allocate(get_variable_2d,source=curr)
+    select type(curr)
+    type is (variable_2d)
+      allocate(get_variable_2d,source=curr)
+      return
+    end select
+    !call ERROR
   end subroutine
 
   subroutine add_netcdf_dimension(self, var)
