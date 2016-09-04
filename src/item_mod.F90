@@ -1,5 +1,4 @@
 module item_mod
-
   implicit none
   private
   public:: item
@@ -16,9 +15,7 @@ module item_mod
   interface item
     module procedure item_constructor
   end interface
-
 contains
-
   function item_constructor(var,next)
     class(*):: var
     class(item),pointer:: next

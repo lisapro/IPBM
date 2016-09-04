@@ -16,9 +16,7 @@ module list_mod
     procedure,non_overridable:: moreitems
     procedure,non_overridable:: reset
   end type
-
 contains
-
   subroutine add_item(self, var)
     class(list):: self
     class(*):: var

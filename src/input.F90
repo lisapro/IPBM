@@ -2,6 +2,7 @@ module input
   use types
   use list_mod
   use netcdf
+  use fabm_driver
 
   implicit none
   private
@@ -30,9 +31,7 @@ module input
   interface type_input
     module procedure type_input_constructor
   end interface
-
 contains
-
   function type_input_constructor(infile)
     character(len=*), intent(in):: infile
     type(type_input):: type_input_constructor
@@ -130,7 +129,9 @@ contains
       end select
       call self%next()
     end do
-    !call ERROR
+    call fatal_error("Getting variables from NetCDF file",&
+                     "can't find '"//inname//&
+                     "' variable in NetCDF file")
   end function
 
   subroutine get_input_alone_variable(self,inname,get_alone_variable)
@@ -145,7 +146,6 @@ contains
       allocate(get_alone_variable,source=curr)
       return
     end select
-    !call ERROR
   end subroutine
 
   subroutine get_input_variable_1d(self,inname,get_variable_1d)
@@ -160,7 +160,6 @@ contains
       allocate(get_variable_1d,source=curr)
       return
     end select
-    !call ERROR
   end subroutine
 
   subroutine get_input_variable_2d(self,inname,get_variable_2d)
@@ -175,7 +174,6 @@ contains
       allocate(get_variable_2d,source=curr)
       return
     end select
-    !call ERROR
   end subroutine
 
   subroutine add_netcdf_dimension(self, var)
@@ -216,7 +214,8 @@ contains
 
     if (status .ne. NF90_NOERR) then
       print *, trim(nf90_strerror(status))
-      stop
+      call fatal_error("Netcdf internal",&
+                        nf90_strerror(status))
     end if
   end subroutine
 end module

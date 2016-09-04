@@ -10,10 +10,10 @@ program main
   !ice_host model
   type(type_host_model):: host_model
 
-  !initializing host model
-  host_model = type_host_model()
   !initializing fabm
   call fabm_create_model_from_yaml_file(fabm_model)
+  !initializing host model
+  host_model = type_host_model()
   !call fabm_set_domain(fabm_model,host_model%number_of_layers)
   !call fabm_model%set_surface_index(1)
   !call fabm_model%set_bottom_index(host_model%number_of_layers)
