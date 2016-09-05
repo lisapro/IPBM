@@ -131,7 +131,7 @@ contains
     end do
     call fatal_error("Getting variables from NetCDF file",&
                      "can't find '"//inname//&
-                     "' variable in NetCDF file")
+                     "' variable in the NetCDF file")
   end function
 
   subroutine get_input_alone_variable(self,inname,get_alone_variable)
@@ -213,7 +213,6 @@ contains
     integer, intent(in):: status
 
     if (status .ne. NF90_NOERR) then
-      print *, trim(nf90_strerror(status))
       call fatal_error("Netcdf internal",&
                         nf90_strerror(status))
     end if
