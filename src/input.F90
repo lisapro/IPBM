@@ -67,7 +67,6 @@ contains
     integer,dimension(NF90_MAX_VAR_DIMS):: dimids
     character(len=NF90_MAX_NAME):: name  !Returned dimension name
     character(len=NF90_MAX_NAME):: vname !Returned variable name
-    character(len=NF90_MAX_NAME):: attname !Returned attribute name
 
     call check(nf90_open(infile,nf90_nowrite,ncid))
     call check(nf90_inquire(ncid,ndims,nvars,nglobalatts,unlimdimid))
@@ -124,7 +123,7 @@ contains
     do while(self%moreitems())
       get_one_item => self%get_item()
       select type(get_one_item)
-      class is (variable)
+      class is(variable)
         if (trim(get_one_item%name)==trim(inname)) return
       end select
       call self%next()
@@ -142,7 +141,7 @@ contains
 
     curr => self%get_one_item(inname)
     select type(curr)
-    type is (alone_variable)
+    type is(alone_variable)
       allocate(get_alone_variable,source=curr)
       return
     end select
@@ -156,7 +155,7 @@ contains
 
     curr => self%get_one_item(inname)
     select type(curr)
-    type is (variable_1d)
+    type is(variable_1d)
       allocate(get_variable_1d,source=curr)
       return
     end select
@@ -170,7 +169,7 @@ contains
 
     curr => self%get_one_item(inname)
     select type(curr)
-    type is (variable_2d)
+    type is(variable_2d)
       allocate(get_variable_2d,source=curr)
       return
     end select
@@ -196,7 +195,7 @@ contains
     do while(self%moreitems())
       curr => self%get_item()
       select type(curr)
-      type is (netcdf_dimension)
+      type is(netcdf_dimension)
         if (curr%dim_id==indim_id_1) then
           get_netcdf_dimension(1) = curr%dim_len
           if (.not.present(indim_id_2)) return
