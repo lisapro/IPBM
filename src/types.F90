@@ -37,6 +37,8 @@ contains
     integer:: temp,temp2,i
 
     select type(self)
+    type is(alone_variable)
+      return
     type is(variable_1d)
       self%value = self%value(size(self%value):1:-1)
     type is(variable_2d)

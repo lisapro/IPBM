@@ -6,7 +6,7 @@ module ice_host
   public type_host_model
 
   type type_host_model
-    type(alone_variable),allocatable:: dt
+    type(alone_variable),pointer:: dt
     type(alone_variable),allocatable:: wind_speed
     type(alone_variable),allocatable:: mole_fraction_of_carbon_dioxide_in_air
     type(alone_variable),allocatable:: year
@@ -33,7 +33,6 @@ module ice_host
     type(variable_2d),allocatable:: kz
 
     type(state_variable),allocatable,dimension(:):: state_variables
-
   contains
     private
     procedure:: initialize
@@ -54,13 +53,26 @@ contains
 
     class(type_host_model):: self
     type(type_input):: kara_input
+    class(variable),pointer:: foo
+    !class(*),allocatable:: foo
 
     kara_input = type_input('KaraSea.nc')
     !vertical variables
     call kara_input%get_input('depth',self%z)
-    call self%z%inverse()
+    write(*,*) self%dt
+    !select type(foo)
+    foo=>self%dt
+    select type(foo)
+    type is(alone_variable)
+      !allocate(foo, source=self%dt)
+      !call foo%inverse()
+      call foo%inverse()
+    class default
+      stop
+    end select
+    !call self%z%inverse()
     call kara_input%get_input('depth_w',self%z_boundary)
-    call self%z_boundary%inverse()
+    !call self%z_boundary%inverse()
     !horizontal variables
     call kara_input%get_input('ocean_time',self%time)
     call kara_input%get_input('Pair',self%air_pressure)
@@ -68,12 +80,12 @@ contains
     'shflux',self%downwelling_photosynthetic_radiative_flux)
     !2d variables
     call kara_input%get_input('temp',self%temperature)
-    call self%temperature%inverse()
+    !call self%temperature%inverse()
     call kara_input%get_input('salt',self%practical_salinity)
-    call self%practical_salinity%inverse()
+    !call self%practical_salinity%inverse()
     call kara_input%get_input('rho',self%density_anomaly)
-    call self%density_anomaly%inverse()
+    !call self%density_anomaly%inverse()
     call kara_input%get_input('AKv',self%kz)
-    call self%kz%inverse()
+    !call self%kz%inverse()
   end subroutine
 end module
