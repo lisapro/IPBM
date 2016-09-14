@@ -6,7 +6,7 @@ module ice_host
   public type_host_model
 
   type type_host_model
-    type(alone_variable),pointer:: dt
+    type(alone_variable),allocatable:: dt
     type(alone_variable),allocatable:: wind_speed
     type(alone_variable),allocatable:: mole_fraction_of_carbon_dioxide_in_air
     type(alone_variable),allocatable:: year
@@ -53,7 +53,7 @@ contains
 
     class(type_host_model):: self
     type(type_input):: kara_input
-    class(variable),pointer:: foo
+    class(variable),allocatable:: foo
     !class(*),allocatable:: foo
 
     kara_input = type_input('KaraSea.nc')
@@ -61,10 +61,10 @@ contains
     call kara_input%get_input('depth',self%z)
     write(*,*) self%dt
     !select type(foo)
-    foo=>self%dt
+    allocate(foo, source=self%dt)
+    !foo=>self%dt
     select type(foo)
     type is(alone_variable)
-      !allocate(foo, source=self%dt)
       !call foo%inverse()
       call foo%inverse()
     class default
