@@ -59,36 +59,25 @@ contains
 
     !vertical variables
     call kara_input%get_input('depth',self%z)
-
-    call print_var(self%z)
-    call reverse(self%z)
-    call print_var(self%z)
-
+    call self%z%inverse()
     call kara_input%get_input('depth_w',self%z_boundary)
-
-    call print_var(self%z_boundary)
-    call reverse(self%z_boundary)
-    call print_var(self%z_boundary)
-
+    call self%z_boundary%inverse()
     !horizontal variables
     call kara_input%get_input('ocean_time',self%time)
     call kara_input%get_input('Pair',self%air_pressure)
     call kara_input%get_input(&
     'shflux',self%downwelling_photosynthetic_radiative_flux)
-
     !2d variables
     call kara_input%get_input('temp',self%temperature)
-    call print_var(self%temperature)
-    call reverse(self%temperature)
-    call print_var(self%temperature)
-    !call self%temperature%inverse()
+    call self%temperature%inverse()
     call kara_input%get_input('salt',self%practical_salinity)
-    !call self%practical_salinity%inverse()
+    call self%practical_salinity%inverse()
     call kara_input%get_input('rho',self%density_anomaly)
-    !call self%density_anomaly%inverse()
+    call self%density_anomaly%inverse()
     call kara_input%get_input('AKv',self%kz)
-    !call self%kz%inverse()
+    call self%kz%inverse()
 
+    !weird thing!
     allocate(foo, source=self%z)
     select type(foo)
     type is(variable_1d)
@@ -96,17 +85,5 @@ contains
     type is(variable_2d)
       call foo%inverse()
     end select
-  end subroutine
-
-  subroutine reverse(invar)
-    class(variable),intent(inout):: invar
-
-    call invar%inverse()
-  end subroutine
-
-  subroutine print_var(invar)
-    class(variable),intent(inout):: invar
-
-    call invar%print_value()
   end subroutine
 end module

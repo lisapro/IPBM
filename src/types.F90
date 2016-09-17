@@ -33,6 +33,7 @@ module types
     integer:: dim_id
     integer:: dim_len
   end type
+
 contains
   subroutine inverse(self)
     class(variable),intent(inout):: self
