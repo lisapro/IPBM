@@ -14,11 +14,7 @@ module input
     procedure:: initialize
     procedure:: add_input
     procedure:: get_one_item
-    procedure:: get_input_alone_variable
-    procedure:: get_input_variable_1d
-    procedure:: get_input_variable_2d
-    generic,public:: get_input => get_input_alone_variable,&
-      get_input_variable_1d, get_input_variable_2d
+    procedure,public:: get_input
   end type
 
   type,extends(list):: type_netcdf_dimension
@@ -133,45 +129,20 @@ contains
                      "' variable in the NetCDF file")
   end function
 
-  subroutine get_input_alone_variable(self,inname,get_alone_variable)
+  subroutine get_input(self,inname,get_variable)
     class(type_input):: self
     character(len=*),intent(in):: inname
-    type(alone_variable),allocatable,intent(out):: get_alone_variable
+    class(variable),allocatable,intent(out):: get_variable
     class(*),pointer:: curr
 
-    curr => self%get_one_item(inname)
+    curr=>self%get_one_item(inname)
     select type(curr)
     type is(alone_variable)
-      allocate(get_alone_variable,source=curr)
-      return
-    end select
-  end subroutine
-
-  subroutine get_input_variable_1d(self,inname,get_variable_1d)
-    class(type_input):: self
-    character(len=*),intent(in):: inname
-    type(variable_1d),allocatable,intent(out):: get_variable_1d
-    class(*),pointer:: curr
-
-    curr => self%get_one_item(inname)
-    select type(curr)
+      allocate(get_variable,source=curr)
     type is(variable_1d)
-      allocate(get_variable_1d,source=curr)
-      return
-    end select
-  end subroutine
-
-  subroutine get_input_variable_2d(self,inname,get_variable_2d)
-    class(type_input):: self
-    character(len=*),intent(in):: inname
-    type(variable_2d),allocatable,intent(out):: get_variable_2d
-    class(*),pointer:: curr
-
-    curr => self%get_one_item(inname)
-    select type(curr)
+      allocate(get_variable,source=curr)
     type is(variable_2d)
-      allocate(get_variable_2d,source=curr)
-      return
+      allocate(get_variable,source=curr)
     end select
   end subroutine
 

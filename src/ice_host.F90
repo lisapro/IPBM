@@ -14,11 +14,7 @@ module ice_host
     procedure:: initialize
     procedure:: add_var
     procedure:: get_one_var
-    procedure:: get_alone_variable
-    procedure:: get_variable_1d
-    procedure:: get_variable_2d
-    generic:: get_var => get_alone_variable,&
-      get_variable_1d, get_variable_2d
+    procedure:: get_variable
   end type
 
   interface type_host_model
@@ -33,30 +29,31 @@ contains
 
   subroutine initialize(self)
     class(type_host_model):: self
+    type(type_input):: kara_input
 
     kara_input = type_input('KaraSea.nc')
-
     !vertical variables
-    call self%add_var('depth')
-    call self%add_var('depth_w')
+    call self%add_var('depth',kara_input)
+    call self%add_var('depth_w',kara_input)
     !horizontal variables
-    call self%add_var('ocean_time')
-    call self%add_var('Pair')
-    call self%add_var('shflux')
+    call self%add_var('ocean_time',kara_input)
+    call self%add_var('Pair',kara_input)
+    call self%add_var('shflux',kara_input)
     !2d variables
-    call self%add_var('temp')
-    call self%add_var('salt')
-    call self%add_var('rho')
-    call self%add_var('AKv')
+    call self%add_var('temp',kara_input)
+    call self%add_var('salt',kara_input)
+    call self%add_var('rho',kara_input)
+    call self%add_var('AKv',kara_input)
   end subroutine
 
-  subroutine add_var(self,inname)
+  subroutine add_var(self,inname,name_input)
     class(type_host_model)   :: self
     character(len=*),intent(in):: inname
+    type(type_input),intent(in):: name_input
     class(variable),allocatable:: var
     class(*),allocatable:: temp
 
-    call kara_input%get_input(inname,var)
+    call name_input%get_input(inname,var)
     allocate(temp,source=var)
     call self%add_item(temp)
   end subroutine
@@ -64,14 +61,14 @@ contains
   function get_one_var(self,inname)
     class(type_host_model):: self
     character(len=*),intent(in):: inname
-    class(*),pointer:: get_one_item
+    class(*),pointer:: get_one_var
 
     call self%reset()
     do while(self%moreitems())
-      get_one_item => self%get_item()
-      select type(get_one_item)
+      get_one_var => self%get_item()
+      select type(get_one_var)
       class is(variable)
-        if (trim(get_one_item%name)==trim(inname)) return
+        if (trim(get_one_var%name)==trim(inname)) return
       end select
       call self%next()
     end do
@@ -80,45 +77,20 @@ contains
                      "' variable in the NetCDF file")
   end function
 
-  subroutine get_alone_variable(self,inname,get_alone_var)
+  subroutine get_variable(self,inname,get_var)
     class(type_host_model):: self
     character(len=*),intent(in):: inname
-    type(alone_variable),allocatable,intent(out):: get_alone_var
+    class(variable),allocatable,intent(out):: get_var
     class(*),pointer:: curr
 
-    curr => self%get_one_item(inname)
+    curr => self%get_one_var(inname)
     select type(curr)
     type is(alone_variable)
-      allocate(get_alone_var,source=curr)
-      return
-    end select
-  end subroutine
-
-  subroutine get_variable_1d(self,inname,get_var_1d)
-    class(type_host_model):: self
-    character(len=*),intent(in):: inname
-    type(variable_1d),allocatable,intent(out):: get_var_1d
-    class(*),pointer:: curr
-
-    curr => self%get_one_item(inname)
-    select type(curr)
+      allocate(get_var,source=curr)
     type is(variable_1d)
-      allocate(get_var_1d,source=curr)
-      return
-    end select
-  end subroutine
-
-  subroutine get_variable_2d(self,inname,get_var_2d)
-    class(type_host_model):: self
-    character(len=*),intent(in):: inname
-    type(variable_2d),allocatable,intent(out):: get_var_2d
-    class(*),pointer:: curr
-
-    curr => self%get_one_item(inname)
-    select type(curr)
+      allocate(get_var,source=curr)
     type is(variable_2d)
-      allocate(get_var_2d,source=curr)
-      return
+      allocate(get_var,source=curr)
     end select
   end subroutine
 end module
