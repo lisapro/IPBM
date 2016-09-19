@@ -13,8 +13,9 @@ module ice_host
     private
     procedure:: initialize
     procedure:: add_var
-    procedure:: get_one_var
-    procedure:: get_variable
+    procedure:: get_var
+    procedure:: set_var
+    procedure:: inv_var
   end type
 
   interface type_host_model
@@ -34,16 +35,22 @@ contains
     kara_input = type_input('KaraSea.nc')
     !vertical variables
     call self%add_var('depth',kara_input)
+    call self%inv_var('depth')
     call self%add_var('depth_w',kara_input)
+    call self%inv_var('depth_w')
     !horizontal variables
     call self%add_var('ocean_time',kara_input)
     call self%add_var('Pair',kara_input)
     call self%add_var('shflux',kara_input)
     !2d variables
     call self%add_var('temp',kara_input)
+    call self%inv_var('temp')
     call self%add_var('salt',kara_input)
+    call self%inv_var('salt')
     call self%add_var('rho',kara_input)
+    call self%inv_var('rho')
     call self%add_var('AKv',kara_input)
+    call self%inv_var('AKv')
   end subroutine
 
   subroutine add_var(self,inname,name_input)
@@ -58,39 +65,66 @@ contains
     call self%add_item(temp)
   end subroutine
 
-  function get_one_var(self,inname)
+  subroutine get_var(self,inname,get_variable)
     class(type_host_model):: self
     character(len=*),intent(in):: inname
-    class(*),pointer:: get_one_var
-
-    call self%reset()
-    do while(self%moreitems())
-      get_one_var => self%get_item()
-      select type(get_one_var)
-      class is(variable)
-        if (trim(get_one_var%name)==trim(inname)) return
-      end select
-      call self%next()
-    end do
-    call fatal_error("Getting variables from NetCDF file",&
-                     "can't find '"//inname//&
-                     "' variable in the NetCDF file")
-  end function
-
-  subroutine get_variable(self,inname,get_var)
-    class(type_host_model):: self
-    character(len=*),intent(in):: inname
-    class(variable),allocatable,intent(out):: get_var
+    class(variable),allocatable,intent(out):: get_variable
     class(*),pointer:: curr
 
-    curr => self%get_one_var(inname)
-    select type(curr)
-    type is(alone_variable)
-      allocate(get_var,source=curr)
-    type is(variable_1d)
-      allocate(get_var,source=curr)
-    type is(variable_2d)
-      allocate(get_var,source=curr)
-    end select
+    call self%reset()
+    do
+      curr=>self%get_item()
+      select type(curr)
+      class is(variable)
+        if (trim(curr%name)==trim(inname)) then
+          allocate(get_variable,source=curr)
+          return
+        end if
+      end select
+      call self%next()
+      if (.not.self%moreitems()) then
+        call fatal_error("Getting variables",&
+                         "can't find '"//inname//&
+                         " variable")
+      end if
+    end do
+  end subroutine
+
+  subroutine set_var(self,inname,new_var)
+    class(type_host_model):: self
+    character(len=*),intent(in):: inname
+    class(variable),allocatable:: new_var
+    class(*),pointer:: curr
+
+    call self%reset()
+    do
+      curr=>self%get_item()
+      select type(curr)
+      class is(variable)
+        if (trim(curr%name)==trim(inname)) then
+          call self%set_item(new_var)
+          return
+        end if
+      end select
+      call self%next()
+      if (.not.self%moreitems()) then
+        call fatal_error("Setting variables",&
+                         "can't find '"//inname//&
+                         "' variable")
+      end if
+    end do
+  end subroutine
+
+  subroutine inv_var(self,inname)
+    class(type_host_model):: self
+    character(len=*),intent(in):: inname
+    class(variable),allocatable:: var
+
+    call self%get_var(inname,var)
+    call var%print_value()
+    call var%inverse()
+    call self%set_var(inname,var)
+    call self%get_var(inname,var)
+    call var%print_value()
   end subroutine
 end module

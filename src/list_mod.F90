@@ -12,6 +12,7 @@ module list_mod
   contains
     procedure,non_overridable:: add_item
     procedure,non_overridable:: get_item
+    procedure,non_overridable:: set_item
     procedure,non_overridable:: next
     procedure,non_overridable:: moreitems
     procedure,non_overridable:: reset
@@ -36,6 +37,13 @@ contains
 
     get_item => self%current_item%get_item()
   end function
+
+  subroutine set_item(self,new_var)
+    class(list),intent(inout):: self
+    class(*),intent(in):: new_var
+
+    call self%current_item%set_item(new_var)
+  end subroutine
 
   subroutine next(self)
     class(list) :: self

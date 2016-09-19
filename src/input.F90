@@ -13,7 +13,6 @@ module input
     private
     procedure:: initialize
     procedure:: add_input
-    procedure:: get_one_item
     procedure,public:: get_input
   end type
 
@@ -110,40 +109,29 @@ contains
     call self%add_item(temp)
   end subroutine
 
-  function get_one_item(self,inname)
-    class(type_input):: self
-    character(len=*),intent(in):: inname
-    class(*),pointer:: get_one_item
-
-    call self%reset()
-    do while(self%moreitems())
-      get_one_item => self%get_item()
-      select type(get_one_item)
-      class is(variable)
-        if (trim(get_one_item%name)==trim(inname)) return
-      end select
-      call self%next()
-    end do
-    call fatal_error("Getting variables from NetCDF file",&
-                     "can't find '"//inname//&
-                     "' variable in the NetCDF file")
-  end function
-
   subroutine get_input(self,inname,get_variable)
     class(type_input):: self
     character(len=*),intent(in):: inname
     class(variable),allocatable,intent(out):: get_variable
     class(*),pointer:: curr
 
-    curr=>self%get_one_item(inname)
-    select type(curr)
-    type is(alone_variable)
-      allocate(get_variable,source=curr)
-    type is(variable_1d)
-      allocate(get_variable,source=curr)
-    type is(variable_2d)
-      allocate(get_variable,source=curr)
-    end select
+    call self%reset()
+    do
+      curr=>self%get_item()
+      select type(curr)
+      class is(variable)
+        if (trim(curr%name)==trim(inname)) then
+          allocate(get_variable,source=curr)
+          return
+        end if
+      end select
+      call self%next()
+      if (.not.self%moreitems()) then
+        call fatal_error("Getting variables from NetCDF file",&
+                         "can't find '"//inname//&
+                         "' variable in the NetCDF file")
+      end if
+    end do
   end subroutine
 
   subroutine add_netcdf_dimension(self, var)
@@ -162,8 +150,9 @@ contains
     integer,dimension(2)        :: get_netcdf_dimension
     class(*),pointer            :: curr
 
+    get_netcdf_dimension = -1
     call self%reset()
-    do while(self%moreitems())
+    do
       curr => self%get_item()
       select type(curr)
       type is(netcdf_dimension)
@@ -176,7 +165,14 @@ contains
         end if
       end select
       call self%next()
+      if (.not.self%moreitems()) exit
     end do
+    if ((.not.present(indim_id_2).and.get_netcdf_dimension(1)==-1).or.&
+             (present(indim_id_2).and.get_netcdf_dimension(1)==-1 .or.&
+                                      get_netcdf_dimension(2)==-1)) then
+      call fatal_error("Getting NetCDF dimension lengths",&
+                       "Can't get length of dimension")
+    end if
   end function
 
   subroutine check(status)

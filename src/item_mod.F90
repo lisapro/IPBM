@@ -10,6 +10,7 @@ module item_mod
   contains
     procedure,non_overridable:: next_item
     procedure,non_overridable:: get_item
+    procedure,non_overridable:: set_item
   end type
 
   interface item
@@ -39,4 +40,12 @@ contains
 
     get_item => self%var
   end function
+
+  subroutine set_item(self,new_var)
+    class(item),intent(inout):: self
+    class(*),intent(in):: new_var
+
+    deallocate(self%var)
+    allocate(self%var,source=new_var)
+  end subroutine
 end module
