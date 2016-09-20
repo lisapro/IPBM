@@ -1,4 +1,4 @@
-module types
+module types_mod
   use fabm_types, only: rk
   use fabm_driver
   use list_mod
@@ -7,6 +7,7 @@ module types
     character(len=64):: name  = ''
     character(len=64):: units = ''
   contains
+    private
     procedure,non_overridable:: inverse
     procedure,non_overridable:: print_value
   end type
@@ -31,11 +32,11 @@ module types
 
   type,abstract,extends(list):: list_variables
   contains
-    private
-    procedure,public:: get_var
-    procedure,public:: set_var
-    procedure,public:: inv_var
-    procedure,public:: get_z_length
+    procedure:: get_var
+    procedure:: set_var
+    procedure:: inv_var
+    procedure:: get_z_length
+    procedure:: print_var
   end type
 contains
   subroutine inverse(self)
@@ -147,5 +148,14 @@ contains
     class is(variable_1d)
       z_length=size(get_variable%value,1)
     end select
+  end subroutine
+
+  subroutine print_var(self,inname)
+    class(list_variables):: self
+    character(len=*),intent(in):: inname
+    class(variable),allocatable:: var
+
+    call self%get_var(inname,var)
+    call var%print_value()
   end subroutine
 end module

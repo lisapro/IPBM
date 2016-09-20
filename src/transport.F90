@@ -1,5 +1,5 @@
 program main
-  use ice_host
+  use variables_mod
   use fabm
   use fabm_config
 
@@ -22,6 +22,7 @@ program main
   call fabm_model%set_surface_index(1)
   call fabm_model%set_bottom_index(number_of_layers)
 
+  call standard_vars%print_var('depth')
   !forall(i = 1:host_model%number_of_layers)
   !  call fabm_link_bulk_state_data(&
   !    fabm_model,i,host_model%state_variables(i))
@@ -49,5 +50,5 @@ program main
   !  fabm_model,standard_variables%mole_fraction_of_carbon_dioxide_in_air,&
   !  host_model%mole_fraction_of_carbon_dioxide_in_air)
 
-  call fabm_check_ready(fabm_model)
+  !call fabm_check_ready(fabm_model)
 end program

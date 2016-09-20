@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 2.8)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
 # Create main project.
-project(ice-host Fortran)
+project(brom2 Fortran)
 
 # Specify default build type for single-type systems (not VS)
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
@@ -42,29 +42,29 @@ add_subdirectory(${FABM_BASE}/src fabm)
 set(FABM_LIBRARIES fabm)
 set(FABM_INCLUDE_DIRS ${CMAKE_CURRENT_BINARY_DIR}/fabm/modules)
 
-add_executable(ice-host WIN32
-               main.F90
-               ice_host.F90
-               input.F90
+add_executable(brom2 WIN32
+               transport.F90
+               variables_mod.F90
+               input_mod.F90
+               types_mod.F90
                list_mod.F90
-               item_mod.F90
-               types.F90)
+               item_mod.F90)
 
-set_property(TARGET ice-host APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
-set_property(TARGET ice-host APPEND PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
-set_property(TARGET ice-host PROPERTY Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/modules)
-set_property(TARGET ice-host APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
+set_property(TARGET brom2 APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
+set_property(TARGET brom2 APPEND PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
+set_property(TARGET brom2 PROPERTY Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/modules)
+set_property(TARGET brom2 APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
 
-target_link_libraries(ice-host ${FABM_LIBRARIES})
-target_link_libraries(ice-host "${NetCDF_LIBRARIES}")
+target_link_libraries(brom2 ${FABM_LIBRARIES})
+target_link_libraries(brom2 "${NetCDF_LIBRARIES}")
 
 if(${CMAKE_Fortran_COMPILER_ID} STREQUAL "Intel")
   if(WIN32)
-    target_compile_options(ice-host PRIVATE /nothreads /libs:static /libs:qwin)
+    target_compile_options(brom2 PRIVATE /nothreads /libs:static /libs:qwin)
   endif()
 endif()
 
 if (NetCDF_STATIC_MSVC_BUILD)
-  set_property(TARGET ice-host PROPERTY LINK_FLAGS_DEBUG "/NODEFAULTLIB:\"libcmt\"")
-  set_property(TARGET ice-host PROPERTY LINK_FLAGS_DEBUG "/NODEFAULTLIB:\"libcmtd\"")
+  set_property(TARGET brom2 PROPERTY LINK_FLAGS_DEBUG "/NODEFAULTLIB:\"libcmt\"")
+  set_property(TARGET brom2 PROPERTY LINK_FLAGS_DEBUG "/NODEFAULTLIB:\"libcmtd\"")
 endif()

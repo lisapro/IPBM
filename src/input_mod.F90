@@ -1,6 +1,6 @@
-module input
-  use types
+module input_mod
   use list_mod
+  use types_mod
   use netcdf
   use fabm_driver
 

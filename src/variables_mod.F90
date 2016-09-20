@@ -1,6 +1,6 @@
-module ice_host
-  use types
-  use input
+module variables_mod
+  use types_mod
+  use input_mod
   use fabm_driver
 
   implicit none
@@ -60,5 +60,4 @@ contains
     allocate(temp,source=var)
     call self%add_item(temp)
   end subroutine
-
 end module
