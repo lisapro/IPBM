@@ -1,6 +1,7 @@
 module types
   use fabm_types, only: rk
   use fabm_driver
+  use list_mod
 
   type,abstract:: variable
     character(len=64):: name  = ''
@@ -26,6 +27,14 @@ module types
 
   type,extends(variable):: variable_2d
     real(rk),allocatable,dimension(:,:):: value
+  end type
+
+  type,abstract,extends(list):: list_variables
+  contains
+    private
+    procedure,public:: get_var
+    procedure,public:: set_var
+    procedure,public:: inv_var
   end type
 
   type:: netcdf_dimension
@@ -68,5 +77,68 @@ contains
     class default
       call fatal_error("Print value","Wrong type")
     end select
+  end subroutine
+
+  subroutine get_var(self,inname,get_variable)
+    class(list_variables):: self
+    character(len=*),intent(in):: inname
+    class(variable),allocatable,intent(out):: get_variable
+    class(*),pointer:: curr
+
+    call self%reset()
+    do
+      curr=>self%get_item()
+      select type(curr)
+      class is(variable)
+        if (trim(curr%name)==trim(inname)) then
+          allocate(get_variable,source=curr)
+          return
+        end if
+      end select
+      call self%next()
+      if (.not.self%moreitems()) then
+        call fatal_error("Getting variables",&
+                         "can't find '"//inname//&
+                         " variable")
+      end if
+    end do
+  end subroutine
+
+  subroutine set_var(self,inname,new_var)
+    class(list_variables):: self
+    character(len=*),intent(in):: inname
+    class(variable),allocatable:: new_var
+    class(*),pointer:: curr
+
+    call self%reset()
+    do
+      curr=>self%get_item()
+      select type(curr)
+      class is(variable)
+        if (trim(curr%name)==trim(inname)) then
+          call self%set_item(new_var)
+          return
+        end if
+      end select
+      call self%next()
+      if (.not.self%moreitems()) then
+        call fatal_error("Setting variables",&
+                         "can't find '"//inname//&
+                         "' variable")
+      end if
+    end do
+  end subroutine
+
+  subroutine inv_var(self,inname)
+    class(list_variables):: self
+    character(len=*),intent(in):: inname
+    class(variable),allocatable:: var
+
+    call self%get_var(inname,var)
+    call var%print_value()
+    call var%inverse()
+    call self%set_var(inname,var)
+    call self%get_var(inname,var)
+    call var%print_value()
   end subroutine
 end module
