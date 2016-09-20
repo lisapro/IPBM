@@ -35,12 +35,7 @@ module types
     procedure,public:: get_var
     procedure,public:: set_var
     procedure,public:: inv_var
-  end type
-
-  type:: netcdf_dimension
-    character(len=64):: name = ''
-    integer:: dim_id
-    integer:: dim_len
+    procedure,public:: get_z_length
   end type
 contains
   subroutine inverse(self)
@@ -65,7 +60,7 @@ contains
   end subroutine
 
   subroutine print_value(self)
-    class(variable),intent(inout):: self
+    class(variable),intent(in):: self
 
     select type(self)
     type is(alone_variable)
@@ -135,10 +130,22 @@ contains
     class(variable),allocatable:: var
 
     call self%get_var(inname,var)
-    call var%print_value()
     call var%inverse()
     call self%set_var(inname,var)
-    call self%get_var(inname,var)
-    call var%print_value()
+  end subroutine
+
+  subroutine get_z_length(self,inname,z_length)
+    class(list_variables),intent(in):: self
+    character(len=*),intent(in):: inname
+    integer,intent(out):: z_length
+    class(variable),allocatable:: get_variable
+
+    call self%get_var(inname,get_variable)
+    select type(get_variable)
+    type is(alone_variable)
+      z_length=1
+    class is(variable_1d)
+      z_length=size(get_variable%value,1)
+    end select
   end subroutine
 end module

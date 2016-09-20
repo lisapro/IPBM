@@ -8,6 +8,12 @@ module input
   private
   public type_input
 
+  type:: netcdf_dimension
+    character(len=64):: name = ''
+    integer:: dim_id
+    integer:: dim_len
+  end type
+
   type,extends(list):: type_input
   contains
     private

@@ -4,19 +4,23 @@ program main
   use fabm_config
 
   implicit none
-  integer:: i
+  integer i
+  integer number_of_layers
   !fabm model
-  type(type_model):: fabm_model
-  !ice_host model
-  type(standard_variables):: standard_vars
+  type(type_model) fabm_model
+  !standatd variables for model
+  type(standard_variables) standard_vars
 
   !initializing fabm
   call fabm_create_model_from_yaml_file(fabm_model)
-  !initializing host model
+  !initializing standard_variables
   standard_vars = standard_variables()
-  !call fabm_set_domain(fabm_model,host_model%number_of_layers)
-  !call fabm_model%set_surface_index(1)
-  !call fabm_model%set_bottom_index(host_model%number_of_layers)
+
+  call standard_vars%get_z_length('depth',number_of_layers)
+
+  call fabm_set_domain(fabm_model,number_of_layers)
+  call fabm_model%set_surface_index(1)
+  call fabm_model%set_bottom_index(number_of_layers)
 
   !forall(i = 1:host_model%number_of_layers)
   !  call fabm_link_bulk_state_data(&
