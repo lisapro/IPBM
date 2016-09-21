@@ -20,7 +20,7 @@ module types_mod
     real(rk),allocatable,dimension(:):: value
   end type
 
-  type,extends(variable_1d):: state_variable
+  type,extends(variable_1d):: brom_state_variable
     logical:: use_bound_up = .false.
     logical:: use_bound_low = .false.
     real(rk):: sinking_velocity = 0._rk
@@ -37,6 +37,7 @@ module types_mod
     procedure:: inv_var
     procedure:: get_z_length
     procedure:: print_var
+    procedure:: get_column
   end type
 contains
   subroutine inverse(self)
@@ -157,5 +158,24 @@ contains
 
     call self%get_var(inname,var)
     call var%print_value()
+  end subroutine
+
+  subroutine get_column(self,inname,column,result)
+    class(list_variables),intent(in):: self
+    character(len=*),intent(in):: inname
+    integer,intent(in),optional:: column
+    real(rk),dimension(:),intent(out):: result
+    class(variable),allocatable:: get_variable
+
+    call self%get_var(inname,get_variable)
+    select type(get_variable)
+    type is(variable_1d)
+      result = get_variable%value(:)
+    type is(variable_2d)
+      result = get_variable%value(:,column)
+    class default
+      call fatal_error("Getting column failed",&
+                       "Wrong variable")
+    end select
   end subroutine
 end module
