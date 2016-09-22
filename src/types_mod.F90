@@ -3,6 +3,7 @@ module types_mod
   use fabm_driver
   use list_mod
 
+  implicit none
   type,abstract:: variable
     character(len=64):: name  = ''
     character(len=64):: units = ''
@@ -10,6 +11,7 @@ module types_mod
     private
     procedure,non_overridable:: inverse
     procedure,non_overridable:: print_value
+    procedure,non_overridable:: print_name
   end type
 
   type,extends(variable):: alone_variable
@@ -37,6 +39,7 @@ module types_mod
     procedure:: inv_var
     procedure:: get_z_length
     procedure:: print_var
+    procedure:: print_list
     procedure:: get_column
   end type
 contains
@@ -68,12 +71,18 @@ contains
     type is(alone_variable)
       write(*,*) self%value
     type is(variable_1d)
-      write(*,*) self%value
+      write(*,*) self%value(1:10)
     type is(variable_2d)
       write(*,*) self%value(:,1)
     class default
       call fatal_error("Print value","Wrong type")
     end select
+  end subroutine
+
+  subroutine print_name(self)
+    class(variable),intent(in):: self
+
+    write(*,*) self%name
   end subroutine
 
   subroutine get_var(self,inname,get_variable)
@@ -160,8 +169,24 @@ contains
     call var%print_value()
   end subroutine
 
+  subroutine print_list(self)
+    class(list_variables),intent(inout):: self
+    class(*),pointer:: curr
+
+    call self%reset()
+    do
+      curr=>self%get_item()
+      select type(curr)
+      class is(variable)
+        call curr%print_name()
+      end select
+      call self%next()
+      if (.not.self%moreitems()) exit
+    end do
+  end subroutine
+
   subroutine get_column(self,inname,column,result)
-    class(list_variables),intent(in):: self
+    class(list_variables):: self
     character(len=*),intent(in):: inname
     integer,intent(in),optional:: column
     real(rk),dimension(:),intent(out):: result
