@@ -14,12 +14,11 @@ module input_mod
     integer:: dim_len
   end type
 
-  type,extends(list):: type_input
+  type,extends(list_variables):: type_input
   contains
     private
     procedure:: initialize
     procedure:: add_input
-    procedure,public:: get_input
   end type
 
   type,extends(list):: type_netcdf_dimension
@@ -113,31 +112,6 @@ contains
 
     allocate(temp,source=var)
     call self%add_item(temp)
-  end subroutine
-
-  subroutine get_input(self,inname,get_variable)
-    class(type_input):: self
-    character(len=*),intent(in):: inname
-    class(variable),allocatable,intent(out):: get_variable
-    class(*),pointer:: curr
-
-    call self%reset()
-    do
-      curr=>self%get_item()
-      select type(curr)
-      class is(variable)
-        if (trim(curr%name)==trim(inname)) then
-          allocate(get_variable,source=curr)
-          return
-        end if
-      end select
-      call self%next()
-      if (.not.self%moreitems()) then
-        call fatal_error("Getting variables from NetCDF file",&
-                         "can't find '"//inname//&
-                         "' variable in the NetCDF file")
-      end if
-    end do
   end subroutine
 
   subroutine add_netcdf_dimension(self, var)

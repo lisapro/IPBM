@@ -16,6 +16,7 @@ module list_mod
     procedure,non_overridable:: next
     procedure,non_overridable:: moreitems
     procedure,non_overridable:: reset
+    procedure,non_overridable:: delete_list
   end type
 contains
   subroutine add_item(self, var)
@@ -62,5 +63,17 @@ contains
     class(list) :: self
 
     self%current_item => self%first_item
+  end subroutine
+
+  subroutine delete_list(self)
+    class(list),intent(inout):: self
+
+    call self%reset()
+    do
+      if (.not.associated(self%first_item)) exit
+      call self%next()
+      call delete(self%first_item)
+      self%first_item=>self%current_item
+    end do
   end subroutine
 end module

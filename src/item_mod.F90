@@ -1,7 +1,7 @@
 module item_mod
   implicit none
   private
-  public:: item
+  public:: item,delete
 
   type item
     private
@@ -47,5 +47,12 @@ contains
 
     deallocate(self%var)
     allocate(self%var,source=new_var)
+  end subroutine
+
+  !non type-bound procedure because of pointer
+  subroutine delete(any_item)
+    class(item),pointer:: any_item
+
+    deallocate(any_item)
   end subroutine
 end module
