@@ -102,6 +102,7 @@ contains
       end if
     end do
 
+    call list_dim%delete_list()
     call check(nf90_close(ncid))
   end subroutine
 

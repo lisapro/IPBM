@@ -60,13 +60,12 @@ contains
 
     write(*,*) ''
     write(*,*) 'Allocated kara_input:'
-    call kara_input%reset()
-    first = kara_input%moreitems()
-    if (.not.first) then
-      write(*,*) 'Empty'
-    else
-      call kara_input%print_list()
-    end if
+    call kara_input%print_list()
+    write(*,*) ''
+
+    write(*,*) ''
+    write(*,*) 'Allocated brom_standard_variables:'
+    call self%print_list()
     write(*,*) ''
   end subroutine
 

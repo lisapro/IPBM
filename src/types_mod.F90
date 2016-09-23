@@ -172,17 +172,23 @@ contains
   subroutine print_list(self)
     class(list_variables),intent(inout):: self
     class(*),pointer:: curr
+    logical first
 
     call self%reset()
-    do
-      curr=>self%get_item()
-      select type(curr)
-      class is(variable)
-        call curr%print_name()
-      end select
-      call self%next()
-      if (.not.self%moreitems()) exit
-    end do
+    first = self%moreitems()
+    if (.not.first) then
+      write(*,*) 'Empty'
+    else
+      do
+        curr=>self%get_item()
+        select type(curr)
+        class is(variable)
+          call curr%print_name()
+        end select
+        call self%next()
+        if (.not.self%moreitems()) exit
+      end do
+    end if
   end subroutine
 
   subroutine get_column(self,inname,column,result)
