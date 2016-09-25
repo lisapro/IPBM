@@ -1,10 +1,12 @@
 #include "../include/brom.h"
+#include "../include/parameters.h"
 
 module transport
-  use types_mod
-  use variables_mod
   use fabm
   use fabm_config
+  use fabm_driver
+  use fabm_types,only: rk
+  use variables_mod
 
   implicit none
   integer number_of_parameters
@@ -15,7 +17,7 @@ module transport
   real(rk),allocatable,dimension(:):: pressure
   !fabm model
   type(type_model) fabm_model
-  !standatd variables for model
+  !standard variables for model
   type(brom_standard_variables) standard_vars
   type(brom_state_variable),allocatable,dimension(:):: state_vars
 contains
@@ -40,6 +42,7 @@ contains
         fabm_model,i,state_vars(i)%value)
       state_vars(i)%name = fabm_model%state_variables(i)%name
       call fabm_initialize_state(fabm_model,1,i)
+      call state_vars(i)%print_name()
     end do
     !linking bulk variables
     allocate(temp(number_of_layers))
@@ -65,8 +68,9 @@ contains
     call fabm_link_horizontal_data(&
       fabm_model,standard_variables%mole_fraction_of_carbon_dioxide_in_air,&
       380._rk)
-
     call fabm_check_ready(fabm_model)
+    call set_state_variable(state_vars,'niva_brom_redox_SO4',&
+      .true.,.true.,25000._rk,25000._rk)
   end subroutine
 
   subroutine sarafan()
@@ -79,11 +83,12 @@ contains
     day = standard_vars%first_day()
     call initial_date(day,year)
 
+    stop
     do i = 1,number_of_days
-      !call standard_vars%get_column('temp',i,temp)
-      !call standard_vars%get_column('salt',i,salt)
       call date(day,year)
       write(*,*) i,day,year
+      !call standard_vars%get_column('temp',i,temp)
+      !call standard_vars%get_column('salt',i,salt)
       day = day+1
     end do
   end subroutine
@@ -112,6 +117,30 @@ contains
       year = year+1
       day = day-days
     end if
+  end subroutine
+
+  subroutine set_state_variable(state_vars,inname,use_bound_up,&
+      use_bound_low,bound_up,bound_low,sinking_velocity)
+    type(brom_state_variable),dimension(:),intent(inout):: state_vars
+    character(len=*),intent(in):: inname
+    logical,optional:: use_bound_up
+    logical,optional:: use_bound_low
+    real(rk),optional:: bound_up
+    real(rk),optional:: bound_low
+    real(rk),optional:: sinking_velocity
+    integer number_of_vars
+    integer i
+
+    number_of_vars = size(state_vars)
+    do i = 1,number_of_vars
+      if (state_vars(i)%name.eq.inname) then
+        call state_vars(i)%set_brom_state_variable(use_bound_up,&
+          use_bound_low,bound_up,bound_low,sinking_velocity)
+        return
+      end if
+    end do
+    call fatal_error('Search state variable',&
+                     'No such variable')
   end subroutine
 end module
 

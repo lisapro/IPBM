@@ -1,5 +1,5 @@
 module types_mod
-  use fabm_types, only: rk
+  use fabm_types,only: rk
   use fabm_driver
   use list_mod
 
@@ -20,12 +20,6 @@ module types_mod
 
   type,extends(variable):: variable_1d
     real(rk),allocatable,dimension(:):: value
-  end type
-
-  type,extends(variable_1d):: brom_state_variable
-    logical:: use_bound_up = .false.
-    logical:: use_bound_low = .false.
-    real(rk) sinking_velocity
   end type
 
   type,extends(variable):: variable_2d
@@ -68,13 +62,11 @@ contains
     class(variable),intent(in):: self
 
     select type(self)
-    type is(alone_variable)
+    class is(alone_variable)
       write(*,*) self%value
-    type is(variable_1d)
+    class is(variable_1d)
       write(*,*) self%value(1:10)
-    type is(brom_state_variable)
-      write(*,*) self%value(1:7)
-    type is(variable_2d)
+    class is(variable_2d)
       write(*,*) self%value(:,1)
     class default
       call fatal_error("Print value","Wrong type")

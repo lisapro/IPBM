@@ -6,8 +6,6 @@ module variables_mod
   use fabm_driver
 
   implicit none
-  private
-  public brom_standard_variables
 
   type,extends(list_variables):: brom_standard_variables
   contains
@@ -16,6 +14,16 @@ module variables_mod
     procedure:: add_var=>add_standard_var
     procedure:: add_day_number
     procedure,public:: first_day
+  end type
+
+  type,extends(variable_1d):: brom_state_variable
+    logical:: use_bound_up = .false.
+    logical:: use_bound_low = .false.
+    real(rk) bound_up
+    real(rk) bound_low
+    real(rk) sinking_velocity
+  contains
+    procedure:: set_brom_state_variable
   end type
 
   interface brom_standard_variables
@@ -93,4 +101,20 @@ contains
       first_day = int(var%value(1))
     end select
   end function
+
+  subroutine set_brom_state_variable(self,use_bound_up,&
+      use_bound_low,bound_up,bound_low,sinking_velocity)
+    class(brom_state_variable):: self
+    logical,optional:: use_bound_up
+    logical,optional:: use_bound_low
+    real(rk),optional:: bound_up
+    real(rk),optional:: bound_low
+    real(rk),optional:: sinking_velocity
+
+    if(present(use_bound_up)) self%use_bound_up = use_bound_up
+    if(present(use_bound_low)) self%use_bound_low = use_bound_low
+    if(present(bound_up)) self%bound_up = bound_up
+    if(present(bound_low)) self%bound_low = bound_low
+    if(present(sinking_velocity)) self%sinking_velocity = sinking_velocity
+  end subroutine
 end module
