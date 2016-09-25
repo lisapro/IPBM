@@ -48,7 +48,8 @@ add_executable(brom2 WIN32
                input_mod.F90
                types_mod.F90
                list_mod.F90
-               item_mod.F90)
+               item_mod.F90
+               ../include/brom.h)
 
 set_property(TARGET brom2 APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
 set_property(TARGET brom2 APPEND PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")

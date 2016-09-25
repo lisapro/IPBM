@@ -10,8 +10,8 @@ module types_mod
   contains
     private
     procedure,non_overridable:: inverse
-    procedure,non_overridable:: print_value
-    procedure,non_overridable:: print_name
+    procedure,non_overridable,public:: print_value
+    procedure,non_overridable,public:: print_name
   end type
 
   type,extends(variable):: alone_variable
@@ -25,7 +25,7 @@ module types_mod
   type,extends(variable_1d):: brom_state_variable
     logical:: use_bound_up = .false.
     logical:: use_bound_low = .false.
-    real(rk):: sinking_velocity = 0._rk
+    real(rk) sinking_velocity
   end type
 
   type,extends(variable):: variable_2d
@@ -37,7 +37,7 @@ module types_mod
     procedure:: get_var
     procedure:: set_var
     procedure:: inv_var
-    procedure:: get_z_length
+    procedure:: get_1st_dim_length
     procedure:: print_var
     procedure:: print_list
     procedure:: get_column
@@ -72,6 +72,8 @@ contains
       write(*,*) self%value
     type is(variable_1d)
       write(*,*) self%value(1:10)
+    type is(brom_state_variable)
+      write(*,*) self%value(1:7)
     type is(variable_2d)
       write(*,*) self%value(:,1)
     class default
@@ -145,20 +147,19 @@ contains
     call self%set_var(inname,var)
   end subroutine
 
-  subroutine get_z_length(self,inname,z_length)
+  integer function get_1st_dim_length(self,inname)
     class(list_variables),intent(in):: self
     character(len=*),intent(in):: inname
-    integer,intent(out):: z_length
     class(variable),allocatable:: get_variable
 
     call self%get_var(inname,get_variable)
     select type(get_variable)
     type is(alone_variable)
-      z_length=1
+      get_1st_dim_length=1
     class is(variable_1d)
-      z_length=size(get_variable%value,1)
+      get_1st_dim_length=size(get_variable%value,1)
     end select
-  end subroutine
+  end function
 
   subroutine print_var(self,inname)
     class(list_variables):: self
@@ -169,13 +170,16 @@ contains
     call var%print_value()
   end subroutine
 
-  subroutine print_list(self)
+  subroutine print_list(self,message)
     class(list_variables),intent(inout):: self
+    character(len=*),intent(in):: message
     class(*),pointer:: curr
     logical first
 
     call self%reset()
     first = self%moreitems()
+    write(*,*) ''
+    write(*,*) message
     if (.not.first) then
       write(*,*) 'Empty'
     else
@@ -189,6 +193,7 @@ contains
         if (.not.self%moreitems()) exit
       end do
     end if
+    write(*,*) ''
   end subroutine
 
   subroutine get_column(self,inname,column,result)

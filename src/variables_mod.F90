@@ -1,3 +1,5 @@
+#include "../include/brom.h"
+
 module variables_mod
   use types_mod
   use input_mod
@@ -13,6 +15,7 @@ module variables_mod
     procedure:: initialize=>initialize_standard_variables
     procedure:: add_var=>add_standard_var
     procedure:: add_day_number
+    procedure,public:: first_day
   end type
 
   interface brom_standard_variables
@@ -30,43 +33,24 @@ contains
     type(type_input):: kara_input
     logical first
 
-    kara_input = type_input('KaraSea.nc')
+    kara_input = type_input(_FILE_NAME_)
     !vertical variables
-    call self%add_var('depth',kara_input)
-    call self%inv_var('depth')
-    call self%add_var('depth_w',kara_input)
-    call self%inv_var('depth_w')
+    call self%add_var(_MIDDLE_LAYER_DEPTH_,kara_input)
+    call self%inv_var(_MIDDLE_LAYER_DEPTH_)
+    call self%add_var(_DEPTH_ON_BOUNDARY_,kara_input)
+    call self%inv_var(_DEPTH_ON_BOUNDARY_)
     !horizontal variables
-    call self%add_var('ocean_time',kara_input)
+    call self%add_var(_OCEAN_TIME_,kara_input)
+    call self%add_day_number('day_number')
     !2d variables
-    call self%add_var('temp',kara_input)
-    call self%inv_var('temp')
-    call self%add_var('salt',kara_input)
-    call self%inv_var('salt')
-    call self%add_var('AKv',kara_input)
-    call self%inv_var('AKv')
+    call self%add_var(_TEMPERATURE_,kara_input)
+    call self%inv_var(_TEMPERATURE_)
+    call self%add_var(_SALINITY_,kara_input)
+    call self%inv_var(_SALINITY_)
+    call self%add_var(_TURBULENCE_,kara_input)
+    call self%inv_var(_TURBULENCE_)
 
-    write(*,*) ''
-    write(*,*) 'Allocated brom_standard_variables:'
-    call self%print_list()
-    write(*,*) ''
-
-    write(*,*) ''
-    write(*,*) 'Allocated kara_input:'
-    call kara_input%print_list()
-    write(*,*) ''
-
-    call kara_input%delete_list()
-
-    write(*,*) ''
-    write(*,*) 'Allocated kara_input:'
-    call kara_input%print_list()
-    write(*,*) ''
-
-    write(*,*) ''
-    write(*,*) 'Allocated brom_standard_variables:'
-    call self%print_list()
-    write(*,*) ''
+    call self%print_list('Allocated brom_standard_variables:')
   end subroutine
 
   subroutine add_standard_var(self,inname,name_input)
@@ -87,7 +71,7 @@ contains
     character(len=*),intent(in):: inname
     class(variable),allocatable:: var
 
-    call self%get_var('ocean_time',var)
+    call self%get_var(_OCEAN_TIME_,var)
     select type(var)
     type is(variable_1d)
       var%value = var%value/86400._rk
@@ -98,4 +82,15 @@ contains
         "Wrong type")
     end select
   end subroutine
+
+  integer function first_day(self)
+    class(brom_standard_variables),intent(in):: self
+    class(variable),allocatable:: var
+
+    call self%get_var("day_number",var)
+    select type(var)
+    type is(variable_1d)
+      first_day = int(var%value(1))
+    end select
+  end function
 end module
