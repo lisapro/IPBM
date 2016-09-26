@@ -37,7 +37,7 @@ contains
   end function
 
   subroutine initialize_standard_variables(self)
-    class(brom_standard_variables):: self
+    class(brom_standard_variables),intent(inout):: self
     type(type_input):: kara_input
     logical first
 
@@ -52,19 +52,21 @@ contains
     call self%add_day_number('day_number')
     !2d variables
     call self%add_var(_TEMPERATURE_,kara_input)
+    !call self%print_var(_TEMPERATURE_)
     call self%inv_var(_TEMPERATURE_)
+    !call self%print_var(_TEMPERATURE_)
     call self%add_var(_SALINITY_,kara_input)
     call self%inv_var(_SALINITY_)
     call self%add_var(_TURBULENCE_,kara_input)
     call self%inv_var(_TURBULENCE_)
 
-    call self%print_list('Allocated brom_standard_variables:')
+    !call self%print_list('Allocated brom_standard_variables:')
   end subroutine
 
   subroutine add_standard_var(self,inname,name_input)
-    class(brom_standard_variables):: self
-    character(len=*),intent(in):: inname
-    type(type_input),intent(in):: name_input
+    class(brom_standard_variables),intent(inout):: self
+    character(len=*)              ,intent(in)   :: inname
+    type(type_input)              ,intent(in)   :: name_input
     class(variable),allocatable:: var
     class(*),allocatable:: temp
 
@@ -76,7 +78,7 @@ contains
 
   subroutine add_day_number(self,inname)
     class(brom_standard_variables),intent(inout):: self
-    character(len=*),intent(in):: inname
+    character(len=*)              ,intent(in)   :: inname
     class(variable),allocatable:: var
 
     call self%get_var(_OCEAN_TIME_,var)
@@ -104,17 +106,21 @@ contains
 
   subroutine set_brom_state_variable(self,use_bound_up,&
       use_bound_low,bound_up,bound_low,sinking_velocity)
-    class(brom_state_variable):: self
-    logical,optional:: use_bound_up
-    logical,optional:: use_bound_low
-    real(rk),optional:: bound_up
-    real(rk),optional:: bound_low
-    real(rk),optional:: sinking_velocity
+    class(brom_state_variable),intent(inout):: self
+    logical,optional          ,intent(in)   :: use_bound_up
+    logical,optional          ,intent(in)   :: use_bound_low
+    real(rk),optional         ,intent(in)   :: bound_up
+    real(rk),optional         ,intent(in)   :: bound_low
+    real(rk),optional         ,intent(in)   :: sinking_velocity
 
     if(present(use_bound_up)) self%use_bound_up = use_bound_up
     if(present(use_bound_low)) self%use_bound_low = use_bound_low
     if(present(bound_up)) self%bound_up = bound_up
     if(present(bound_low)) self%bound_low = bound_low
     if(present(sinking_velocity)) self%sinking_velocity = sinking_velocity
+  end subroutine
+
+  subroutine print_state_variable(self)
+    class(brom_state_variable),intent(inout):: self
   end subroutine
 end module

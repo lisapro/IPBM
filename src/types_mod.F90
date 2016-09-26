@@ -132,13 +132,27 @@ contains
   end subroutine
 
   subroutine inv_var(self,inname)
-    class(list_variables):: self
-    character(len=*),intent(in):: inname
-    class(variable),allocatable:: var
+    class(list_variables),intent(inout):: self
+    character(len=*)     ,intent(in)   :: inname
+    class(*),pointer:: curr
 
-    call self%get_var(inname,var)
-    call var%inverse()
-    call self%set_var(inname,var)
+    call self%reset()
+    do
+      curr=>self%get_item()
+      select type(curr)
+      class is(variable)
+        if (trim(curr%name)==trim(inname)) then
+          call curr%inverse()
+          return
+        end if
+      end select
+      call self%next()
+      if (.not.self%moreitems()) then
+        call fatal_error("Inverting variables",&
+                         "can't find '"//inname//&
+                         "' variable")
+      end if
+    end do
   end subroutine
 
   integer function get_1st_dim_length(self,inname)

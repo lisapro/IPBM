@@ -42,7 +42,7 @@ contains
         fabm_model,i,state_vars(i)%value)
       state_vars(i)%name = fabm_model%state_variables(i)%name
       call fabm_initialize_state(fabm_model,1,i)
-      call state_vars(i)%print_name()
+      !call state_vars(i)%print_name()
     end do
     !linking bulk variables
     allocate(temp(number_of_layers))
@@ -122,12 +122,12 @@ contains
   subroutine set_state_variable(state_vars,inname,use_bound_up,&
       use_bound_low,bound_up,bound_low,sinking_velocity)
     type(brom_state_variable),dimension(:),intent(inout):: state_vars
-    character(len=*),intent(in):: inname
-    logical,optional:: use_bound_up
-    logical,optional:: use_bound_low
-    real(rk),optional:: bound_up
-    real(rk),optional:: bound_low
-    real(rk),optional:: sinking_velocity
+    character(len=*),                      intent(in):: inname
+    logical,optional,                      intent(in):: use_bound_up
+    logical,optional,                      intent(in):: use_bound_low
+    real(rk),optional,                     intent(in):: bound_up
+    real(rk),optional,                     intent(in):: bound_low
+    real(rk),optional,                     intent(in):: sinking_velocity
     integer number_of_vars
     integer i
 
