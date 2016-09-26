@@ -107,9 +107,9 @@ contains
   end subroutine
 
   subroutine set_var(self,inname,new_var)
-    class(list_variables):: self
-    character(len=*),intent(in):: inname
-    class(variable),allocatable:: new_var
+    class(list_variables),intent(inout):: self
+    character(len=*)     ,intent(in)   :: inname
+    class(variable),allocatable,intent(in):: new_var
     class(*),pointer:: curr
 
     call self%reset()
