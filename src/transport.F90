@@ -14,7 +14,7 @@ module transport
   real(rk),allocatable,dimension(:):: temp
   real(rk),allocatable,dimension(:):: salt
   real(rk),allocatable,dimension(:):: radiative_flux
-  real(rk),allocatable,dimension(:):: pressure
+  real(rk),allocatable,dimension(:):: depth
   !fabm model
   type(type_model) fabm_model
   !standard variables for model
@@ -23,6 +23,7 @@ module transport
 contains
   subroutine initialize_brom()
     integer i
+    type(brom_state_variable):: temporary_variable
 
     !initializing fabm
     call fabm_create_model_from_yaml_file(fabm_model)
@@ -56,12 +57,11 @@ contains
       fabm_model,&
       standard_variables%downwelling_photosynthetic_radiative_flux,&
       radiative_flux)
-    allocate(pressure(number_of_layers))
-    call standard_vars%get_column(_MIDDLE_LAYER_DEPTH_,1,pressure)
+    allocate(depth(number_of_layers))
+    call standard_vars%get_column(_MIDDLE_LAYER_DEPTH_,1,depth)
     !convert depth to pressure
-    pressure = pressure + 10._rk
     call fabm_link_bulk_data(&
-      fabm_model,standard_variables%pressure,pressure)
+      fabm_model,standard_variables%pressure,(depth+10._rk))
     !linking horizontal variables
     call fabm_link_horizontal_data(&
       fabm_model,standard_variables%wind_speed,5._rk)
@@ -69,8 +69,17 @@ contains
       fabm_model,standard_variables%mole_fraction_of_carbon_dioxide_in_air,&
       380._rk)
     call fabm_check_ready(fabm_model)
-    call set_state_variable(state_vars,'niva_brom_redox_SO4',&
+    call set_state_variable(state_vars,"niva_brom_redox_SO4",&
       .true.,.true.,25000._rk,25000._rk)
+    call set_state_variable(state_vars,"niva_brom_redox_Mn4",&
+      .true.,.false.,0.5e-4_rk)
+    call set_state_variable(state_vars,"niva_brom_redox_Fe3",&
+      .true.,.false.,0.4e-4_rk)
+    call set_state_variable(state_vars,"niva_brom_carb_Alk",&
+      use_bound_up = .true.,bound_up = 2250._rk)
+    !temporary_variable = find_state_variable(state_vars,&
+    !                    "niva_brom_carb_Alk")
+    !call temporary_variable%print_state_variable()
   end subroutine
 
   subroutine sarafan()
@@ -83,12 +92,14 @@ contains
     day = standard_vars%first_day()
     call initial_date(day,year)
 
-    stop
     do i = 1,number_of_days
       call date(day,year)
       write(*,*) i,day,year
-      !call standard_vars%get_column('temp',i,temp)
-      !call standard_vars%get_column('salt',i,salt)
+      radiative_flux = calculate_radiative_flux(&
+        surface_radiative_flux(_LATITUDE_,day),depth)
+      call standard_vars%get_column('temp',i,temp)
+      call standard_vars%get_column('salt',i,salt)
+
       day = day+1
     end do
   end subroutine
@@ -119,6 +130,24 @@ contains
     end if
   end subroutine
 
+  pure function surface_radiative_flux(latitude,julian_day)
+    real(rk),intent(in):: latitude
+    integer, intent(in):: julian_day
+    real(rk) surface_radiative_flux
+
+    surface_radiative_flux = 80._rk*cos((latitude-(23.5_rk*&
+      sin(2._rk*_PI_*(julian_day-81._rk)/365._rk)))*3.14_rk/180._rk)
+    if (surface_radiative_flux<0._rk) surface_radiative_flux = 0._rk
+  end function
+
+  pure function calculate_radiative_flux(surface_flux,depth)
+    real(rk),intent(in)             :: surface_flux
+    real(rk),dimension(:),intent(in):: depth
+    real(rk),dimension(size(depth)):: calculate_radiative_flux
+
+    calculate_radiative_flux = surface_flux*exp(-_ERLOV_*depth)
+  end function
+
   subroutine set_state_variable(state_vars,inname,use_bound_up,&
       use_bound_low,bound_up,bound_low,sinking_velocity)
     type(brom_state_variable),dimension(:),intent(inout):: state_vars
@@ -139,9 +168,27 @@ contains
         return
       end if
     end do
-    call fatal_error('Search state variable',&
-                     'No such variable')
+    call fatal_error("Search state variable",&
+                     "No such variable")
   end subroutine
+
+  function find_state_variable(state_vars,inname)
+    type(brom_state_variable),dimension(:),intent(in):: state_vars
+    character(len=*),                      intent(in):: inname
+    type(brom_state_variable):: find_state_variable
+    integer number_of_vars
+    integer i
+
+    number_of_vars = size(state_vars)
+    do i = 1,number_of_vars
+      if (state_vars(i)%name.eq.inname) then
+        find_state_variable = state_vars(i)
+        return
+      end if
+    end do
+    call fatal_error("Search state variable",&
+                     "No such variable")
+  end function
 end module
 
 program main

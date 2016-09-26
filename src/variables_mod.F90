@@ -1,4 +1,5 @@
 #include "../include/brom.h"
+#include "../include/parameters.h"
 
 module variables_mod
   use types_mod
@@ -17,13 +18,14 @@ module variables_mod
   end type
 
   type,extends(variable_1d):: brom_state_variable
-    logical:: use_bound_up = .false.
-    logical:: use_bound_low = .false.
     real(rk) bound_up
     real(rk) bound_low
-    real(rk) sinking_velocity
+    logical:: use_bound_up = .false.
+    logical:: use_bound_low = .false.
+    real(rk):: sinking_velocity = 0._rk
   contains
     procedure:: set_brom_state_variable
+    procedure:: print_state_variable
   end type
 
   interface brom_standard_variables
@@ -121,6 +123,13 @@ contains
   end subroutine
 
   subroutine print_state_variable(self)
-    class(brom_state_variable),intent(inout):: self
+    class(brom_state_variable),intent(in):: self
+
+    _LINE_
+    write(*,*) self%name
+    write(*,*) self%use_bound_up,self%bound_up
+    write(*,*) self%use_bound_low,self%bound_up
+    write(*,*) self%sinking_velocity
+    _LINE_
   end subroutine
 end module

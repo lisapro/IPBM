@@ -1,3 +1,5 @@
+#include "../include/parameters.h"
+
 module types_mod
   use fabm_types,only: rk
   use fabm_driver
@@ -60,16 +62,18 @@ contains
   subroutine print_value(self)
     class(variable),intent(in):: self
 
+    _LINE_
     select type(self)
     class is(alone_variable)
       write(*,*) self%value
     class is(variable_1d)
-      write(*,*) self%value(1:10)
+      write(*,'(f5.2)') self%value(1:10)
     class is(variable_2d)
-      write(*,*) self%value(:,1)
+      write(*,'(f5.2)') self%value(:,1)
     class default
       call fatal_error("Print value","Wrong type")
     end select
+    _LINE_
   end subroutine
 
   subroutine print_name(self)
@@ -186,7 +190,7 @@ contains
 
     call self%reset()
     first = self%moreitems()
-    write(*,*) ''
+    _LINE_
     write(*,*) message
     if (.not.first) then
       write(*,*) 'Empty'
@@ -201,7 +205,7 @@ contains
         if (.not.self%moreitems()) exit
       end do
     end if
-    write(*,*) ''
+    _LINE_
   end subroutine
 
   subroutine get_column(self,inname,column,result)
