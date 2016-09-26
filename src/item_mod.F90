@@ -18,8 +18,8 @@ module item_mod
   end interface
 contains
   function item_constructor(var,next)
-    class(*):: var
-    class(item),pointer:: next
+    class(*),intent(in):: var
+    class(item),pointer,intent(in):: next
     class(item),pointer:: item_constructor
 
     allocate(item_constructor)
@@ -28,14 +28,14 @@ contains
   end function
 
   function next_item(self)
-    class(item):: self
+    class(item),intent(in):: self
     class(item),pointer:: next_item
 
     next_item => self%next
   end function
 
   function get_item(self)
-    class(item):: self
+    class(item),intent(in):: self
     class(*),pointer:: get_item
 
     get_item => self%var
@@ -51,7 +51,7 @@ contains
 
   !non type-bound procedure because of pointer
   subroutine delete(any_item)
-    class(item),pointer:: any_item
+    class(item),pointer,intent(inout):: any_item
 
     deallocate(any_item)
   end subroutine

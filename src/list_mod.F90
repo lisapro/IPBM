@@ -20,9 +20,9 @@ module list_mod
   end type
 contains
   subroutine add_item(self, var)
-    class(list):: self
-    class(*):: var
-    class(item), pointer:: new_item
+    class(list),intent(inout):: self
+    class(*)   ,intent(in)   :: var
+    class(item),pointer:: new_item
 
     if (.not.associated(self%first_item)) then
       self%first_item => item(var, null())
@@ -33,8 +33,8 @@ contains
   end subroutine
 
   function get_item(self)
-    class(list):: self
-    class(*), pointer:: get_item
+    class(list),intent(in):: self
+    class(*),pointer:: get_item
 
     get_item => self%current_item%get_item()
   end function
@@ -47,20 +47,20 @@ contains
   end subroutine
 
   subroutine next(self)
-    class(list) :: self
+    class(list),intent(inout) :: self
 
     self%current_item => self%current_item%next_item()
   end subroutine
 
   function moreitems(self)
-    class(list) :: self
+    class(list),intent(in) :: self
     logical moreitems
 
     moreitems = associated(self%current_item)
   end function
 
   subroutine reset(self)
-    class(list) :: self
+    class(list),intent(inout) :: self
 
     self%current_item => self%first_item
   end subroutine

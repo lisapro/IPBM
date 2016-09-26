@@ -8,10 +8,9 @@ module types_mod
     character(len=64):: name  = ''
     character(len=64):: units = ''
   contains
-    private
     procedure,non_overridable:: inverse
-    procedure,non_overridable,public:: print_value
-    procedure,non_overridable,public:: print_name
+    procedure,non_overridable:: print_value
+    procedure,non_overridable:: print_name
   end type
 
   type,extends(variable):: alone_variable
@@ -42,11 +41,11 @@ contains
     integer:: temp,temp2,i
 
     select type(self)
-    type is(alone_variable)
+    class is(alone_variable)
       return
-    type is(variable_1d)
+    class is(variable_1d)
       self%value = self%value(size(self%value):1:-1)
-    type is(variable_2d)
+    class is(variable_2d)
       temp = size(self%value,2)
       temp2 = size(self%value,1)
       do i=1,temp
@@ -80,14 +79,17 @@ contains
   end subroutine
 
   subroutine get_var(self,inname,get_variable)
-    class(list_variables):: self
-    character(len=*),intent(in):: inname
-    class(variable),allocatable,intent(out):: get_variable
-    class(*),pointer:: curr
+    class(list_variables),target,intent(in):: self
+    character(len=*)            ,intent(in):: inname
+    class(variable),allocatable ,intent(out):: get_variable
+    class(*)             ,pointer:: curr
+    class(list_variables),pointer:: temporary
 
-    call self%reset()
+    !to make self intent(in)
+    temporary => self
+    call temporary%reset()
     do
-      curr=>self%get_item()
+      curr=>temporary%get_item()
       select type(curr)
       class is(variable)
         if (trim(curr%name)==trim(inname)) then
@@ -95,8 +97,8 @@ contains
           return
         end if
       end select
-      call self%next()
-      if (.not.self%moreitems()) then
+      call temporary%next()
+      if (.not.temporary%moreitems()) then
         call fatal_error("Getting variables",&
                          "can't find '"//inname//&
                          " variable")
@@ -141,7 +143,7 @@ contains
 
   integer function get_1st_dim_length(self,inname)
     class(list_variables),intent(in):: self
-    character(len=*),intent(in):: inname
+    character(len=*)     ,intent(in):: inname
     class(variable),allocatable:: get_variable
 
     call self%get_var(inname,get_variable)
@@ -154,8 +156,8 @@ contains
   end function
 
   subroutine print_var(self,inname)
-    class(list_variables):: self
-    character(len=*),intent(in):: inname
+    class(list_variables),intent(in):: self
+    character(len=*)     ,intent(in):: inname
     class(variable),allocatable:: var
 
     call self%get_var(inname,var)
@@ -164,7 +166,7 @@ contains
 
   subroutine print_list(self,message)
     class(list_variables),intent(inout):: self
-    character(len=*),intent(in):: message
+    character(len=*)     ,intent(in)   :: message
     class(*),pointer:: curr
     logical first
 
@@ -189,9 +191,9 @@ contains
   end subroutine
 
   subroutine get_column(self,inname,column,result)
-    class(list_variables):: self
-    character(len=*),intent(in):: inname
-    integer,intent(in),optional:: column
+    class(list_variables),intent(in):: self
+    character(len=*)     ,intent(in):: inname
+    integer,intent(in),optional     :: column
     real(rk),dimension(:),intent(out):: result
     class(variable),allocatable:: get_variable
 
@@ -200,6 +202,9 @@ contains
     type is(variable_1d)
       result = get_variable%value(:)
     type is(variable_2d)
+      if (.not.present(column)) call fatal_error(&
+                       "Getting column failed",&
+                       "Column should be present")
       result = get_variable%value(:,column)
     class default
       call fatal_error("Getting column failed",&

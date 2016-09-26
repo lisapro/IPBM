@@ -79,7 +79,7 @@ contains
     integer day
     integer i
 
-    number_of_days = standard_vars%get_1st_dim_length('day_number')
+    number_of_days = standard_vars%get_1st_dim_length("day_number")
     day = standard_vars%first_day()
     call initial_date(day,year)
 
