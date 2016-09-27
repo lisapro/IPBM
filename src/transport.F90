@@ -23,7 +23,6 @@ module transport
 contains
   subroutine initialize_brom()
     integer i
-    type(brom_state_variable):: temporary_variable
 
     !initializing fabm
     call fabm_create_model_from_yaml_file(fabm_model)
@@ -42,9 +41,9 @@ contains
       call fabm_link_bulk_state_data(&
         fabm_model,i,state_vars(i)%value)
       state_vars(i)%name = fabm_model%state_variables(i)%name
-      call fabm_initialize_state(fabm_model,1,i)
-      !call state_vars(i)%print_name()
+      call state_vars(i)%print_name()
     end do
+    call fabm_initialize_state(fabm_model,1,number_of_layers)
     !linking bulk variables
     allocate(temp(number_of_layers))
     call fabm_link_bulk_data(&
@@ -77,9 +76,6 @@ contains
       .true.,.false.,0.4e-4_rk)
     call set_state_variable(state_vars,"niva_brom_carb_Alk",&
       use_bound_up = .true.,bound_up = 2250._rk)
-    !temporary_variable = find_state_variable(state_vars,&
-    !                    "niva_brom_carb_Alk")
-    !call temporary_variable%print_state_variable()
   end subroutine
 
   subroutine sarafan()
@@ -92,14 +88,28 @@ contains
     day = standard_vars%first_day()
     call initial_date(day,year)
 
-    do i = 1,number_of_days
+    do i = 1,1!number_of_days
       call date(day,year)
       write(*,*) i,day,year
       radiative_flux = calculate_radiative_flux(&
         surface_radiative_flux(_LATITUDE_,day),depth)
-      call standard_vars%get_column('temp',i,temp)
-      call standard_vars%get_column('salt',i,salt)
-
+      call standard_vars%get_column(_TEMPERATURE_,i,temp)
+      call standard_vars%get_column(_SALINITY_,i,salt)
+      call set_state_variable(state_vars,"niva_brom_bio_PO4",&
+        use_bound_up = .true.,bound_up = sinusoidal(day,0.45_rk))
+      call set_state_variable(state_vars,"niva_brom_bio_NO3",&
+        use_bound_up = .true.,bound_up = sinusoidal(day,3.8_rk))
+      call set_state_variable(state_vars,"niva_brom_redox_Si",&
+        use_bound_up = .true.,bound_up = sinusoidal(day,2._rk))
+      call fabm_link_bulk_data(&
+        fabm_model,standard_variables%temperature,temp)
+      call fabm_link_bulk_data(&
+        fabm_model,standard_variables%practical_salinity,salt)
+      call fabm_link_bulk_data(&
+        fabm_model,&
+        standard_variables%downwelling_photosynthetic_radiative_flux,&
+        radiative_flux)
+      call day_circle()
       day = day+1
     end do
   end subroutine
@@ -147,6 +157,34 @@ contains
 
     calculate_radiative_flux = surface_flux*exp(-_ERLOV_*depth)
   end function
+
+  pure function sinusoidal(julian_day,multiplier)
+    integer, intent(in):: julian_day
+    real(rk),intent(in):: multiplier
+    real(rk) sinusoidal
+
+    sinusoidal = (1._rk+sin(2._rk*_PI_*(&
+                  julian_day-40._rk)/365._rk))*multiplier
+  end function
+
+  subroutine day_circle()
+    integer i,j
+    integer number_of_circles
+    type(brom_state_variable):: temporary_variable
+    real(rk),dimension(number_of_layers,number_of_parameters):: temporary_matrix
+
+    number_of_circles = int(60*60*24/_SECONDS_PER_CIRCLE_)
+    do i = 1,number_of_circles
+      !biogeochemistry
+      temporary_matrix = 0._rk
+      call fabm_do(fabm_model,1,number_of_layers,temporary_matrix)
+      forall(j = 1:number_of_parameters)&
+        state_vars(j)%value = state_vars(j)%value+temporary_matrix(:,j)
+    end do
+    !temporary_variable = find_state_variable(state_vars,&
+    !                    "niva_brom_carb_Alk")
+    !call temporary_variable%print_state_variable()
+  end subroutine
 
   subroutine set_state_variable(state_vars,inname,use_bound_up,&
       use_bound_low,bound_up,bound_low,sinking_velocity)
