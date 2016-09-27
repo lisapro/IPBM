@@ -127,7 +127,7 @@ contains
 
     _LINE_
     write(*,*) self%name
-    write(*,'(f7.2)') self%value(:)
+    write(*,'(f9.3)') self%value(:)
     write(*,*) self%use_bound_up,self%bound_up
     write(*,*) self%use_bound_low,self%bound_up
     write(*,*) self%sinking_velocity

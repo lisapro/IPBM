@@ -171,19 +171,30 @@ contains
     integer i,j
     integer number_of_circles
     type(brom_state_variable):: temporary_variable
+    real(rk),dimension(number_of_parameters):: temporary_vector
     real(rk),dimension(number_of_layers,number_of_parameters):: temporary_matrix
 
-    number_of_circles = int(60*60*24/_SECONDS_PER_CIRCLE_)
+    if (mod(60*60*24,_SECONDS_PER_CIRCLE_)/=0) then
+      call fatal_error("Check _SECONDS_PER_CIRCLE_",&
+                       "It should be multiple of 86400")
+    else
+      number_of_circles = int(60*60*24/_SECONDS_PER_CIRCLE_)
+    end if
+
     do i = 1,number_of_circles
       !biogeochemistry
       temporary_matrix = 0._rk
       call fabm_do(fabm_model,1,number_of_layers,temporary_matrix)
+      temporary_vector = 0._rk
+      call fabm_do_surface(fabm_model,temporary_vector)
+      temporary_matrix(:,1) = temporary_matrix(:,1)+temporary_vector
+      temporary_matrix = _SECONDS_PER_CIRCLE_*temporary_matrix
       forall(j = 1:number_of_parameters)&
         state_vars(j)%value = state_vars(j)%value+temporary_matrix(:,j)
     end do
-    !temporary_variable = find_state_variable(state_vars,&
-    !                    "niva_brom_carb_Alk")
-    !call temporary_variable%print_state_variable()
+    temporary_variable = find_state_variable(state_vars,&
+                        "niva_brom_bio_O2")
+    call temporary_variable%print_state_variable()
   end subroutine
 
   subroutine set_state_variable(state_vars,inname,use_bound_up,&
