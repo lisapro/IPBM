@@ -41,7 +41,7 @@ contains
       call fabm_link_bulk_state_data(&
         fabm_model,i,state_vars(i)%value)
       state_vars(i)%name = fabm_model%state_variables(i)%name
-      call state_vars(i)%print_name()
+      !call state_vars(i)%print_name()
     end do
     call fabm_initialize_state(fabm_model,1,number_of_layers)
     !linking bulk variables
@@ -171,8 +171,12 @@ contains
     integer i,j
     integer number_of_circles
     type(brom_state_variable):: temporary_variable
+    real(rk),dimension(number_of_layers):: layer_thicknesses
     real(rk),dimension(number_of_parameters):: temporary_vector
     real(rk),dimension(number_of_layers,number_of_parameters):: temporary_matrix
+
+    call standard_vars%get_column(&
+      inname = "layer_thicknesses",result = layer_thicknesses)
 
     if (mod(60*60*24,_SECONDS_PER_CIRCLE_)/=0) then
       call fatal_error("Check _SECONDS_PER_CIRCLE_",&
@@ -187,14 +191,15 @@ contains
       call fabm_do(fabm_model,1,number_of_layers,temporary_matrix)
       temporary_vector = 0._rk
       call fabm_do_surface(fabm_model,temporary_vector)
-      temporary_matrix(:,1) = temporary_matrix(:,1)+temporary_vector
+      temporary_matrix(1,:) = temporary_matrix(1,:)+temporary_vector/&
+                              layer_thicknesses(1)
       temporary_matrix = _SECONDS_PER_CIRCLE_*temporary_matrix
       forall(j = 1:number_of_parameters)&
         state_vars(j)%value = state_vars(j)%value+temporary_matrix(:,j)
     end do
-    temporary_variable = find_state_variable(state_vars,&
-                        "niva_brom_bio_O2")
-    call temporary_variable%print_state_variable()
+    !temporary_variable = find_state_variable(state_vars,&
+    !                    "niva_brom_bio_O2")
+    !call temporary_variable%print_state_variable()
   end subroutine
 
   subroutine set_state_variable(state_vars,inname,use_bound_up,&
