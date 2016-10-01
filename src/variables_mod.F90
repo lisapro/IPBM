@@ -19,11 +19,11 @@ module variables_mod
   end type
 
   type,extends(variable_1d):: brom_state_variable
+    integer  use_bound_up
+    integer  use_bound_low
     real(rk) bound_up
     real(rk) bound_low
-    logical:: use_bound_up = .false.
-    logical:: use_bound_low = .false.
-    real(rk):: sinking_velocity = 0._rk
+    real(rk) sinking_velocity
   contains
     procedure:: set_brom_state_variable
     procedure:: print_state_variable
@@ -141,8 +141,8 @@ contains
   subroutine set_brom_state_variable(self,use_bound_up,&
       use_bound_low,bound_up,bound_low,sinking_velocity)
     class(brom_state_variable),intent(inout):: self
-    logical,optional          ,intent(in)   :: use_bound_up
-    logical,optional          ,intent(in)   :: use_bound_low
+    integer,optional          ,intent(in)   :: use_bound_up
+    integer,optional          ,intent(in)   :: use_bound_low
     real(rk),optional         ,intent(in)   :: bound_up
     real(rk),optional         ,intent(in)   :: bound_low
     real(rk),optional         ,intent(in)   :: sinking_velocity

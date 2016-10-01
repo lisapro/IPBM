@@ -44,6 +44,7 @@ set(FABM_INCLUDE_DIRS ${CMAKE_CURRENT_BINARY_DIR}/fabm/modules)
 
 add_executable(brom2 WIN32
                transport.F90
+               diff_mod.F90
                variables_mod.F90
                input_mod.F90
                types_mod.F90
