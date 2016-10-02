@@ -48,7 +48,7 @@ contains
       state_vars(i)%name = fabm_model%state_variables(i)%name
       call state_vars(i)%set_brom_state_variable(_NEUMANN_,&
         _NEUMANN_,0._rk,0._rk,0._rk)
-      !call state_vars(i)%print_name()
+      call state_vars(i)%print_name()
     end do
     call fabm_initialize_state(fabm_model,1,number_of_layers)
     !linking bulk variables
@@ -183,7 +183,7 @@ contains
   subroutine day_circle()
     integer i,j
     integer number_of_circles
-    type(brom_state_variable):: temporary_variable
+    !type(brom_state_variable):: temporary_variable
     real(rk),dimension(number_of_layers,number_of_parameters):: temporary_matrix
 
     if (mod(60*60*24,_SECONDS_PER_CIRCLE_)/=0) then
@@ -205,7 +205,7 @@ contains
         state_vars(j)%value = state_vars(j)%value+temporary_matrix(:,j)
     end do
     !temporary_variable = find_state_variable(state_vars,&
-    !                    "niva_brom_bio_O2")
+    !                    "niva_brom_redox_Si")
     !call temporary_variable%print_state_variable()
   end subroutine
 
@@ -228,6 +228,18 @@ contains
     temporary_vector = 0._rk
     call fabm_do_surface(fabm_model,temporary_vector)
 
+    do i = 1,number_of_parameters
+      if (temporary_vector(i)/=0._rk) then
+        call state_vars(i)%set_brom_state_variable(&
+          use_bound_up = _NEUMANN_,bound_up = temporary_vector(i))
+      end if
+    end do
+
+    !forall (i = 1:number_of_parameters, temporary_vector(i)/=0._rk)
+    !    call state_vars(i)%set_brom_state_variable(&
+    !      use_bound_up = _NEUMANN_,bound_up = temporary_vector(i))
+    !end forall
+
     !Note: h(0) is expected by diff_center but is not used
     h  (1:number_of_layers) = layer_thicknesses(number_of_layers:1:-1)
     nuY(0:number_of_layers) = turb(number_of_layers+1:1:-1)
@@ -238,11 +250,12 @@ contains
     Taur (0:number_of_layers) = 1.d20
     seconds_per_circle = _SECONDS_PER_CIRCLE_
 
-    !forall(i = 1:number_of_parameters)&
-    !  state_vars(i)%value = do_diffusive(number_of_layers,&
-    !      seconds_per_circle,0.6_rk,1,h,Vc,Af,Bcup,&
-    !      Bcdw,Yup,Ydw,nuY,Lsour,Qsour,Taur,&
-    !      Yobs,state_vars(i)%value(number_of_layers:1:-1))
+    forall (i = 1:number_of_parameters)
+      state_vars(i)%value = do_diffusive(number_of_layers,&
+          seconds_per_circle,0.6_rk,1,h,Vc,Af,Bcup,&
+          Bcdw,Yup,Ydw,nuY,Lsour,Qsour,Taur,&
+          Yobs,state_vars(i)%value(number_of_layers:1:-1))
+    end forall
   end subroutine
 
   subroutine find_set_state_variable(state_vars,inname,use_bound_up,&

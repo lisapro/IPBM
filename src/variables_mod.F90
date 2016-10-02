@@ -138,7 +138,7 @@ contains
     end select
   end subroutine
 
-  subroutine set_brom_state_variable(self,use_bound_up,&
+  pure subroutine set_brom_state_variable(self,use_bound_up,&
       use_bound_low,bound_up,bound_low,sinking_velocity)
     class(brom_state_variable),intent(inout):: self
     integer,optional          ,intent(in)   :: use_bound_up
@@ -160,9 +160,9 @@ contains
     _LINE_
     write(*,*) self%name
     write(*,'(f9.3)') self%value(:)
-    write(*,*) self%use_bound_up,self%bound_up
-    write(*,*) self%use_bound_low,self%bound_up
-    write(*,*) self%sinking_velocity
+    write(*,*) 'up',self%use_bound_up,self%bound_up
+    write(*,*) 'down',self%use_bound_low,self%bound_up
+    write(*,*) 'sinking',self%sinking_velocity
     _LINE_
   end subroutine
 end module
