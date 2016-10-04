@@ -48,7 +48,7 @@ contains
       state_vars(i)%name = fabm_model%state_variables(i)%name
       call state_vars(i)%set_brom_state_variable(_NEUMANN_,&
         _NEUMANN_,0._rk,0._rk,0._rk)
-      call state_vars(i)%print_name()
+      !call state_vars(i)%print_name()
     end do
     call fabm_initialize_state(fabm_model,1,number_of_layers)
     !linking bulk variables
@@ -58,7 +58,7 @@ contains
     allocate(salt(number_of_layers))
     call fabm_link_bulk_data(&
       fabm_model,standard_variables%practical_salinity,salt)
-    allocate(turb(number_of_layers))
+    allocate(turb(number_of_layers+1))
     allocate(radiative_flux(number_of_layers))
     call fabm_link_bulk_data(&
       fabm_model,&
@@ -82,12 +82,12 @@ contains
     call find_set_state_variable(state_vars,"niva_brom_redox_SO4",&
       use_bound_up = _DIRICHLET_,use_bound_low = _DIRICHLET_,&
       bound_up = 25000._rk,bound_low = 25000._rk)
-    call find_set_state_variable(state_vars,"niva_brom_redox_Mn4",&
+    call find_set_state_variable(state_vars,inname = "niva_brom_redox_Mn4",&
       use_bound_up = _DIRICHLET_,bound_up = 0.5e-4_rk)
     call find_set_state_variable(state_vars,"niva_brom_redox_Fe3",&
-      bound_up = 0.4e-4_rk)
+      use_bound_up = _DIRICHLET_,bound_up = 0.4e-4_rk)
     call find_set_state_variable(state_vars,"niva_brom_carb_Alk",&
-      bound_up = 2250._rk)
+      use_bound_up = _DIRICHLET_,bound_up = 2250._rk)
   end subroutine
 
   subroutine sarafan()
@@ -125,6 +125,8 @@ contains
       call day_circle()
       day = day+1
     end do
+    write(*,*) "Finish"
+    _LINE_
   end subroutine
 
   subroutine initial_date(day,first_year)
@@ -184,7 +186,7 @@ contains
     integer i,j
     integer number_of_circles
     !type(brom_state_variable):: temporary_variable
-    real(rk),dimension(number_of_layers,number_of_parameters):: temporary_matrix
+    real(rk),dimension(number_of_layers,number_of_parameters):: increment
 
     if (mod(60*60*24,_SECONDS_PER_CIRCLE_)/=0) then
       call fatal_error("Check _SECONDS_PER_CIRCLE_",&
@@ -193,69 +195,95 @@ contains
       number_of_circles = int(60*60*24/_SECONDS_PER_CIRCLE_)
     end if
 
-    do i = 1,number_of_circles
+    !temporary_variable = find_state_variable(state_vars,&
+    !                    "niva_brom_carb_DIC")
+    !call temporary_variable%print_state_variable()
+    !temporary_variable = find_state_variable(state_vars,&
+    !                    "niva_brom_bio_O2")
+    !call temporary_variable%print_state_variable()
+
+    do i = 1,1!number_of_circles
+      !biogeochemistry
+      increment = 0._rk
+      call fabm_do(fabm_model,1,number_of_layers,increment)
+      increment = _SECONDS_PER_CIRCLE_*increment
+      forall(j = 1:number_of_parameters)&
+        state_vars(j)%value = state_vars(j)%value+increment(:,j)
+
       !diffusion
       call brom_do_diffusion()
-
-      !biogeochemistry
-      temporary_matrix = 0._rk
-      call fabm_do(fabm_model,1,number_of_layers,temporary_matrix)
-      temporary_matrix = _SECONDS_PER_CIRCLE_*temporary_matrix
-      forall(j = 1:number_of_parameters)&
-        state_vars(j)%value = state_vars(j)%value+temporary_matrix(:,j)
     end do
+
     !temporary_variable = find_state_variable(state_vars,&
-    !                    "niva_brom_redox_Si")
+    !                    "niva_brom_carb_DIC")
+    !call temporary_variable%print_state_variable()
+    !temporary_variable = find_state_variable(state_vars,&
+    !                    "niva_brom_bio_O2")
     !call temporary_variable%print_state_variable()
   end subroutine
 
-  !
-  !adopted from Phill Wallhead code
-  !
   subroutine brom_do_diffusion()
     use diff_mod
 
-    real(rk),dimension(number_of_parameters):: temporary_vector
-    real(rk):: h(0:number_of_layers), nuY(0:number_of_layers)
-    real(rk):: Af(0:number_of_layers), Vc(0:number_of_layers)
-    real(rk):: Lsour(0:number_of_layers), Qsour(0:number_of_layers)
-    real(rk):: Taur(0:number_of_layers), Yobs(0:number_of_layers)
-    real(rk):: Yup,Ydw
-    real(rk):: seconds_per_circle
-    integer :: Bcup,Bcdw
+    type(brom_state_variable):: temporary_variable
+    real(rk),dimension(number_of_parameters):: surface_flux
+    real(rk),dimension(number_of_layers+1):: ones
+    real(rk),dimension(number_of_layers+1):: zeros
+    real(rk),dimension(number_of_layers+1):: taur_r
     integer i
 
-    temporary_vector = 0._rk
-    call fabm_do_surface(fabm_model,temporary_vector)
+    ones=1._rk
+    zeros=0._rk
+    taur_r=1.d20
 
+    surface_flux = 0._rk
+    call fabm_do_surface(fabm_model,surface_flux)
+
+    !write(*,*) surface_flux
     do i = 1,number_of_parameters
-      if (temporary_vector(i)/=0._rk) then
+      if (surface_flux(i)/=0._rk) then
         call state_vars(i)%set_brom_state_variable(&
-          use_bound_up = _NEUMANN_,bound_up = temporary_vector(i))
+          use_bound_up = _NEUMANN_,bound_up = surface_flux(i))
       end if
     end do
 
-    !forall (i = 1:number_of_parameters, temporary_vector(i)/=0._rk)
-    !    call state_vars(i)%set_brom_state_variable(&
-    !      use_bound_up = _NEUMANN_,bound_up = temporary_vector(i))
-    !end forall
-
-    !Note: h(0) is expected by diff_center but is not used
-    h  (1:number_of_layers) = layer_thicknesses(number_of_layers:1:-1)
-    nuY(0:number_of_layers) = turb(number_of_layers+1:1:-1)
-    Af (0:number_of_layers) = 1._rk
-    Vc = h
-    Lsour(0:number_of_layers) = 0.0_rk
-    Qsour(0:number_of_layers) = 0.0_rk
-    Taur (0:number_of_layers) = 1.d20
-    seconds_per_circle = _SECONDS_PER_CIRCLE_
+    !temporary_variable = find_state_variable(state_vars,&
+    !                    "niva_brom_carb_DIC")
+    !call temporary_variable%print_state_variable()
+    !temporary_variable = find_state_variable(state_vars,&
+    !                    "niva_brom_carb_Alk")
+    !call temporary_variable%print_state_variable()
+    temporary_variable = find_state_variable(state_vars,&
+                        "niva_brom_bio_O2")
+    call temporary_variable%print_state_variable()
 
     forall (i = 1:number_of_parameters)
-      state_vars(i)%value = do_diffusive(number_of_layers,&
-          seconds_per_circle,0.6_rk,1,h,Vc,Af,Bcup,&
-          Bcdw,Yup,Ydw,nuY,Lsour,Qsour,Taur,&
-          Yobs,state_vars(i)%value(number_of_layers:1:-1))
+      state_vars(i)%value = do_diffusive(&
+          N       = number_of_layers,&
+          dt      = _SECONDS_PER_CIRCLE_,&
+          cnpar   = 0.6_rk,&
+          posconc = 1,&
+          h  = (/ 0._rk,layer_thicknesses(number_of_layers:1:-1) /),&
+          Vc = (/ 0._rk,layer_thicknesses(number_of_layers:1:-1) /),&
+          Af = ones,&
+          Bcup = state_vars(i)%use_bound_up,&
+          Bcdw = state_vars(i)%use_bound_low,&
+          Yup  = state_vars(i)%bound_up,&
+          Ydw  = state_vars(i)%bound_low,&
+          nuY  = turb(number_of_layers+1:1:-1),&
+          Lsour = zeros,&
+          Qsour = zeros,&
+          Taur  = taur_r,&
+          Yobs  = zeros,&
+          Y     = (/ 0._rk,state_vars(i)%value(number_of_layers:1:-1) /))
+      state_vars(i)%value = state_vars(i)%value(number_of_layers:1:-1)
     end forall
+    !temporary_variable = find_state_variable(state_vars,&
+    !                    "niva_brom_carb_Alk")
+    !call temporary_variable%print_state_variable()
+    temporary_variable = find_state_variable(state_vars,&
+                        "niva_brom_bio_O2")
+    call temporary_variable%print_state_variable()
   end subroutine
 
   subroutine find_set_state_variable(state_vars,inname,use_bound_up,&

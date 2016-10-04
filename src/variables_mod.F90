@@ -67,6 +67,8 @@ contains
     call self%inv_var(_SALINITY_)
     call self%add_var(_TURBULENCE_,kara_input)
     call self%inv_var(_TURBULENCE_)
+    !call self%print_var(_TURBULENCE_)
+    !write(*,*) self%get_1st_dim_length(_TURBULENCE_)
 
     !call self%print_list('Allocated brom_standard_variables:')
     call kara_input%delete_list()
@@ -161,7 +163,7 @@ contains
     write(*,*) self%name
     write(*,'(f9.3)') self%value(:)
     write(*,*) 'up',self%use_bound_up,self%bound_up
-    write(*,*) 'down',self%use_bound_low,self%bound_up
+    write(*,*) 'down',self%use_bound_low,self%bound_low
     write(*,*) 'sinking',self%sinking_velocity
     _LINE_
   end subroutine

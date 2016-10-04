@@ -70,7 +70,7 @@ contains
       write(*,'(f8.2)') self%value
       !write(*,*) self%value(1:10)
     class is(variable_2d)
-      write(*,'(f5.2)') self%value(:,1)
+      write(*,'(f15.5)') self%value(:,1)
     class default
       call fatal_error("Print value","Wrong type")
     end select
@@ -170,6 +170,8 @@ contains
     type is(alone_variable)
       get_1st_dim_length=1
     class is(variable_1d)
+      get_1st_dim_length=size(get_variable%value,1)
+    class is(variable_2d)
       get_1st_dim_length=size(get_variable%value,1)
     end select
   end function
