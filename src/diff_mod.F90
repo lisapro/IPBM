@@ -7,7 +7,7 @@ module diff_mod
   private
   public do_diffusive
 contains
-  pure function do_diffusive(N,dt,cnpar,posconc,h,Vc,Af,Bcup,Bcdw, &
+  pure function do_diffusive(N,dt,cnpar,posconc,h,Bcup,Bcdw,&
                           Yup,Ydw,nuY,Lsour,Qsour,Taur,Yobs,Y)
     !adopted from
     !Original author(s): Lars Umlauf
@@ -27,10 +27,6 @@ contains
     integer, intent(in)                 :: posconc
     ! layer thickness (m)
     real(rk), intent(in)                :: h(0:N)
-    ! hypsograph at grid centre
-    real(rk), intent(in)                :: Vc(0:N)
-    ! hypsograph at grid face
-    real(rk), intent(in)                :: Af(0:N)
     ! type of upper BC
     integer,  intent(in)                :: Bcup
     ! type of lower BC
@@ -60,8 +56,8 @@ contains
 
     ! set up matrix
     do i=2,N-1
-      c     = 2.0_rk*dt*Af(i)*nuY(i)    /(h(i)+h(i+1))/Vc(i)
-      a     = 2.0_rk*dt*Af(i-1)*nuY(i-1)/(h(i)+h(i-1))/Vc(i)
+      c     = 2.0_rk*dt*nuY(i)  /(h(i)+h(i+1))/h(i)
+      a     = 2.0_rk*dt*nuY(i-1)/(h(i)+h(i-1))/h(i)
       l     = dt*Lsour(i)
 
       cu(i) =-cnpar*c
@@ -74,7 +70,7 @@ contains
     ! set up upper boundary condition
     select case(Bcup)
     case(_NEUMANN_)
-      a     = 2.0d0*dt*Af(N-1)*nuY(N-1)/(h(N)+h(N-1))/Vc(N)
+      a     = 2.0d0*dt*nuY(N-1)/(h(N)+h(N-1))/h(N)
       l     = dt*Lsour(N)
 
       au(N) =-cnpar*a
@@ -96,7 +92,7 @@ contains
     ! set up lower boundary condition
     select case(Bcdw)
     case(_NEUMANN_)
-      c     = 2.0d0*dt*Af(1)*nuY(1)/(h(1)+h(2))/Vc(1)
+      c     = 2.0d0*dt*nuY(1)/(h(1)+h(2))/h(1)
       l     = dt*Lsour(1)
 
       cu(1) =-cnpar*c

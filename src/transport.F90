@@ -264,8 +264,6 @@ contains
           cnpar   = 0.6_rk,&
           posconc = 1,&
           h  = (/ 0._rk,layer_thicknesses(number_of_layers:1:-1) /),&
-          Vc = (/ 0._rk,layer_thicknesses(number_of_layers:1:-1) /),&
-          Af = ones,&
           Bcup = state_vars(i)%use_bound_up,&
           Bcdw = state_vars(i)%use_bound_low,&
           Yup  = state_vars(i)%bound_up,&
