@@ -48,7 +48,7 @@ contains
       state_vars(i)%name = fabm_model%state_variables(i)%name
       call state_vars(i)%set_brom_state_variable(_NEUMANN_,&
         _NEUMANN_,0._rk,0._rk,0._rk)
-      !call state_vars(i)%print_name()
+      call state_vars(i)%print_name()
     end do
     call fabm_initialize_state(fabm_model,1,number_of_layers)
     !linking bulk variables
@@ -91,6 +91,7 @@ contains
   end subroutine
 
   subroutine sarafan()
+    type(brom_state_variable):: temporary_variable
     integer:: year = _INITIALIZATION_SINCE_YEAR_
     integer number_of_days
     integer day
@@ -124,6 +125,9 @@ contains
         radiative_flux)
       call day_circle()
       day = day+1
+      !temporary_variable = find_state_variable(state_vars,&
+      !                    "niva_brom_bio_O2")
+      !call temporary_variable%print_state_variable()
     end do
     write(*,*) "Finish"
     _LINE_
@@ -185,7 +189,6 @@ contains
   subroutine day_circle()
     integer i,j
     integer number_of_circles
-    !type(brom_state_variable):: temporary_variable
     real(rk),dimension(number_of_layers,number_of_parameters):: increment
 
     if (mod(60*60*24,_SECONDS_PER_CIRCLE_)/=0) then
@@ -195,14 +198,7 @@ contains
       number_of_circles = int(60*60*24/_SECONDS_PER_CIRCLE_)
     end if
 
-    !temporary_variable = find_state_variable(state_vars,&
-    !                    "niva_brom_carb_DIC")
-    !call temporary_variable%print_state_variable()
-    !temporary_variable = find_state_variable(state_vars,&
-    !                    "niva_brom_bio_O2")
-    !call temporary_variable%print_state_variable()
-
-    do i = 1,1!number_of_circles
+    do i = 1,number_of_circles
       !biogeochemistry
       increment = 0._rk
       call fabm_do(fabm_model,1,number_of_layers,increment)
@@ -213,20 +209,14 @@ contains
       !diffusion
       call brom_do_diffusion()
     end do
-
-    !temporary_variable = find_state_variable(state_vars,&
-    !                    "niva_brom_carb_DIC")
-    !call temporary_variable%print_state_variable()
-    !temporary_variable = find_state_variable(state_vars,&
-    !                    "niva_brom_bio_O2")
-    !call temporary_variable%print_state_variable()
   end subroutine
 
   subroutine brom_do_diffusion()
     use diff_mod
 
-    type(brom_state_variable):: temporary_variable
     real(rk),dimension(number_of_parameters):: surface_flux
+    real(rk),dimension(0:number_of_layers,&
+                         number_of_parameters):: temporary
     real(rk),dimension(number_of_layers+1):: ones
     real(rk),dimension(number_of_layers+1):: zeros
     real(rk),dimension(number_of_layers+1):: taur_r
@@ -239,7 +229,6 @@ contains
     surface_flux = 0._rk
     call fabm_do_surface(fabm_model,surface_flux)
 
-    !write(*,*) surface_flux
     do i = 1,number_of_parameters
       if (surface_flux(i)/=0._rk) then
         call state_vars(i)%set_brom_state_variable(&
@@ -247,18 +236,8 @@ contains
       end if
     end do
 
-    !temporary_variable = find_state_variable(state_vars,&
-    !                    "niva_brom_carb_DIC")
-    !call temporary_variable%print_state_variable()
-    !temporary_variable = find_state_variable(state_vars,&
-    !                    "niva_brom_carb_Alk")
-    !call temporary_variable%print_state_variable()
-    temporary_variable = find_state_variable(state_vars,&
-                        "niva_brom_bio_O2")
-    call temporary_variable%print_state_variable()
-
     forall (i = 1:number_of_parameters)
-      state_vars(i)%value = do_diffusive(&
+      temporary(:,i) = do_diffusive(&
           N       = number_of_layers,&
           dt      = _SECONDS_PER_CIRCLE_,&
           cnpar   = 0.6_rk,&
@@ -274,14 +253,8 @@ contains
           Taur  = taur_r,&
           Yobs  = zeros,&
           Y     = (/ 0._rk,state_vars(i)%value(number_of_layers:1:-1) /))
-      state_vars(i)%value = state_vars(i)%value(number_of_layers:1:-1)
+      state_vars(i)%value = temporary(number_of_layers:1:-1,i)
     end forall
-    !temporary_variable = find_state_variable(state_vars,&
-    !                    "niva_brom_carb_Alk")
-    !call temporary_variable%print_state_variable()
-    temporary_variable = find_state_variable(state_vars,&
-                        "niva_brom_bio_O2")
-    call temporary_variable%print_state_variable()
   end subroutine
 
   subroutine find_set_state_variable(state_vars,inname,use_bound_up,&
