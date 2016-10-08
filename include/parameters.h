@@ -1,4 +1,4 @@
-#define _LINE_      write(*,*)'***********************************************************'
+#define _LINE_      write(*,*) repeat('*',79)
 
 #define _PI_        3.141592653589793_rk
 #define _ERLOV_     0.05_rk

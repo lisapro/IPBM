@@ -48,7 +48,7 @@ contains
       state_vars(i)%name = fabm_model%state_variables(i)%name
       call state_vars(i)%set_brom_state_variable(_NEUMANN_,&
         _NEUMANN_,0._rk,0._rk,0._rk)
-      call state_vars(i)%print_name()
+      !call state_vars(i)%print_name()
     end do
     call fabm_initialize_state(fabm_model,1,number_of_layers)
     !linking bulk variables
@@ -101,7 +101,7 @@ contains
     day = standard_vars%first_day()
     call initial_date(day,year)
 
-    do i = 1,1!number_of_days
+    do i = 1,number_of_days
       call date(day,year)
       write(*,*) i,day,year
       radiative_flux = calculate_radiative_flux(&
@@ -125,9 +125,9 @@ contains
         radiative_flux)
       call day_circle()
       day = day+1
-      !temporary_variable = find_state_variable(state_vars,&
-      !                    "niva_brom_bio_O2")
-      !call temporary_variable%print_state_variable()
+      temporary_variable = find_state_variable(state_vars,&
+                          "niva_brom_bio_O2")
+      call temporary_variable%print_state_variable()
     end do
     write(*,*) "Finish"
     _LINE_
