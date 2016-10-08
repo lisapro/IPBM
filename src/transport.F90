@@ -30,7 +30,9 @@ contains
     integer i
 
     !initializing fabm
+    _LINE_
     call fabm_create_model_from_yaml_file(fabm_model)
+    _LINE_
     !initializing standard_variables
     standard_vars = brom_standard_variables()
     number_of_layers = standard_vars%&
@@ -48,8 +50,9 @@ contains
       state_vars(i)%name = fabm_model%state_variables(i)%name
       call state_vars(i)%set_brom_state_variable(_NEUMANN_,&
         _NEUMANN_,0._rk,0._rk,0._rk)
-      !call state_vars(i)%print_name()
+      call state_vars(i)%print_name()
     end do
+    _LINE_
     call fabm_initialize_state(fabm_model,1,number_of_layers)
     !linking bulk variables
     allocate(temp(number_of_layers))
@@ -103,7 +106,7 @@ contains
 
     do i = 1,number_of_days
       call date(day,year)
-      write(*,*) i,day,year
+      write(*,*) 'number/ ','julianday/ ','year',i,day,year
       radiative_flux = calculate_radiative_flux(&
         surface_radiative_flux(_LATITUDE_,day),depth)
       call standard_vars%get_column(_TEMPERATURE_,i,temp)
@@ -126,7 +129,7 @@ contains
       call day_circle()
       day = day+1
       temporary_variable = find_state_variable(state_vars,&
-                          "niva_brom_bio_O2")
+                          "niva_brom_bio_NO3")
       call temporary_variable%print_state_variable()
     end do
     write(*,*) "Finish"
