@@ -53,7 +53,6 @@ contains
     integer                   :: i
     real(rk)                  :: a,c,l
     real(rk), dimension(0:N)  :: au,bu,cu,du
-    real(rk), dimension(0:N)  :: result
 
     ! set up matrix
     do i=2,N-1
@@ -121,9 +120,8 @@ contains
     end if
 
     ! solve linear system
-    result = tridiagonal(bu,au,cu,du,&
+    do_diffusive = tridiagonal(bu,au,cu,du,&
                                N,1,N)
-    do_diffusive = result(1:N)
   end function
 
   pure function tridiagonal(bu,au,cu,du,&
@@ -143,7 +141,7 @@ contains
     ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
     !-----------------------------------------------------------------------
 
-    real(rk)                          :: tridiagonal(0:N)
+    real(rk)                          :: tridiagonal(1:N)
     ! !INPUT PARAMETERS:
     real(rk), dimension(0:N),intent(in) :: au,bu,cu,du
     integer, intent(in)                 :: N,fi,lt

@@ -99,7 +99,7 @@ contains
     integer day
     integer i
     !cpu time
-    real(rk):: t1,t2
+    real(rk) t1,t2
 
     number_of_days = standard_vars%get_1st_dim_length("day_number")
     day = standard_vars%first_day()
@@ -107,7 +107,6 @@ contains
 
     do i = 1,number_of_days
       call date(day,year)
-      write(*,*) 'number/ ','julianday/ ','year',i,day,year
       radiative_flux = calculate_radiative_flux(&
         surface_radiative_flux(_LATITUDE_,day),depth)
       call standard_vars%get_column(_TEMPERATURE_,i,temp)
@@ -130,7 +129,8 @@ contains
       call cpu_time(t1)
       call day_circle()
       call cpu_time(t2)
-      write(*,*) 'Time taken by day circle:',t2-t1
+      write(*,*) 'number / ','julianday / ','year',i,day,year
+      write(*,*) 'Time taken by day circle:',t2-t1,' seconds'
       day = day+1
       temporary_variable = find_state_variable(state_vars,&
                           "niva_brom_bio_O2")
