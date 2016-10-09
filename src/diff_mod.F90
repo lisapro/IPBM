@@ -15,7 +15,7 @@ contains
     !-----------------------------------------------------------------------
     ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
     !-----------------------------------------------------------------------
-    real(rk),dimension(1:N):: do_diffusive
+    real(rk),dimension(0:N):: do_diffusive
 
     ! number of vertical layers
     integer,  intent(in)                :: N
@@ -141,7 +141,7 @@ contains
     ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
     !-----------------------------------------------------------------------
 
-    real(rk)                          :: tridiagonal(1:N)
+    real(rk)                          :: tridiagonal(0:N)
     ! !INPUT PARAMETERS:
     real(rk), dimension(0:N),intent(in) :: au,bu,cu,du
     integer, intent(in)                 :: N,fi,lt

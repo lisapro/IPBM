@@ -225,6 +225,8 @@ contains
     real(rk),dimension(number_of_layers+1):: zeros
     real(rk),dimension(number_of_layers+1):: taur_r
     real(rk),dimension(number_of_parameters):: surface_flux
+    real(rk),dimension(0:number_of_layers,&
+                         number_of_parameters):: temporary
     integer i
 
     ones=1._rk
@@ -241,7 +243,7 @@ contains
     end do
 
     forall (i = 1:number_of_parameters)
-      state_vars(i)%value = do_diffusive(&
+      temporary(:,i) = do_diffusive(&
           N       = number_of_layers,&
           dt      = _SECONDS_PER_CIRCLE_,&
           cnpar   = 0.6_rk,&
@@ -257,6 +259,7 @@ contains
           Taur  = taur_r,&
           Yobs  = zeros,&
           Y     = (/ 0._rk,state_vars(i)%value /))
+      state_vars(i)%value = temporary(1:number_of_layers,i)
     end forall
   end subroutine
 
