@@ -162,6 +162,7 @@ contains
     _LINE_
     write(*,*) self%name
     write(*,'(f9.3)') (/ self%value(size(self%value,1):1:-1) /)
+    !write(*,'(f9.3)') self%value
     write(*,*) 'up',self%use_bound_up,self%bound_up
     write(*,*) 'down',self%use_bound_low,self%bound_low
     write(*,*) 'sinking',self%sinking_velocity

@@ -98,6 +98,8 @@ contains
     integer number_of_days
     integer day
     integer i
+    !cpu time
+    real(rk):: t1,t2
 
     number_of_days = standard_vars%get_1st_dim_length("day_number")
     day = standard_vars%first_day()
@@ -125,7 +127,10 @@ contains
         fabm_model,&
         standard_variables%downwelling_photosynthetic_radiative_flux,&
         radiative_flux)
+      call cpu_time(t1)
       call day_circle()
+      call cpu_time(t2)
+      write(*,*) 'Time taken by day circle:',t2-t1
       day = day+1
       temporary_variable = find_state_variable(state_vars,&
                           "niva_brom_bio_O2")
