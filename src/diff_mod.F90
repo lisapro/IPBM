@@ -15,7 +15,7 @@ contains
     !-----------------------------------------------------------------------
     ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
     !-----------------------------------------------------------------------
-    real(rk),dimension(0:N):: do_diffusive
+    real(rk),dimension(1:N):: do_diffusive
 
     ! number of vertical layers
     integer,  intent(in)                :: N
@@ -53,6 +53,7 @@ contains
     integer                   :: i
     real(rk)                  :: a,c,l
     real(rk), dimension(0:N)  :: au,bu,cu,du
+    real(rk), dimension(0:N)  :: result
 
     ! set up matrix
     do i=2,N-1
@@ -120,8 +121,9 @@ contains
     end if
 
     ! solve linear system
-    do_diffusive = tridiagonal(bu,au,cu,du,&
+    result = tridiagonal(bu,au,cu,du,&
                                N,1,N)
+    do_diffusive = result(1:N)
   end function
 
   pure function tridiagonal(bu,au,cu,du,&

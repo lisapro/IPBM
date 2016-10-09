@@ -47,9 +47,9 @@ contains
     kara_input = type_input(_FILE_NAME_)
     !vertical variables
     call self%add_var(_MIDDLE_LAYER_DEPTH_,kara_input)
-    call self%inv_var(_MIDDLE_LAYER_DEPTH_)
+    !call self%inv_var(_MIDDLE_LAYER_DEPTH_)
     call self%add_var(_DEPTH_ON_BOUNDARY_,kara_input)
-    call self%inv_var(_DEPTH_ON_BOUNDARY_)
+    !call self%inv_var(_DEPTH_ON_BOUNDARY_)
     !call self%print_var(_DEPTH_ON_BOUNDARY_)
     !write(*,*) self%get_1st_dim_length(_DEPTH_ON_BOUNDARY_)
     !horizontal variables
@@ -61,12 +61,12 @@ contains
     !2d variables
     call self%add_var(_TEMPERATURE_,kara_input)
     !call self%print_var(_TEMPERATURE_)
-    call self%inv_var(_TEMPERATURE_)
+    !call self%inv_var(_TEMPERATURE_)
     !call self%print_var(_TEMPERATURE_)
     call self%add_var(_SALINITY_,kara_input)
-    call self%inv_var(_SALINITY_)
+    !call self%inv_var(_SALINITY_)
     call self%add_var(_TURBULENCE_,kara_input)
-    call self%inv_var(_TURBULENCE_)
+    !call self%inv_var(_TURBULENCE_)
     !call self%print_var(_TURBULENCE_)
     !write(*,*) self%get_1st_dim_length(_TURBULENCE_)
 
@@ -131,7 +131,7 @@ contains
     select type(var)
     type is(variable_1d)
       forall(i = 1:length)&
-        value_1d(i) = var%value(i+1)-var%value(i)
+        value_1d(i) = abs(var%value(i+1)-var%value(i))
       new_var = variable_1d(inname,'',value_1d)
       call self%add_item(new_var)
     class default
@@ -161,7 +161,7 @@ contains
 
     _LINE_
     write(*,*) self%name
-    write(*,'(f9.3)') self%value(:)
+    write(*,'(f9.3)') (/ self%value(size(self%value,1):1:-1) /)
     write(*,*) 'up',self%use_bound_up,self%bound_up
     write(*,*) 'down',self%use_bound_low,self%bound_low
     write(*,*) 'sinking',self%sinking_velocity

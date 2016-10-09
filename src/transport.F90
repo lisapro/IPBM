@@ -38,9 +38,8 @@ contains
     number_of_layers = standard_vars%&
       get_1st_dim_length(_MIDDLE_LAYER_DEPTH_)
     call fabm_set_domain(fabm_model,number_of_layers)
-    call fabm_model%set_surface_index(1)
-    call fabm_model%set_bottom_index(number_of_layers)
-
+    call fabm_model%set_surface_index(number_of_layers)
+    call fabm_model%set_bottom_index(1)
     number_of_parameters = size(fabm_model%state_variables)
     allocate(state_vars(number_of_parameters))
     do i = 1,number_of_parameters
@@ -129,7 +128,7 @@ contains
       call day_circle()
       day = day+1
       temporary_variable = find_state_variable(state_vars,&
-                          "niva_brom_bio_NO3")
+                          "niva_brom_bio_O2")
       call temporary_variable%print_state_variable()
     end do
     write(*,*) "Finish"
@@ -217,18 +216,15 @@ contains
   subroutine brom_do_diffusion()
     use diff_mod
 
-    real(rk),dimension(number_of_parameters):: surface_flux
-    real(rk),dimension(0:number_of_layers,&
-                         number_of_parameters):: temporary
     real(rk),dimension(number_of_layers+1):: ones
     real(rk),dimension(number_of_layers+1):: zeros
     real(rk),dimension(number_of_layers+1):: taur_r
+    real(rk),dimension(number_of_parameters):: surface_flux
     integer i
 
     ones=1._rk
     zeros=0._rk
     taur_r=1.d20
-
     surface_flux = 0._rk
     call fabm_do_surface(fabm_model,surface_flux)
 
@@ -240,23 +236,22 @@ contains
     end do
 
     forall (i = 1:number_of_parameters)
-      temporary(:,i) = do_diffusive(&
+      state_vars(i)%value = do_diffusive(&
           N       = number_of_layers,&
           dt      = _SECONDS_PER_CIRCLE_,&
           cnpar   = 0.6_rk,&
           posconc = 1,&
-          h  = (/ 0._rk,layer_thicknesses(number_of_layers:1:-1) /),&
+          h  = (/ 0._rk,layer_thicknesses /),&
           Bcup = state_vars(i)%use_bound_up,&
           Bcdw = state_vars(i)%use_bound_low,&
           Yup  = state_vars(i)%bound_up,&
           Ydw  = state_vars(i)%bound_low,&
-          nuY  = turb(number_of_layers+1:1:-1),&
+          nuY  = turb,&
           Lsour = zeros,&
           Qsour = zeros,&
           Taur  = taur_r,&
           Yobs  = zeros,&
-          Y     = (/ 0._rk,state_vars(i)%value(number_of_layers:1:-1) /))
-      state_vars(i)%value = temporary(number_of_layers:1:-1,i)
+          Y     = (/ 0._rk,state_vars(i)%value /))
     end forall
   end subroutine
 
