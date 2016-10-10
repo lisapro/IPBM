@@ -67,10 +67,10 @@ contains
       standard_variables%downwelling_photosynthetic_radiative_flux,&
       radiative_flux)
     allocate(depth(number_of_layers))
-    call standard_vars%get_column(_MIDDLE_LAYER_DEPTH_,1,depth)
+    depth = standard_vars%get_column(_MIDDLE_LAYER_DEPTH_)
     allocate(layer_thicknesses(number_of_layers))
-    call standard_vars%get_column(&
-      inname = "layer_thicknesses",result = layer_thicknesses)
+    layer_thicknesses = standard_vars%get_column(&
+                        "layer_thicknesses")
     !convert depth to pressure
     call fabm_link_bulk_data(&
       fabm_model,standard_variables%pressure,(depth+10._rk))
@@ -93,7 +93,10 @@ contains
   end subroutine
 
   subroutine sarafan()
+    use output_mod
+
     type(brom_state_variable):: temporary_variable
+    type(type_output):: netcdf
     integer:: year = _INITIALIZATION_SINCE_YEAR_
     integer number_of_days
     integer day
@@ -101,6 +104,9 @@ contains
     !cpu time
     real(rk) t1,t2
 
+    netcdf = type_output(fabm_model,_FILE_NAME_WATER_,&
+                         1,number_of_layers,&
+                         number_of_layers)
     number_of_days = standard_vars%get_1st_dim_length("day_number")
     day = standard_vars%first_day()
     call initial_date(day,year)
@@ -109,9 +115,9 @@ contains
       call date(day,year)
       radiative_flux = calculate_radiative_flux(&
         surface_radiative_flux(_LATITUDE_,day),depth)
-      call standard_vars%get_column(_TEMPERATURE_,i,temp)
-      call standard_vars%get_column(_SALINITY_,i,salt)
-      call standard_vars%get_column(_TURBULENCE_,i,turb)
+      temp = standard_vars%get_column(_TEMPERATURE_,i)
+      salt = standard_vars%get_column(_SALINITY_,i)
+      turb = standard_vars%get_column(_TURBULENCE_,i)
       call find_set_state_variable(state_vars,"niva_brom_bio_PO4",&
         use_bound_up = _DIRICHLET_,bound_up = sinusoidal(day,0.45_rk))
       call find_set_state_variable(state_vars,"niva_brom_bio_NO3",&
@@ -128,9 +134,11 @@ contains
         radiative_flux)
       call cpu_time(t1)
       call day_circle()
+      call netcdf%save(fabm_model,state_vars,i,&
+                  temp,salt,turb,radiative_flux,depth)
       call cpu_time(t2)
-      write(*,*) 'number / ','julianday / ','year',i,day,year
-      write(*,*) 'Time taken by day circle:',t2-t1,' seconds'
+      write(*,*) "number / ","julianday / ","year",i,day,year
+      write(*,*) "Time taken by day circle:",t2-t1," seconds"
       day = day+1
       temporary_variable = find_state_variable(state_vars,&
                           "niva_brom_bio_O2")

@@ -6,3 +6,5 @@
 #define _TEMPERATURE_               'temp'
 #define _SALINITY_                  'salt'
 #define _TURBULENCE_                'AKv'
+
+#define _FILE_NAME_WATER_           'water.nc'

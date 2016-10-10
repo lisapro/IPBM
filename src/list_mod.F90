@@ -16,6 +16,7 @@ module list_mod
     procedure,non_overridable:: next
     procedure,non_overridable:: moreitems
     procedure,non_overridable:: reset
+    procedure,non_overridable:: count_list
     procedure,non_overridable:: delete_list
   end type
 contains
@@ -64,6 +65,18 @@ contains
 
     self%current_item => self%first_item
   end subroutine
+
+  integer function count_list(self)
+    class(list),intent(inout):: self
+
+    count_list = 0
+    call self%reset()
+    do
+      count_list = count_list+1
+      call self%next()
+      if (.not.self%moreitems()) exit
+    end do
+  end function
 
   subroutine delete_list(self)
     class(list),intent(inout):: self

@@ -47,6 +47,7 @@ add_executable(brom2 WIN32
                diff_mod.F90
                variables_mod.F90
                input_mod.F90
+               output_mod.F90
                types_mod.F90
                list_mod.F90
                item_mod.F90

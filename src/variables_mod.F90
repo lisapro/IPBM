@@ -42,37 +42,26 @@ contains
   subroutine initialize_standard_variables(self)
     class(brom_standard_variables),intent(inout):: self
     type(type_input):: kara_input
-    logical first
 
     kara_input = type_input(_FILE_NAME_)
     !vertical variables
     call self%add_var(_MIDDLE_LAYER_DEPTH_,kara_input)
-    !call self%inv_var(_MIDDLE_LAYER_DEPTH_)
     call self%add_var(_DEPTH_ON_BOUNDARY_,kara_input)
-    !call self%inv_var(_DEPTH_ON_BOUNDARY_)
-    !call self%print_var(_DEPTH_ON_BOUNDARY_)
-    !write(*,*) self%get_1st_dim_length(_DEPTH_ON_BOUNDARY_)
     !horizontal variables
     call self%add_var(_OCEAN_TIME_,kara_input)
     call self%add_day_number("day_number")
     call self%add_layer_thicknesses("layer_thicknesses")
-    !call self%print_var("layer_thicknesses")
-    !write(*,*) self%get_1st_dim_length("layer_thicknesses")
     !2d variables
     call self%add_var(_TEMPERATURE_,kara_input)
-    !call self%print_var(_TEMPERATURE_)
-    !call self%inv_var(_TEMPERATURE_)
-    !call self%print_var(_TEMPERATURE_)
     call self%add_var(_SALINITY_,kara_input)
-    !call self%inv_var(_SALINITY_)
     call self%add_var(_TURBULENCE_,kara_input)
-    !call self%inv_var(_TURBULENCE_)
     !call self%print_var(_TURBULENCE_)
     !write(*,*) self%get_1st_dim_length(_TURBULENCE_)
 
     !call self%print_list('Allocated brom_standard_variables:')
     call kara_input%delete_list()
-    !call kara_input%print_list("Allocated kara vars")
+    !call kara_input%print_list_variables("Allocated kara vars")
+    !stop
   end subroutine
 
   subroutine add_standard_var(self,inname,name_input)
@@ -162,8 +151,8 @@ contains
     _LINE_
     write(*,*) self%name
     write(*,'(f9.3)') (/ self%value(size(self%value,1):1:-1) /)
-    write(*,*) 'up',self%use_bound_up,self%bound_up
-    write(*,*) 'down',self%use_bound_low,self%bound_low
+    write(*,'(x,a,2x,i2,f9.6)') 'up',self%use_bound_up,self%bound_up
+    write(*,'(x,a,i2,f9.6)') 'down',self%use_bound_low,self%bound_low
     write(*,*) 'sinking',self%sinking_velocity
     _LINE_
   end subroutine

@@ -34,7 +34,7 @@ module types_mod
     procedure:: inv_var
     procedure:: get_1st_dim_length
     procedure:: print_var
-    procedure:: print_list
+    procedure:: print_list_variables
     procedure:: get_column
   end type
 contains
@@ -185,7 +185,7 @@ contains
     call var%print_value()
   end subroutine
 
-  subroutine print_list(self,message)
+  subroutine print_list_variables(self,message)
     class(list_variables),intent(inout):: self
     character(len=*)     ,intent(in)   :: message
     class(*),pointer:: curr
@@ -211,25 +211,28 @@ contains
     _LINE_
   end subroutine
 
-  subroutine get_column(self,inname,column,result)
+  function get_column(self,inname,column)
+    real(rk),allocatable:: get_column(:)
     class(list_variables),intent(in):: self
     character(len=*)     ,intent(in):: inname
     integer,intent(in),optional     :: column
-    real(rk),dimension(:),intent(out):: result
+
     class(variable),allocatable:: get_variable
 
     call self%get_var(inname,get_variable)
     select type(get_variable)
     type is(variable_1d)
-      result = get_variable%value(:)
+      !allocate(get_column,source=get_variable%value(:))
+      get_column = get_variable%value(:)
     type is(variable_2d)
       if (.not.present(column)) call fatal_error(&
                        "Getting column failed",&
                        "Column should be present")
-      result = get_variable%value(:,column)
+      !allocate(get_column,source=get_variable%value(:,column))
+      get_column = get_variable%value(:,column)
     class default
       call fatal_error("Getting column failed",&
                        "Wrong variable")
     end select
-  end subroutine
+  end function
 end module
