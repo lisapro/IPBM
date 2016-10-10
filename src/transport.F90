@@ -19,6 +19,7 @@ module transport
   real(rk),allocatable,dimension(:):: turb
   real(rk),allocatable,dimension(:):: radiative_flux
   real(rk),allocatable,dimension(:):: depth
+  real(rk),allocatable,dimension(:):: pressure
   real(rk),allocatable,dimension(:):: layer_thicknesses
   !fabm model
   type(type_model) fabm_model
@@ -72,8 +73,10 @@ contains
     layer_thicknesses = standard_vars%get_column(&
                         "layer_thicknesses")
     !convert depth to pressure
+    !total=water+atmosphere [dbar]
+    pressure = depth + 10._rk
     call fabm_link_bulk_data(&
-      fabm_model,standard_variables%pressure,(depth+10._rk))
+      fabm_model,standard_variables%pressure,pressure)
     !linking horizontal variables
     call fabm_link_horizontal_data(&
       fabm_model,standard_variables%wind_speed,5._rk)
@@ -110,6 +113,7 @@ contains
     number_of_days = standard_vars%get_1st_dim_length("day_number")
     day = standard_vars%first_day()
     call initial_date(day,year)
+    call stabilize(day,year)
 
     do i = 1,number_of_days
       call date(day,year)
@@ -269,6 +273,53 @@ contains
           Y     = (/ 0._rk,state_vars(i)%value /))
       state_vars(i)%value = temporary(1:number_of_layers,i)
     end forall
+  end subroutine
+
+  subroutine stabilize(inday,inyear)
+    integer,intent(in):: inday,inyear
+
+    type(brom_state_variable):: temporary_variable
+    integer day,year
+    integer pseudo_day,days_in_year,counter
+    integer i
+
+    day = inday; year = inyear;
+    days_in_year = 365+merge(1,0,(mod(year,4).eq.0))
+    counter = days_in_year*10
+    do i = 1,counter
+      call date(day,year)
+      radiative_flux = calculate_radiative_flux(&
+        surface_radiative_flux(_LATITUDE_,day),depth)
+      !day from 1 to 365 or 366
+      pseudo_day = i-int(i/days_in_year)*&
+                   days_in_year+1
+      temp = standard_vars%get_column(_TEMPERATURE_,pseudo_day)
+      salt = standard_vars%get_column(_SALINITY_,pseudo_day)
+      turb = standard_vars%get_column(_TURBULENCE_,pseudo_day)
+
+      call find_set_state_variable(state_vars,"niva_brom_bio_PO4",&
+        use_bound_up = _DIRICHLET_,bound_up = sinusoidal(day,0.45_rk))
+      call find_set_state_variable(state_vars,"niva_brom_bio_NO3",&
+        use_bound_up = _DIRICHLET_,bound_up = sinusoidal(day,3.8_rk))
+      call find_set_state_variable(state_vars,"niva_brom_redox_Si",&
+        use_bound_up = _DIRICHLET_,bound_up = sinusoidal(day,2._rk))
+      call fabm_link_bulk_data(&
+        fabm_model,standard_variables%temperature,temp)
+      call fabm_link_bulk_data(&
+        fabm_model,standard_variables%practical_salinity,salt)
+      call fabm_link_bulk_data(&
+        fabm_model,&
+        standard_variables%downwelling_photosynthetic_radiative_flux,&
+        radiative_flux)
+      call day_circle()
+      write(*,*) "Stabilizing initial array of values, in progress ..."
+      write(*,*) "number / ","julianday / ","pseudo day",&
+                 i,day,pseudo_day
+      day = day+1
+      temporary_variable = find_state_variable(state_vars,&
+                          "niva_brom_bio_O2")
+      call temporary_variable%print_state_variable()
+    end do
   end subroutine
 
   subroutine find_set_state_variable(state_vars,inname,use_bound_up,&

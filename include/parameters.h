@@ -7,4 +7,4 @@
 #define _SECONDS_PER_CIRCLE_ 300 
 
 #define _ERLOV_     0.05_rk
-#define _LATITUDE_  40._rk
+#define _LATITUDE_  70._rk

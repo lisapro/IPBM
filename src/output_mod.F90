@@ -88,7 +88,8 @@ contains
     allocate(self%parameter_id(size(model%state_variables)))
     do ip = 1,size(model%state_variables)
       ilast = index(model%state_variables(ip)%path,'/',.true.)
-      call check(nf90_def_var(self%nc_id,model%state_variables(ip)%path(ilast+1:),&
+      call check(nf90_def_var(self%nc_id,&
+                 model%state_variables(ip)%path(ilast+1:),&
                  NF90_REAL,dim_ids,self%parameter_id(ip)))
       call check(set_attributes(ncid=self%nc_id,id=self%parameter_id(ip),&
                  units=model%state_variables(ip)%units,&
@@ -100,17 +101,21 @@ contains
       if (model%diagnostic_variables(ip)%save) then
         ilast = index(model%diagnostic_variables(ip)%path,'/',.true.)
         call check(nf90_def_var(&
-                   self%nc_id,model%diagnostic_variables(ip)%path(ilast+1:),&
+                   self%nc_id,model%diagnostic_variables(ip)%&
+                   path(ilast+1:),&
                    NF90_REAL,dim_ids,self%parameter_id_diag(ip)))
-        call check(set_attributes(ncid=self%nc_id, id=self%parameter_id_diag(ip),&
+        call check(set_attributes(ncid=self%nc_id,&
+                   id=self%parameter_id_diag(ip),&
                    units=model%diagnostic_variables(ip)%units,&
                    long_name=model%diagnostic_variables(ip)%long_name,&
-                   missing_value=model%diagnostic_variables(ip)%missing_value))
+                   missing_value = &
+                   model%diagnostic_variables(ip)%missing_value))
       end if
     end do
     call check(nf90_def_var(self%nc_id,"temp",NF90_REAL,dim_ids,self%t_id))
     call check(nf90_def_var(self%nc_id,"salt",NF90_REAL,dim_ids,self%s_id))
-    call check(nf90_def_var(self%nc_id,"turb",NF90_REAL,dim_ids,self%kz2_id))
+    call check(nf90_def_var(self%nc_id,"turb",NF90_REAL,dim_ids,&
+                            self%kz2_id))
     call check(nf90_def_var(self%nc_id,"radiative_flux",&
                             NF90_REAL,dim_ids,self%iz_id))
     !end define
@@ -150,7 +155,8 @@ contains
 
     foo(1) = real(day)
     if (self%nc_id.ne.-1) then
-      call check(nf90_put_var(self%nc_id,self%time_id,foo,start_time,edges_time))
+      call check(nf90_put_var(self%nc_id,self%time_id,foo,&
+                              start_time,edges_time))
       do ip = 1,size(model%state_variables)
         call check(nf90_put_var(self%nc_id,self%parameter_id(ip),&
                    state_vars(ip)%value(self%first_layer:self%last_layer),&
@@ -167,13 +173,17 @@ contains
         end if
       end do
       call check(nf90_put_var(self%nc_id,self%t_id,&
-                              temp(self%first_layer:self%last_layer),start,edges))
+                              temp(self%first_layer:self%last_layer),&
+                              start,edges))
       call check(nf90_put_var(self%nc_id,self%s_id,&
-                              salt(self%first_layer:self%last_layer),start,edges))
+                              salt(self%first_layer:self%last_layer),&
+                              start,edges))
       call check(nf90_put_var(self%nc_id,self%kz2_id,&
-                              turb(self%first_layer:self%last_layer),start,edges))
+                              turb(self%first_layer:self%last_layer),&
+                              start,edges))
       call check(nf90_put_var(self%nc_id,self%iz_id,&
-                              radiative_flux(self%first_layer:self%last_layer),&
+                              radiative_flux(&
+                              self%first_layer:self%last_layer),&
                               start,edges))
       call check(nf90_sync(self%nc_id))
     end if
@@ -190,7 +200,7 @@ contains
     self%nc_id = -1
   end subroutine close
 
-  integer function set_attributes(ncid,id,                         &
+  integer function set_attributes(ncid,id,&
                                   units,long_name,                 &
                                   valid_min,valid_max,valid_range, &
                                   scale_factor,add_offset,         &
