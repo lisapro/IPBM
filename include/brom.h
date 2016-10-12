@@ -8,3 +8,10 @@
 #define _TURBULENCE_                'AKv'
 
 #define _FILE_NAME_WATER_           'water.nc'
+
+#define _SECONDS_PER_CIRCLE_        300
+#define _LATITUDE_                  70._rk
+#define _WIDTH_BBL_                 0.5_rk
+#define _RESOLUTION_BBL_            0.1_rk
+#define _WIDTH_SEDIMENTS_           0.1_rk
+#define _RESOLUTION_SEDIMENTS_      0.02_rk

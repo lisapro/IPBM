@@ -13,6 +13,7 @@ module variables_mod
     private
     procedure:: initialize=>initialize_standard_variables
     procedure:: add_var=>add_standard_var
+    procedure:: add_bbl_sediments_to_depth_on_boundary
     procedure:: add_day_number
     procedure:: add_layer_thicknesses
     procedure,public:: first_day
@@ -45,8 +46,15 @@ contains
 
     kara_input = type_input(_FILE_NAME_)
     !vertical variables
-    call self%add_var(_MIDDLE_LAYER_DEPTH_,kara_input)
     call self%add_var(_DEPTH_ON_BOUNDARY_,kara_input)
+    call self%add_bbl_sediments_to_depth_on_boundary(&
+         "water_bbl","bbl_sediments")
+    !call self%add_var(_MIDDLE_LAYER_DEPTH_,kara_input)
+    !call self%print_var(_MIDDLE_LAYER_DEPTH_)
+    !write(*,*) self%get_1st_dim_length(_MIDDLE_LAYER_DEPTH_)
+    call self%print_var(_DEPTH_ON_BOUNDARY_)
+    stop
+    !write(*,*) self%get_1st_dim_length(_DEPTH_ON_BOUNDARY_)
     !horizontal variables
     call self%add_var(_OCEAN_TIME_,kara_input)
     call self%add_day_number("day_number")
@@ -58,8 +66,9 @@ contains
     !call self%print_var(_TURBULENCE_)
     !write(*,*) self%get_1st_dim_length(_TURBULENCE_)
 
-    !call self%print_list('Allocated brom_standard_variables:')
+    call self%print_list_variables('Allocated brom_standard_variables:')
     call kara_input%delete_list()
+    stop
     !call kara_input%print_list_variables("Allocated kara vars")
     !stop
   end subroutine
@@ -75,6 +84,64 @@ contains
     !memory allocation problems occur without it
     allocate(temp,source=var)
     call self%add_item(temp)
+  end subroutine
+  !
+  !Adds bbl and sediments to depths on layers faces
+  !names for new elements in standard vars list
+  !
+  subroutine add_bbl_sediments_to_depth_on_boundary(self,&
+             water_bbl_name,bbl_sediments_name)
+    class(brom_standard_variables),intent(inout):: self
+    character(len=*),intent(in):: water_bbl_name
+    character(len=*),intent(in):: bbl_sediments_name
+
+    class(variable)      ,allocatable:: var
+    real(rk),dimension(:),allocatable:: value_1d
+    type(alone_variable) new_var
+    integer length,bbl_count,sediments_count
+    integer water_bbl,bbl_sediments
+    integer i
+
+    real(rk):: width_bbl = _WIDTH_BBL_
+    real(rk):: resolution_bbl = _RESOLUTION_BBL_
+    real(rk):: width_sediments = _WIDTH_SEDIMENTS_
+    real(rk):: resolution_sediments = _RESOLUTION_SEDIMENTS_
+
+    length = self%get_1st_dim_length(_DEPTH_ON_BOUNDARY_)
+    bbl_count = int(width_bbl/resolution_bbl)
+    sediments_count = int(width_sediments/resolution_sediments)
+    allocate(value_1d(length+bbl_count+sediments_count))
+    water_bbl = 1+bbl_count+sediments_count
+    bbl_sediments = 1+sediments_count
+
+    !adding coordinates of inner boundaries
+    new_var = alone_variable(water_bbl_name,'',water_bbl)
+    call self%add_item(new_var)
+    new_var = alone_variable(bbl_sediments_name,'',bbl_sediments)
+    call self%add_item(new_var)
+
+    call self%get_var(_DEPTH_ON_BOUNDARY_,var)
+    select type(var)
+    class is(variable_1d)
+      value_1d = 0._rk
+      value_1d(water_bbl:) = var%value
+      value_1d(bbl_sediments) = var%value(1)
+      do i = bbl_sediments+1,water_bbl
+        value_1d(i) = value_1d(i-1)-resolution_bbl
+      end do
+      if (value_1d(water_bbl)<=value_1d(water_bbl+1)) then
+        call fatal_error("BBL configurating","Wrong _BBL_WIDTH_")
+      end if
+      value_1d(1) = value_1d(bbl_sediments)+width_sediments
+      do i = 2,(bbl_sediments-1)
+        value_1d(i) = value_1d(i-1)-resolution_sediments
+      end do
+      deallocate(var%value)
+      allocate(var%value,source=value_1d)
+    class default
+      call fatal_error("Adding layers","Wrong type")
+    end select
+    call self%set_var(_DEPTH_ON_BOUNDARY_,var)
   end subroutine
 
   subroutine add_day_number(self,inname)

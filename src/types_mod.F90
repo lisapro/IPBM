@@ -105,7 +105,7 @@ contains
       call temporary%next()
       if (.not.temporary%moreitems()) then
         call fatal_error("Getting variables",&
-                         "can't find '"//inname//&
+                         "can't find "//inname//&
                          " variable")
       end if
     end do
