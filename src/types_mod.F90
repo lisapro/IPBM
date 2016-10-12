@@ -36,6 +36,7 @@ module types_mod
     procedure:: print_var
     procedure:: print_list_variables
     procedure:: get_column
+    procedure:: get_value
   end type
 contains
   subroutine inverse(self)
@@ -62,15 +63,13 @@ contains
   subroutine print_value(self)
     class(variable),intent(in):: self
 
-    _LINE_
     select type(self)
     class is(alone_variable)
       write(*,*) self%value
     class is(variable_1d)
-      write(*,'(f8.2)') self%value
-      !write(*,*) self%value(1:10)
+      write(*,'(f10.5)') self%value
     class is(variable_2d)
-      write(*,'(f15.5)') self%value(:,1)
+      write(*,'(f10.5)') self%value(:,1)
     class default
       call fatal_error("Print value","Wrong type")
     end select
@@ -182,6 +181,7 @@ contains
     class(variable),allocatable:: var
 
     call self%get_var(inname,var)
+    call var%print_name()
     call var%print_value()
   end subroutine
 
@@ -193,7 +193,6 @@ contains
 
     call self%reset()
     first = self%moreitems()
-    _LINE_
     write(*,*) message
     if (.not.first) then
       write(*,*) 'Empty'
@@ -222,16 +221,31 @@ contains
     call self%get_var(inname,get_variable)
     select type(get_variable)
     type is(variable_1d)
-      !allocate(get_column,source=get_variable%value(:))
       get_column = get_variable%value(:)
     type is(variable_2d)
       if (.not.present(column)) call fatal_error(&
                        "Getting column failed",&
                        "Column should be present")
-      !allocate(get_column,source=get_variable%value(:,column))
       get_column = get_variable%value(:,column)
     class default
       call fatal_error("Getting column failed",&
+                       "Wrong variable")
+    end select
+  end function
+
+  function get_value(self,inname)
+    real(rk),allocatable:: get_value
+    class(list_variables),intent(in):: self
+    character(len=*)     ,intent(in):: inname
+
+    class(variable),allocatable:: get_variable
+
+    call self%get_var(inname,get_variable)
+    select type(get_variable)
+    type is(alone_variable)
+      get_value = get_variable%value
+    class default
+      call fatal_error("Getting value failed",&
                        "Wrong variable")
     end select
   end function

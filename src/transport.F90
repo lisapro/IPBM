@@ -36,8 +36,8 @@ contains
     _LINE_
     !initializing standard_variables
     standard_vars = brom_standard_variables()
-    number_of_layers = standard_vars%&
-      get_1st_dim_length(_MIDDLE_LAYER_DEPTH_)
+    number_of_layers = int(standard_vars%get_value(&
+                           "number_of_layers"))
     call fabm_set_domain(fabm_model,number_of_layers)
     call fabm_model%set_surface_index(number_of_layers)
     call fabm_model%set_bottom_index(1)
@@ -68,7 +68,7 @@ contains
       standard_variables%downwelling_photosynthetic_radiative_flux,&
       radiative_flux)
     allocate(depth(number_of_layers))
-    depth = standard_vars%get_column(_MIDDLE_LAYER_DEPTH_)
+    depth = standard_vars%get_column("middle_layer_depths")
     allocate(layer_thicknesses(number_of_layers))
     layer_thicknesses = standard_vars%get_column(&
                         "layer_thicknesses")

@@ -14,8 +14,10 @@ module variables_mod
     procedure:: initialize=>initialize_standard_variables
     procedure:: add_var=>add_standard_var
     procedure:: add_grid_on_faces
+    procedure:: add_grid_on_centers
     procedure:: add_day_number
     procedure:: add_layer_thicknesses
+    procedure:: add_constant_in_sed
     procedure,public:: first_day
   end type
 
@@ -40,39 +42,43 @@ contains
     call brom_standard_variables_constructor%initialize()
   end function
 
+  !
+  !Initialize standard variables list
+  !
   subroutine initialize_standard_variables(self)
     class(brom_standard_variables),intent(inout):: self
     type(type_input):: kara_input
 
+    !open input netcdf and make list with all variables
     kara_input = type_input(_FILE_NAME_)
     !vertical variables
-    !call self%add_var(_DEPTH_ON_BOUNDARY_,kara_input)
     call self%add_grid_on_faces(kara_input,&
-      _DEPTH_ON_BOUNDARY_,"water_bbl","bbl_sediments")
-    !call self%add_var(_MIDDLE_LAYER_DEPTH_,kara_input)
-    !call self%print_var(_MIDDLE_LAYER_DEPTH_)
-    !write(*,*) self%get_1st_dim_length(_MIDDLE_LAYER_DEPTH_)
-    !call self%print_var(_DEPTH_ON_BOUNDARY_)
-    !call self%print_var("water_bbl")
-    !call self%print_var("bbl_sediments")
-    !call self%print_list_variables('Allocated brom_standard_variables:')
-    stop
-    !write(*,*) self%get_1st_dim_length(_DEPTH_ON_BOUNDARY_)
+      _DEPTH_ON_BOUNDARY_,"water_bbl_index",&
+      "bbl_sediments_index","number_of_boundaries")
+    call self%add_grid_on_centers("middle_layer_depths",&
+                                  "number_of_layers")
+    call self%add_layer_thicknesses("layer_thicknesses")
     !horizontal variables
     call self%add_var(kara_input,_OCEAN_TIME_)
     call self%add_day_number("day_number")
-    call self%add_layer_thicknesses("layer_thicknesses")
     !2d variables
-    call self%add_var(kara_input,_TEMPERATURE_)
-    call self%add_var(kara_input,_SALINITY_)
-    call self%add_var(kara_input,_TURBULENCE_)
-    !call self%print_var(_TURBULENCE_)
-    !write(*,*) self%get_1st_dim_length(_TURBULENCE_)
+    call self%add_constant_in_sed(kara_input,_TEMPERATURE_)
+    call self%add_constant_in_sed(kara_input,_SALINITY_)
+    !call self%add_var(kara_input,_TURBULENCE_)
 
+    call self%print_var(_TEMPERATURE_)
+    call self%print_var(_SALINITY_)
+    !call self%print_var(_DEPTH_ON_BOUNDARY_)
+    !call self%print_var("middle_layer_depths")
+    !call self%print_var("layer_thicknesses")
+    !call self%print_var("water_bbl_index")
+    !call self%print_var("bbl_sediments_index")
+    !call self%print_var("number_of_boundaries")
+    !call self%print_var("number_of_layers")
+    !call self%print_list_variables('Allocated brom_standard_variables:')
+    !delete unneeded list
     call kara_input%delete_list()
     stop
-    !call kara_input%print_list_variables("Allocated kara vars")
-    !stop
   end subroutine
 
   subroutine add_standard_var(self,name_input,inname)
@@ -91,19 +97,21 @@ contains
   !Adds bbl and sediments to depths of layers faces
   !
   subroutine add_grid_on_faces(self,name_input,&
-             inname,water_bbl_name,bbl_sediments_name)
+             inname,water_bbl_index,bbl_sediments_index,&
+             number_of_boundaries)
     class(brom_standard_variables),intent(inout):: self
     type(type_input),intent(in):: name_input
     character(len=*),intent(in):: inname
-    character(len=*),intent(in):: water_bbl_name
-    character(len=*),intent(in):: bbl_sediments_name
+    character(len=*),intent(in):: water_bbl_index
+    character(len=*),intent(in):: bbl_sediments_index
+    character(len=*),intent(in):: number_of_boundaries
 
     class(variable)      ,allocatable:: var
     real(rk),dimension(:),allocatable:: value_1d
     type(alone_variable) new_var
     type(variable_1d) new_var_1d
     integer length,bbl_count,sediments_count
-    integer water_bbl,bbl_sediments
+    integer water_bbl,bbl_sediments,total_boundaries
     integer i
 
     real(rk):: width_bbl = _WIDTH_BBL_
@@ -122,11 +130,14 @@ contains
     allocate(value_1d(length+bbl_count+sediments_count))
     water_bbl = 1+bbl_count+sediments_count
     bbl_sediments = 1+sediments_count
+    total_boundaries = length+bbl_count+sediments_count
 
     !adding indexes of inner boundaries
-    new_var = alone_variable(water_bbl_name,'',water_bbl)
+    new_var = alone_variable(water_bbl_index,'',water_bbl)
     call self%add_item(new_var)
-    new_var = alone_variable(bbl_sediments_name,'',bbl_sediments)
+    new_var = alone_variable(bbl_sediments_index,'',bbl_sediments)
+    call self%add_item(new_var)
+    new_var = alone_variable(number_of_boundaries,'',total_boundaries)
     call self%add_item(new_var)
 
     select type(var)
@@ -144,11 +155,39 @@ contains
       do i = 2,(bbl_sediments-1)
         value_1d(i) = value_1d(i-1)-resolution_sediments
       end do
+      new_var_1d = variable_1d(var%name,'',value_1d)
+      call self%add_item(new_var_1d)
     class default
       call fatal_error("Adding layers","Wrong type")
     end select
-    new_var_1d = variable_1d(var%name,'',value_1d)
-    call self%add_item(new_var_1d)
+  end subroutine
+
+  subroutine add_grid_on_centers(self,inname,number_of_layers)
+    class(brom_standard_variables),intent(inout):: self
+    character(len=*),intent(in):: inname
+    character(len=*),intent(in):: number_of_layers
+    class(variable)      ,allocatable:: var
+    real(rk),dimension(:),allocatable:: value_1d
+    type(alone_variable):: new_var
+    type(variable_1d):: new_var_1d
+    integer i,length
+
+    call self%get_var(_DEPTH_ON_BOUNDARY_,var)
+    length = int(self%get_value("number_of_boundaries")-1._rk)
+    allocate(value_1d(length))
+    new_var = alone_variable(number_of_layers,'',length)
+    call self%add_item(new_var)
+
+    select type(var)
+    type is(variable_1d)
+      forall(i = 1:length)&
+        value_1d(i) = abs((var%value(i+1)+var%value(i))/2._rk)
+      new_var_1d = variable_1d(inname,'',value_1d)
+      call self%add_item(new_var_1d)
+    class default
+      call fatal_error("Add grid on centers",&
+        "Wrong type")
+    end select
   end subroutine
 
   subroutine add_day_number(self,inname)
@@ -188,7 +227,7 @@ contains
     integer i,length
 
     call self%get_var(_DEPTH_ON_BOUNDARY_,var)
-    length = self%get_1st_dim_length(_MIDDLE_LAYER_DEPTH_)
+    length = int(self%get_value("number_of_layers"))
     allocate(value_1d(length))
 
     select type(var)
@@ -199,6 +238,37 @@ contains
       call self%add_item(new_var)
     class default
       call fatal_error("Add layer_thicknesses",&
+        "Wrong type")
+    end select
+  end subroutine
+
+  subroutine add_constant_in_sed(self,name_input,inname)
+    class(brom_standard_variables),intent(inout):: self
+    type(type_input)              ,intent(in)   :: name_input
+    character(len=*)              ,intent(in)   :: inname
+    class(variable),allocatable:: var
+    real(rk),dimension(:,:),allocatable:: value_2d
+    type(variable_2d):: new_var
+    integer i,length,time
+    integer water_bbl_index
+
+    length = int(self%get_value("number_of_layers"))
+    water_bbl_index = int(self%get_value("water_bbl_index"))
+    time = int(self%get_1st_dim_length("day_number"))
+    allocate(value_2d(length,time))
+    value_2d = 0._rk
+
+    call name_input%get_var(inname,var)
+    select type(var)
+    type is(variable_2d)
+      value_2d(water_bbl_index:,:time) = var%value
+      forall (i = 1:time)&
+        value_2d(:water_bbl_index-1,i) =&
+        value_2d(water_bbl_index,i)
+      new_var = variable_2d(inname,'',value_2d)
+      call self%add_item(new_var)
+    class default
+      call fatal_error("Add temperature",&
         "Wrong type")
     end select
   end subroutine
