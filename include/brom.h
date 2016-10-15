@@ -4,7 +4,7 @@
 #define _OCEAN_TIME_                'ocean_time'
 #define _TEMPERATURE_               'temp'
 #define _SALINITY_                  'salt'
-#define _TURBULENCE_                'AKv'
+#define _TURBULENCE_                'AKs'
 
 #define _FILE_NAME_WATER_           'water.nc'
 

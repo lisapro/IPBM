@@ -36,8 +36,8 @@ contains
     _LINE_
     !initializing standard_variables
     standard_vars = brom_standard_variables()
-    number_of_layers = int(standard_vars%get_value(&
-                           "number_of_layers"))
+    number_of_layers = standard_vars%get_value(&
+                           "number_of_layers")
     call fabm_set_domain(fabm_model,number_of_layers)
     call fabm_model%set_surface_index(number_of_layers)
     call fabm_model%set_bottom_index(1)
@@ -48,11 +48,11 @@ contains
       call fabm_link_bulk_state_data(&
         fabm_model,i,state_vars(i)%value)
       state_vars(i)%name = fabm_model%state_variables(i)%name
-      call state_vars(i)%set_brom_state_variable(_NEUMANN_,&
-        _NEUMANN_,0._rk,0._rk,0._rk)
-      call state_vars(i)%print_name()
+      call state_vars(i)%set_brom_state_variable(.false.,_NEUMANN_,&
+        _NEUMANN_,0._rk,0._rk,0._rk,0._rk)
+      !call state_vars(i)%print_name()
     end do
-    _LINE_
+    !_LINE_
     call fabm_initialize_state(fabm_model,1,number_of_layers)
     !linking bulk variables
     allocate(temp(number_of_layers))
@@ -84,15 +84,8 @@ contains
       fabm_model,standard_variables%mole_fraction_of_carbon_dioxide_in_air,&
       380._rk)
     call fabm_check_ready(fabm_model)
-    call find_set_state_variable(state_vars,"niva_brom_redox_SO4",&
-      use_bound_up = _DIRICHLET_,use_bound_low = _DIRICHLET_,&
-      bound_up = 25000._rk,bound_low = 25000._rk)
-    call find_set_state_variable(state_vars,inname = "niva_brom_redox_Mn4",&
-      use_bound_up = _DIRICHLET_,bound_up = 0.5e-4_rk)
-    call find_set_state_variable(state_vars,"niva_brom_redox_Fe3",&
-      use_bound_up = _DIRICHLET_,bound_up = 0.4e-4_rk)
-    call find_set_state_variable(state_vars,"niva_brom_carb_Alk",&
-      use_bound_up = _DIRICHLET_,bound_up = 2250._rk)
+    call configurate_state_variables()
+    stop
   end subroutine
 
   subroutine sarafan()
@@ -107,6 +100,7 @@ contains
     !cpu time
     real(rk) t1,t2
 
+    !add number_of_boundaries for turbulence
     netcdf = type_output(fabm_model,_FILE_NAME_WATER_,&
                          1,number_of_layers,&
                          number_of_layers)
@@ -122,11 +116,11 @@ contains
       temp = standard_vars%get_column(_TEMPERATURE_,i)
       salt = standard_vars%get_column(_SALINITY_,i)
       turb = standard_vars%get_column(_TURBULENCE_,i)
-      call find_set_state_variable(state_vars,"niva_brom_bio_PO4",&
+      call find_set_state_variable("niva_brom_bio_PO4",&
         use_bound_up = _DIRICHLET_,bound_up = sinusoidal(day,0.45_rk))
-      call find_set_state_variable(state_vars,"niva_brom_bio_NO3",&
+      call find_set_state_variable("niva_brom_bio_NO3",&
         use_bound_up = _DIRICHLET_,bound_up = sinusoidal(day,3.8_rk))
-      call find_set_state_variable(state_vars,"niva_brom_redox_Si",&
+      call find_set_state_variable("niva_brom_redox_Si",&
         use_bound_up = _DIRICHLET_,bound_up = sinusoidal(day,2._rk))
       call fabm_link_bulk_data(&
         fabm_model,standard_variables%temperature,temp)
@@ -144,8 +138,7 @@ contains
       write(*,*) "number / ","julianday / ","year",i,day,year
       write(*,*) "Time taken by day circle:",t2-t1," seconds"
       day = day+1
-      temporary_variable = find_state_variable(state_vars,&
-                          "niva_brom_bio_O2")
+      temporary_variable = find_state_variable("niva_brom_bio_O2")
       call temporary_variable%print_state_variable()
     end do
     write(*,*) "Finish"
@@ -297,11 +290,11 @@ contains
       salt = standard_vars%get_column(_SALINITY_,pseudo_day)
       turb = standard_vars%get_column(_TURBULENCE_,pseudo_day)
 
-      call find_set_state_variable(state_vars,"niva_brom_bio_PO4",&
+      call find_set_state_variable("niva_brom_bio_PO4",&
         use_bound_up = _DIRICHLET_,bound_up = sinusoidal(day,0.45_rk))
-      call find_set_state_variable(state_vars,"niva_brom_bio_NO3",&
+      call find_set_state_variable("niva_brom_bio_NO3",&
         use_bound_up = _DIRICHLET_,bound_up = sinusoidal(day,3.8_rk))
-      call find_set_state_variable(state_vars,"niva_brom_redox_Si",&
+      call find_set_state_variable("niva_brom_redox_Si",&
         use_bound_up = _DIRICHLET_,bound_up = sinusoidal(day,2._rk))
       call fabm_link_bulk_data(&
         fabm_model,standard_variables%temperature,temp)
@@ -316,20 +309,21 @@ contains
       write(*,*) "number / ","julianday / ","pseudo day",&
                  i,day,pseudo_day
       day = day+1
-      temporary_variable = find_state_variable(state_vars,&
-                          "niva_brom_bio_O2")
+      temporary_variable = find_state_variable("niva_brom_bio_O2")
       call temporary_variable%print_state_variable()
     end do
   end subroutine
 
-  subroutine find_set_state_variable(state_vars,inname,use_bound_up,&
-      use_bound_low,bound_up,bound_low,sinking_velocity)
-    type(brom_state_variable),dimension(:),intent(inout):: state_vars
+  subroutine find_set_state_variable(inname,is_solid,&
+      use_bound_up,use_bound_low,bound_up,bound_low,&
+      density,sinking_velocity)
     character(len=*),                      intent(in):: inname
+    logical,optional,                      intent(in):: is_solid
     integer,optional,                      intent(in):: use_bound_up
     integer,optional,                      intent(in):: use_bound_low
     real(rk),optional,                     intent(in):: bound_up
     real(rk),optional,                     intent(in):: bound_low
+    real(rk),optional,                     intent(in):: density
     real(rk),optional,                     intent(in):: sinking_velocity
     integer number_of_vars
     integer i
@@ -337,8 +331,9 @@ contains
     number_of_vars = size(state_vars)
     do i = 1,number_of_vars
       if (state_vars(i)%name.eq.inname) then
-        call state_vars(i)%set_brom_state_variable(use_bound_up,&
-          use_bound_low,bound_up,bound_low,sinking_velocity)
+        call state_vars(i)%set_brom_state_variable(is_solid,&
+          use_bound_up,use_bound_low,bound_up,bound_low,&
+          density,sinking_velocity)
         return
       end if
     end do
@@ -346,8 +341,54 @@ contains
                      "No such variable")
   end subroutine
 
-  function find_state_variable(state_vars,inname)
-    type(brom_state_variable),dimension(:),intent(in):: state_vars
+  subroutine configurate_state_variables()
+    call find_set_state_variable("niva_brom_redox_SO4",&
+      use_bound_up = _DIRICHLET_,use_bound_low = _DIRICHLET_,&
+      bound_up = 25000._rk,bound_low = 25000._rk)
+    call find_set_state_variable(inname = "niva_brom_redox_Mn4",&
+      use_bound_up = _DIRICHLET_,bound_up = 0.5e-4_rk)
+    call find_set_state_variable("niva_brom_redox_Fe3",&
+      use_bound_up = _DIRICHLET_,bound_up = 0.4e-4_rk)
+    call find_set_state_variable("niva_brom_carb_Alk",&
+      use_bound_up = _DIRICHLET_,bound_up = 2250._rk)
+
+    call find_set_state_variable("niva_brom_bio_Phy",&
+      is_solid = .true.,density = 1.5E7_rk)
+    call find_set_state_variable("niva_brom_bio_PON",&
+      is_solid = .true.,density = 1.5E7_rk)
+    call find_set_state_variable("niva_brom_bio_Het",&
+      is_solid = .true.,density = 1.5E7_rk)
+    call find_set_state_variable("niva_brom_redox_Baae",&
+      is_solid = .true.,density = 1.5E7_rk)
+    call find_set_state_variable("niva_brom_redox_Bhae",&
+      is_solid = .true.,density = 1.5E7_rk)
+    call find_set_state_variable("niva_brom_redox_Baan",&
+      is_solid = .true.,density = 1.5E7_rk)
+    call find_set_state_variable("niva_brom_redox_Bhan",&
+      is_solid = .true.,density = 1.5E7_rk)
+    call find_set_state_variable("niva_brom_redox_CaCO3",&
+      is_solid = .true.,density = 2.80E7_rk)
+    call find_set_state_variable("niva_brom_redox_Fe3",&
+      is_solid = .true.,density = 3.27E7_rk)
+    call find_set_state_variable("niva_brom_redox_FeCO3",&
+      is_solid = .true.,density = 2.93E7_rk)
+    call find_set_state_variable("niva_brom_redox_FeS",&
+      is_solid = .true.,density = 5.90E7_rk)
+    call find_set_state_variable("niva_brom_redox_FeS2",&
+      is_solid = .true.,density = 4.17E7_rk)
+    call find_set_state_variable("niva_brom_redox_Mn4",&
+      is_solid = .true.,density = 5.78E7_rk)
+    call find_set_state_variable("niva_brom_redox_MnCO3",&
+      is_solid = .true.,density = 3.20E7_rk)
+    call find_set_state_variable("niva_brom_redox_MnS",&
+      is_solid = .true.,density = 4.60E7_rk)
+    call find_set_state_variable("niva_brom_redox_S0",&
+      is_solid = .true.,density = 6.56E7_rk)
+    call find_set_state_variable("niva_brom_redox_Sipart",&
+      is_solid = .true.,density = 4.40E7_rk)
+  end subroutine
+
+  function find_state_variable(inname)
     character(len=*),                      intent(in):: inname
     type(brom_state_variable):: find_state_variable
     integer number_of_vars

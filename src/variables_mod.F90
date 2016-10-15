@@ -7,7 +7,6 @@ module variables_mod
   use fabm_driver
 
   implicit none
-
   type,extends(list_variables):: brom_standard_variables
   contains
     private
@@ -18,14 +17,18 @@ module variables_mod
     procedure:: add_day_number
     procedure:: add_layer_thicknesses
     procedure:: add_constant_in_sed
+    procedure:: add_porosity
+    procedure:: add_turbulence
     procedure,public:: first_day
   end type
 
   type,extends(variable_1d):: brom_state_variable
+    logical  is_solid
     integer  use_bound_up
     integer  use_bound_low
     real(rk) bound_up
     real(rk) bound_low
+    real(rk) density
     real(rk) sinking_velocity
   contains
     procedure:: set_brom_state_variable
@@ -41,7 +44,6 @@ contains
 
     call brom_standard_variables_constructor%initialize()
   end function
-
   !
   !Initialize standard variables list
   !
@@ -64,21 +66,26 @@ contains
     !2d variables
     call self%add_constant_in_sed(kara_input,_TEMPERATURE_)
     call self%add_constant_in_sed(kara_input,_SALINITY_)
+    call self%add_porosity("porosity","porosity_on_interfaces",&
+      "porosity_factor_solutes_1","porosity_factor_solutes_2",&
+      "porosity_factor_solids_1","porosity_factor_solids_2")
+    call self%add_turbulence(kara_input,_TURBULENCE_)
     !call self%add_var(kara_input,_TURBULENCE_)
 
-    call self%print_var(_TEMPERATURE_)
-    call self%print_var(_SALINITY_)
-    !call self%print_var(_DEPTH_ON_BOUNDARY_)
+    !call self%print_var(_TEMPERATURE_)
+    !call self%print_var(_SALINITY_)
+    !call self%print_var(_TURBULENCE_)
+    !write(*,*) self%get_1st_dim_length(_TURBULENCE_)
+    call self%print_var(_DEPTH_ON_BOUNDARY_)
     !call self%print_var("middle_layer_depths")
     !call self%print_var("layer_thicknesses")
     !call self%print_var("water_bbl_index")
     !call self%print_var("bbl_sediments_index")
     !call self%print_var("number_of_boundaries")
     !call self%print_var("number_of_layers")
-    !call self%print_list_variables('Allocated brom_standard_variables:')
+    call self%print_list_variables('Allocated brom_standard_variables:')
     !delete unneeded list
     call kara_input%delete_list()
-    stop
   end subroutine
 
   subroutine add_standard_var(self,name_input,inname)
@@ -125,8 +132,8 @@ contains
       length=size(var%value,1)
     end select
 
-    bbl_count = int(width_bbl/resolution_bbl)
-    sediments_count = int(width_sediments/resolution_sediments)
+    bbl_count = width_bbl/resolution_bbl
+    sediments_count = width_sediments/resolution_sediments
     allocate(value_1d(length+bbl_count+sediments_count))
     water_bbl = 1+bbl_count+sediments_count
     bbl_sediments = 1+sediments_count
@@ -173,7 +180,7 @@ contains
     integer i,length
 
     call self%get_var(_DEPTH_ON_BOUNDARY_,var)
-    length = int(self%get_value("number_of_boundaries")-1._rk)
+    length = self%get_value("number_of_boundaries")-1._rk
     allocate(value_1d(length))
     new_var = alone_variable(number_of_layers,'',length)
     call self%add_item(new_var)
@@ -217,7 +224,6 @@ contains
       first_day = int(var%value(1))
     end select
   end function
-
   subroutine add_layer_thicknesses(self,inname)
     class(brom_standard_variables),intent(inout):: self
     character(len=*)              ,intent(in)   :: inname
@@ -227,7 +233,7 @@ contains
     integer i,length
 
     call self%get_var(_DEPTH_ON_BOUNDARY_,var)
-    length = int(self%get_value("number_of_layers"))
+    length = self%get_value("number_of_layers")
     allocate(value_1d(length))
 
     select type(var)
@@ -252,9 +258,9 @@ contains
     integer i,length,time
     integer water_bbl_index
 
-    length = int(self%get_value("number_of_layers"))
-    water_bbl_index = int(self%get_value("water_bbl_index"))
-    time = int(self%get_1st_dim_length("day_number"))
+    length = self%get_value("number_of_layers")
+    water_bbl_index = self%get_value("water_bbl_index")
+    time = self%get_1st_dim_length("day_number")
     allocate(value_2d(length,time))
     value_2d = 0._rk
 
@@ -268,32 +274,125 @@ contains
       new_var = variable_2d(inname,'',value_2d)
       call self%add_item(new_var)
     class default
-      call fatal_error("Add temperature",&
+      call fatal_error("Adding constant in sediments variable",&
         "Wrong type")
     end select
   end subroutine
 
-  pure subroutine set_brom_state_variable(self,use_bound_up,&
-      use_bound_low,bound_up,bound_low,sinking_velocity)
+  subroutine add_porosity(self,name_porosity,name_porosity_faces,&
+      name_pf_solutes_1,name_pf_solutes_2,&
+      name_pf_solids_1,name_pf_solids_2)
+    class(brom_standard_variables),intent(inout):: self
+    character(len=*),intent(in):: name_porosity
+    character(len=*),intent(in):: name_porosity_faces
+    character(len=*),intent(in):: name_pf_solutes_1
+    character(len=*),intent(in):: name_pf_solutes_2
+    character(len=*),intent(in):: name_pf_solids_1
+    character(len=*),intent(in):: name_pf_solids_2
+    real(rk),dimension(:),allocatable:: value_porosity
+    type(variable_1d):: porosity
+
+    integer swi_index,length
+    real(rk) swi_depth
+    real(rk) max_porosity,min_porosity,porosity_decay
+    real(rk),dimension(:),allocatable:: depth_center
+    real(rk),dimension(:),allocatable:: depth_boundary
+
+    max_porosity = _MAX_POROSITY_
+    min_porosity = _MIN_POROSITY_
+    porosity_decay = _POROSITY_DECAY_
+
+    swi_index = self%get_value("bbl_sediments_index")
+    length = self%get_value("number_of_layers")
+    allocate(depth_center(length))
+    depth_center = self%get_column("middle_layer_depths")
+    allocate(depth_boundary(length+1))
+    depth_boundary = self%get_column(_DEPTH_ON_BOUNDARY_)
+    swi_depth = depth_boundary(swi_index)
+
+    allocate(value_porosity(length))
+    value_porosity = 1._rk
+    value_porosity(1:swi_index-1) = min_porosity+(&
+      max_porosity-min_porosity)*exp(-1._rk*(&
+      depth_center(1:swi_index-1)-swi_depth)/&
+      porosity_decay)
+    write(*,'(f10.4)') value_porosity
+    _LINE_
+
+  end subroutine
+
+  subroutine add_turbulence(self,name_input,inname)
+    class(brom_standard_variables),intent(inout):: self
+    type(type_input)              ,intent(in)   :: name_input
+    character(len=*)              ,intent(in)   :: inname
+    class(variable)        ,allocatable:: var
+    real(rk),dimension(:,:),allocatable:: total_kz
+    type(variable_2d):: new_var
+    integer i,time
+    integer number_of_boundaries
+    integer water_bbl_index
+    integer bbl_sediments_index
+
+    number_of_boundaries &
+      = self%get_value("number_of_boundaries")
+    water_bbl_index = self%get_value("water_bbl_index")
+    bbl_sediments_index &
+      = self%get_value("bbl_sediments_index")
+    time = self%get_1st_dim_length("day_number")
+    allocate(total_kz(number_of_boundaries,time))
+    total_kz = 0._rk
+
+    call name_input%get_var(inname,var)
+    select type(var)
+    type is(variable_2d)
+      total_kz(water_bbl_index:,:time) = var%value
+      !linear interpolation in bbl
+      forall (i = bbl_sediments_index+1:water_bbl_index)
+        total_kz(i,:) = &
+        (i-bbl_sediments_index)*total_kz(water_bbl_index+1,:)/(&
+        water_bbl_index+1-bbl_sediments_index)
+      end forall
+
+      !forall (i = 1:time)&
+      !  total_kz(:water_bbl_index-1,i) =&
+      !  total_kz(water_bbl_index,i)
+      !new_var = variable_2d(inname,'',total_kz)
+      !call self%add_item(new_var)
+      !write(*,'(f15.9)') total_kz(:,99)
+      !_LINE_
+    class default
+      call fatal_error("Adding turbulence",&
+        "Wrong type")
+    end select
+  end subroutine
+
+  pure subroutine set_brom_state_variable(self,is_solid,&
+      use_bound_up,use_bound_low,bound_up,bound_low,&
+      density,sinking_velocity)
     class(brom_state_variable),intent(inout):: self
+    logical,optional          ,intent(in)   :: is_solid
     integer,optional          ,intent(in)   :: use_bound_up
     integer,optional          ,intent(in)   :: use_bound_low
     real(rk),optional         ,intent(in)   :: bound_up
     real(rk),optional         ,intent(in)   :: bound_low
+    real(rk),optional         ,intent(in)   :: density
     real(rk),optional         ,intent(in)   :: sinking_velocity
 
+    if(present(is_solid)) self%is_solid = is_solid
     if(present(use_bound_up)) self%use_bound_up = use_bound_up
     if(present(use_bound_low)) self%use_bound_low = use_bound_low
     if(present(bound_up)) self%bound_up = bound_up
     if(present(bound_low)) self%bound_low = bound_low
+    if(present(density)) self%density = density
     if(present(sinking_velocity)) self%sinking_velocity = sinking_velocity
   end subroutine
 
   subroutine print_state_variable(self)
     class(brom_state_variable),intent(in):: self
 
-    _LINE_
     write(*,*) self%name
+    write(*,*) "is_solid:",self%is_solid
+    write(*,*) "density:",self%density
     write(*,'(f9.3)') (/ self%value(size(self%value,1):1:-1) /)
     write(*,'(x,a,2x,i2,f9.6)') 'up',self%use_bound_up,self%bound_up
     write(*,'(x,a,i2,f9.6)') 'down',self%use_bound_low,self%bound_low
