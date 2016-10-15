@@ -50,7 +50,7 @@ contains
       state_vars(i)%name = fabm_model%state_variables(i)%name
       call state_vars(i)%set_brom_state_variable(.false.,_NEUMANN_,&
         _NEUMANN_,0._rk,0._rk,0._rk,0._rk)
-      !call state_vars(i)%print_name()
+      call state_vars(i)%print_name()
     end do
     !_LINE_
     call fabm_initialize_state(fabm_model,1,number_of_layers)

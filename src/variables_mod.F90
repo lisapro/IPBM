@@ -18,7 +18,7 @@ module variables_mod
     procedure:: add_layer_thicknesses
     procedure:: add_constant_in_sed
     procedure:: add_porosity
-    procedure:: add_turbulence
+    procedure:: add_diffusivity
     procedure,public:: first_day
   end type
 
@@ -64,19 +64,23 @@ contains
     call self%add_var(kara_input,_OCEAN_TIME_)
     call self%add_day_number("day_number")
     !2d variables
+    !Add variables which are constants in sediments
     call self%add_constant_in_sed(kara_input,_TEMPERATURE_)
     call self%add_constant_in_sed(kara_input,_SALINITY_)
     call self%add_porosity("porosity","porosity_on_interfaces",&
       "porosity_factor_solutes_1","porosity_factor_solutes_2",&
-      "porosity_factor_solids_1","porosity_factor_solids_2")
-    call self%add_turbulence(kara_input,_TURBULENCE_)
+      "porosity_factor_solids_1","porosity_factor_solids_2",&
+      "tortuosity_on_interfaces")
+    call self%add_diffusivity(kara_input,_TURBULENCE_,&
+                              "molecular_diffusivity",&
+                              "bioturbation_diffusivity")
     !call self%add_var(kara_input,_TURBULENCE_)
 
     !call self%print_var(_TEMPERATURE_)
     !call self%print_var(_SALINITY_)
     !call self%print_var(_TURBULENCE_)
     !write(*,*) self%get_1st_dim_length(_TURBULENCE_)
-    call self%print_var(_DEPTH_ON_BOUNDARY_)
+    !call self%print_var(_DEPTH_ON_BOUNDARY_)
     !call self%print_var("middle_layer_depths")
     !call self%print_var("layer_thicknesses")
     !call self%print_var("water_bbl_index")
@@ -224,6 +228,7 @@ contains
       first_day = int(var%value(1))
     end select
   end function
+
   subroutine add_layer_thicknesses(self,inname)
     class(brom_standard_variables),intent(inout):: self
     character(len=*)              ,intent(in)   :: inname
@@ -278,10 +283,25 @@ contains
         "Wrong type")
     end select
   end subroutine
-
+  !
+  !adopted from Phil Wallhead (PW)
+  !Adds porosity,tortuosity and porosity factors, PW:
+  !"These allow us to use a single equation to model diffusivity
+  !updates in the water column and sediments, for both solutes and solids:
+  !dC/dt = d/dz(pF2*kzti*d/dz(pF1*C))
+  !where C has units [mass per unit total volume (water+sediments)]"
+  !
   subroutine add_porosity(self,name_porosity,name_porosity_faces,&
       name_pf_solutes_1,name_pf_solutes_2,&
-      name_pf_solids_1,name_pf_solids_2)
+      name_pf_solids_1,name_pf_solids_2,name_tortuosity)
+    !
+    ! equations for solutes, PW:
+    ! dC/dt = d/dz(kzti*dC/dz)            in the water column
+    ! dC/dt = d/dz(phi*kzti*d/dz(C/phi))  in the sediments
+    ! equations for solids, PW:
+    ! dC/dt = d/dz(kzti*dC/dz)                   in the water column
+    ! dC/dt = d/dz((1-phi)*kzti*d/dz(C/(1-phi))) in the sediments
+    !
     class(brom_standard_variables),intent(inout):: self
     character(len=*),intent(in):: name_porosity
     character(len=*),intent(in):: name_porosity_faces
@@ -289,8 +309,11 @@ contains
     character(len=*),intent(in):: name_pf_solutes_2
     character(len=*),intent(in):: name_pf_solids_1
     character(len=*),intent(in):: name_pf_solids_2
-    real(rk),dimension(:),allocatable:: value_porosity
-    type(variable_1d):: porosity
+    character(len=*),intent(in):: name_tortuosity
+    real(rk),dimension(:),allocatable:: porosity
+    real(rk),dimension(:),allocatable:: tortuosity
+    real(rk),dimension(:),allocatable:: porosity_factor
+    type(variable_1d):: new_var
 
     integer swi_index,length
     real(rk) swi_depth
@@ -310,23 +333,86 @@ contains
     depth_boundary = self%get_column(_DEPTH_ON_BOUNDARY_)
     swi_depth = depth_boundary(swi_index)
 
-    allocate(value_porosity(length))
-    value_porosity = 1._rk
-    value_porosity(1:swi_index-1) = min_porosity+(&
+    !for layers
+    allocate(porosity(length))
+    porosity = 1._rk
+    porosity(1:swi_index-1) = min_porosity+(&
       max_porosity-min_porosity)*exp(-1._rk*(&
       depth_center(1:swi_index-1)-swi_depth)/&
       porosity_decay)
-    write(*,'(f10.4)') value_porosity
-    _LINE_
+    new_var = variable_1d(name_porosity,'',porosity)
+    call self%add_item(new_var)
 
+    !porosity factor 1 for solutes
+    allocate(porosity_factor(length))
+    porosity_factor = 1._rk/porosity
+    !PW:
+    !Factor to convert [mass per unit total volume]
+    !to [mass per unit volume pore water] for solutes in sediments
+    new_var = variable_1d(name_pf_solutes_1,'',porosity_factor)
+    call self%add_item(new_var)
+
+    !porosity factor 1 for solids
+    porosity_factor = 1._rk
+    porosity_factor(1:swi_index-1) = 1._rk/&
+      (1._rk-porosity(1:swi_index-1))
+    !PW:
+    !Factor to convert [mass per unit total volume]
+    !to [mass per unit volume solids] for solids in sediments
+    new_var = variable_1d(name_pf_solids_1,'',porosity_factor)
+    call self%add_item(new_var)
+
+    deallocate(porosity)
+    deallocate(porosity_factor)
+
+    !for boundaries
+    allocate(porosity(length+1))
+    porosity = 1._rk
+    porosity(1:swi_index) = min_porosity+(&
+      max_porosity-min_porosity)*exp(-1._rk*(&
+      depth_boundary(1:swi_index)-swi_depth)/&
+      porosity_decay)
+    new_var = variable_1d(name_porosity_faces,'',porosity)
+    call self%add_item(new_var)
+
+    !porosity factor 2 for solutes
+    allocate(porosity_factor(length+1))
+    porosity_factor = porosity
+    !PW:
+    !Porosity-related area restriction factor for fluxes
+    !across layer interfaces
+    new_var = variable_1d(name_pf_solutes_2,'',porosity_factor)
+    call self%add_item(new_var)
+
+    !porosity factor 2 for solids
+    porosity_factor = 1._rk
+    porosity_factor(1:swi_index) = &
+      1._rk-porosity(1:swi_index)
+    !PW:
+    !Porosity-related area restriction factor for fluxes
+    !across layer interfaces
+    new_var = variable_1d(name_pf_solids_2,'',porosity_factor)
+    call self%add_item(new_var)
+
+    !tortuosity on layer interfaces
+    !Boudreau 1996, eq. 4.120
+    allocate(tortuosity(length+1))
+    tortuosity = sqrt(1._rk-2._rk*log(porosity))
+    new_var = variable_1d(name_tortuosity,'',tortuosity)
+    call self%add_item(new_var)
   end subroutine
 
-  subroutine add_turbulence(self,name_input,inname)
+  subroutine add_diffusivity(self,name_input,name_eddy_diffusivity,&
+                            name_molecular_diffusivity,&
+                            name_bioturbation_diffusivity)
     class(brom_standard_variables),intent(inout):: self
-    type(type_input)              ,intent(in)   :: name_input
-    character(len=*)              ,intent(in)   :: inname
+    type(type_input),intent(in):: name_input
+    character(len=*),intent(in):: name_eddy_diffusivity
+    character(len=*),intent(in):: name_molecular_diffusivity
+    character(len=*),intent(in):: name_bioturbation_diffusivity
+
     class(variable)        ,allocatable:: var
-    real(rk),dimension(:,:),allocatable:: total_kz
+    real(rk),dimension(:,:),allocatable:: eddy_kz
     type(variable_2d):: new_var
     integer i,time
     integer number_of_boundaries
@@ -339,27 +425,27 @@ contains
     bbl_sediments_index &
       = self%get_value("bbl_sediments_index")
     time = self%get_1st_dim_length("day_number")
-    allocate(total_kz(number_of_boundaries,time))
-    total_kz = 0._rk
+    allocate(eddy_kz(number_of_boundaries,time))
+    eddy_kz = 0._rk
 
-    call name_input%get_var(inname,var)
+    call name_input%get_var(name_eddy_diffusivity,var)
     select type(var)
     type is(variable_2d)
-      total_kz(water_bbl_index:,:time) = var%value
+      eddy_kz(water_bbl_index:,:time) = var%value
       !linear interpolation in bbl
       forall (i = bbl_sediments_index+1:water_bbl_index)
-        total_kz(i,:) = &
-        (i-bbl_sediments_index)*total_kz(water_bbl_index+1,:)/(&
+        eddy_kz(i,:) = &
+        (i-bbl_sediments_index)*eddy_kz(water_bbl_index+1,:)/(&
         water_bbl_index+1-bbl_sediments_index)
       end forall
 
       !forall (i = 1:time)&
-      !  total_kz(:water_bbl_index-1,i) =&
-      !  total_kz(water_bbl_index,i)
-      !new_var = variable_2d(inname,'',total_kz)
+      !  eddy_kz(:water_bbl_index-1,i) =&
+      !  eddy_kz(water_bbl_index,i)
+      !new_var = variable_2d(inname,'',eddy_kz)
       !call self%add_item(new_var)
-      !write(*,'(f15.9)') total_kz(:,99)
-      !_LINE_
+      write(*,'(f15.9)') eddy_kz(:,99)
+      _LINE_
     class default
       call fatal_error("Adding turbulence",&
         "Wrong type")
