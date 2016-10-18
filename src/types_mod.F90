@@ -67,7 +67,7 @@ contains
     class is(alone_variable)
       write(*,*) self%value
     class is(variable_1d)
-      write(*,'(f10.5)') self%value
+      write(*,'(f15.13)') self%value
     class is(variable_2d)
       write(*,'(f10.5)') self%value(:,1)
     class default

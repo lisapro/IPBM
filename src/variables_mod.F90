@@ -74,19 +74,6 @@ contains
     call self%add_diffusivity(kara_input,_TURBULENCE_,&
                               "molecular_diffusivity",&
                               "bioturbation_diffusivity")
-    !call self%add_var(kara_input,_TURBULENCE_)
-
-    !call self%print_var(_TEMPERATURE_)
-    !call self%print_var(_SALINITY_)
-    !call self%print_var(_TURBULENCE_)
-    !write(*,*) self%get_1st_dim_length(_TURBULENCE_)
-    !call self%print_var(_DEPTH_ON_BOUNDARY_)
-    !call self%print_var("middle_layer_depths")
-    !call self%print_var("layer_thicknesses")
-    !call self%print_var("water_bbl_index")
-    !call self%print_var("bbl_sediments_index")
-    !call self%print_var("number_of_boundaries")
-    !call self%print_var("number_of_layers")
     call self%print_list_variables('Allocated brom_standard_variables:')
     !delete unneeded list
     call kara_input%delete_list()
