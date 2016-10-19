@@ -74,6 +74,7 @@ contains
                         "layer_thicknesses")
     !convert depth to pressure
     !total=water+atmosphere [dbar]
+    allocate(pressure(number_of_layers))
     pressure = depth + 10._rk
     call fabm_link_bulk_data(&
       fabm_model,standard_variables%pressure,pressure)
