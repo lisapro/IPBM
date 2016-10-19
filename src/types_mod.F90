@@ -221,12 +221,14 @@ contains
     call self%get_var(inname,get_variable)
     select type(get_variable)
     type is(variable_1d)
-      get_column = get_variable%value(:)
+      !get_column = get_variable%value(:)
+      allocate(get_column,source=get_variable%value(:))
     type is(variable_2d)
       if (.not.present(column)) call fatal_error(&
                        "Getting column failed",&
                        "Column should be present")
-      get_column = get_variable%value(:,column)
+      !get_column = get_variable%value(:,column)
+      allocate(get_column,source=get_variable%value(:,column))
     class default
       call fatal_error("Getting column failed",&
                        "Wrong variable")
@@ -243,7 +245,8 @@ contains
     call self%get_var(inname,get_variable)
     select type(get_variable)
     type is(alone_variable)
-      get_value = get_variable%value
+      !get_value = get_variable%value
+      allocate(get_value,source=get_variable%value)
     class default
       call fatal_error("Getting value failed",&
                        "Wrong variable")
