@@ -86,7 +86,6 @@ contains
       380._rk)
     call fabm_check_ready(fabm_model)
     call configurate_state_variables()
-    stop
   end subroutine
 
   subroutine sarafan()
@@ -227,27 +226,84 @@ contains
   subroutine brom_do_diffusion()
     use diff_mod
 
+    type(brom_state_variable):: oxygen
+    real(rk),dimension(number_of_layers+1):: pF1_solutes
+    real(rk),dimension(number_of_layers+1):: pF2_solutes
+    real(rk),dimension(number_of_layers+1):: pF1_solids
+    real(rk),dimension(number_of_layers+1):: pF2_solids
+    real(rk),dimension(number_of_layers+1):: kz_mol
+    real(rk),dimension(number_of_layers+1):: kz_bio
+    real(rk),dimension(number_of_layers+1):: kz_tot
     real(rk),dimension(number_of_layers+1):: ones
     real(rk),dimension(number_of_layers+1):: zeros
     real(rk),dimension(number_of_layers+1):: taur_r
     real(rk),dimension(number_of_parameters):: surface_flux
     real(rk),dimension(0:number_of_layers,&
                          number_of_parameters):: temporary
-    integer i
+    integer i, bbl_sed_index
+    real(rk) O2stat
+    real(rk) pFSWIup_solutes, pFSWIdw_solutes
+    real(rk) pFSWIup_solids , pFSWIdw_solids
+
+    pF1_solutes = &
+    (/ 0._rk,standard_vars%get_column("porosity_factor_solutes_1") /)
+    pF2_solutes = standard_vars%get_column("porosity_factor_solutes_2")
+    pF1_solids = &
+    (/ 0._rk,standard_vars%get_column("porosity_factor_solids_1") /)
+    pF2_solids = standard_vars%get_column("porosity_factor_solids_2")
+    kz_mol = standard_vars%get_column("molecular_diffusivity")
+    kz_bio = standard_vars%get_column("bioturbation_diffusivity")
 
     ones=1._rk
     zeros=0._rk
     taur_r=1.d20
+
+    oxygen = find_state_variable("niva_brom_bio_O2")
+    bbl_sed_index = standard_vars%get_value("bbl_sediments_index")
+    !oxygen status of sediments
+    O2stat = oxygen%value(bbl_sed_index)/&
+      (oxygen%value(bbl_sed_index)+_KO2_)
+    kz_tot = turb+kz_mol+kz_bio*O2stat
+
     surface_flux = 0._rk
     call fabm_do_surface(fabm_model,surface_flux)
-
     do i = 1,number_of_parameters
       if (surface_flux(i)/=0._rk) then
         call state_vars(i)%set_brom_state_variable(&
           use_bound_up = _NEUMANN_,bound_up = surface_flux(i))
       end if
     end do
+    !
+    !adopted from Phil Wallhead (PW):
+    !solutes:
+    !fick_SWI = -phi_0*Km/dz*(C_1/phi_1 - C_-1) - Kb/dz*(C_1 - C_-1)
+    !         = -phi_0*(Km+Kb)/dz * (p_1*C_1 - p_-1*C_-1)
+    !         [intraphase molecular + interphase bioturb]
+    !where:
+    !       p_-1 = (phi_0*Km + Kb) / (phi_0*(Km+Kb))
+    !       p_1  = (phi_0/phi_1*Km + Kb) / (phi_0*(Km+Kb))
+    !and subscripts refer to SWI (0), below (1), and above (-1)
+    !
+    pFSWIup_solutes = (pF2_solutes(bbl_sed_index)*&
+      kz_mol(bbl_sed_index)+kz_bio(bbl_sed_index)*O2stat)/&
+      (pF2_solutes(bbl_sed_index)*(kz_mol(bbl_sed_index)+&
+      kz_bio(bbl_sed_index)*O2stat))
+    pFSWIdw_solutes = (pF1_solutes(bbl_sed_index)*&
+      pF2_solutes(bbl_sed_index)*kz_mol(bbl_sed_index)+&
+      kz_bio(bbl_sed_index)*O2stat)/(pF2_solutes(bbl_sed_index)*&
+      (kz_mol(bbl_sed_index)+kz_bio(bbl_sed_index)*O2stat))
+    !
+    !(PW) solids:
+    !fick_SWI = -Kb/dz*(C_1 - C_-1)   [interphase bioturb]
+    !         = -(1-phi_0)*Kb/dz * (p_1*C_1 - p_-1*C_-1)
+    !where: p_-1 = 1 / (1 - phi_0)
+    !       p_1  = 1 / (1 - phi_0)
+    !and subscripts refer to SWI (0), below (1), and above (-1)
+    !
+    pFSWIup_solids = 1.0_rk/(1.0_rk-pF2_solutes(bbl_sed_index))
+    pFSWIdw_solids = pFSWIup_solids
 
+    !bbl_sed become sed_top since (/ 0,depth /)
     forall (i = 1:number_of_parameters)
       temporary(:,i) = do_diffusive(&
           N       = number_of_layers,&
@@ -259,12 +315,22 @@ contains
           Bcdw = state_vars(i)%use_bound_low,&
           Yup  = state_vars(i)%bound_up,&
           Ydw  = state_vars(i)%bound_low,&
-          nuY  = turb,&
+          nuY_in  = kz_tot,&
           Lsour = zeros,&
           Qsour = zeros,&
           Taur  = taur_r,&
           Yobs  = zeros,&
-          Y     = (/ 0._rk,state_vars(i)%value /))
+          Y     = (/ 0._rk,state_vars(i)%value /),&
+          i_sed_top = bbl_sed_index,&
+          is_solid = state_vars(i)%is_solid,&
+          pF1_solutes = pF1_solutes,&
+          pF2_solutes = pF2_solutes,&
+          pF1_solids = pF1_solids,&
+          pF2_solids = pF2_solids,&
+          pFSWIup_solutes = pFSWIup_solutes,&
+          pFSWIdw_solutes = pFSWIdw_solutes,&
+          pFSWIup_solids = pFSWIup_solids,&
+          pFSWIdw_solids = pFSWIdw_solids)
       state_vars(i)%value = temporary(1:number_of_layers,i)
     end forall
   end subroutine

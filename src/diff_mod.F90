@@ -2,19 +2,89 @@
 
 module diff_mod
   use fabm_types,only: rk
-  implicit none
 
+  implicit none
   private
   public do_diffusive
 contains
   pure function do_diffusive(N,dt,cnpar,posconc,h,Bcup,Bcdw,&
-                          Yup,Ydw,nuY,Lsour,Qsour,Taur,Yobs,Y)
-    !adopted from
+                Yup,Ydw,nuY_in,Lsour,Qsour,Taur,Yobs,Y,&
+                i_sed_top,is_solid,pF1_solutes,pF2_solutes,&
+                pF1_solids,pF2_solids,pFSWIup_solutes,&
+                pFSWIdw_solutes,pFSWIup_solids,pFSWIdw_solids)
+
+    !REVISION HISTORY:
     !Original author(s): Lars Umlauf
-    !SY - minor changes to implement pure function
     !-----------------------------------------------------------------------
     ! Copyright by the GOTM-team under the GNU Public License - www.gnu.org
     !-----------------------------------------------------------------------
+    !
+    ! !DESCRIPTION:
+    ! This subroutine solves the one-dimensional diffusion equation
+    ! including source terms,
+    !  \begin{equation}
+    !   \label{YdiffCenter}
+    !    \partder{Y}{t}
+    !    = \partder{}{z} \left( \nu_Y \partder{pY}{z} \right)
+    !    - \frac{1}{\tau_R}(Y-Y_{obs})
+    !    + Y L_{\text{sour}} + Q_{\text{sour}}
+    !    \comma
+    !  \end{equation}
+    ! for al variables defined at the centers of the grid cells, and
+    ! a diffusion coefficient $\nu_Y$ defined at the faces.
+    ! Relaxation with time scale $\tau_R$ towards observed values
+    ! $Y_{\text{obs}}$ is possible. $L_{\text{sour}}$ specifies a
+    ! linear source term, and $Q_{\text{sour}}$ a constant source term.
+    ! Central differences are used to discretize the problem
+    ! as discussed in \sect{SectionNumericsMean}. The diffusion term,
+    ! the linear source term, and the linear part arising from the
+    ! relaxation term are treated
+    ! with an implicit method, whereas the constant source term is treated
+    ! fully explicit.
+    ! p is a porosity factor to account any necessary changes of units from
+    ! those of Y (assumed to be [mass per unit total volume]) to either
+    ! [mass per unit volume pore water] or [mass per unit volume solids]
+    ! when calculating Fickian gradients in the sediments
+    ! (see Berner, 1980; Boudreau, 1997).
+    ! p = 1 in the water column
+    ! p = 1/phi for solutes in the sediments
+    ! p = 1/(1-phi) for solids in the sediments
+    ! A further volume factor is not needed to account for porosity
+    ! because this subroutine assumes that [mass per unit total volume]
+    ! is the modelling currency for all concentrations.
+    ! This routine also makes special cases of the cells neighbouring the
+    ! sediment-water interface, allowing for interphase mixing.
+    !
+    ! The input parameters {\tt Bcup} and {\tt Bcdw} specify the type
+    ! of the upper and lower boundary conditions, which can be either
+    ! Dirichlet or Neumann-type. {\tt Bcup} and {\tt Bcdw} must have integer
+    ! values corresponding to the parameters {\tt Dirichlet} and {\tt Neumann}
+    ! defined in the module {\tt util}, see \sect{sec:utils}.
+    ! {\tt Yup} and {\tt Ydw} are the values of the boundary conditions at
+    ! the surface and the bottom. Depending on the values of {\tt Bcup} and
+    ! {\tt Bcdw}, they represent either fluxes or prescribed values.
+    ! The integer {\tt posconc} indicates if a quantity is
+    ! non-negative by definition ({\tt posconc}=1, such as for concentrations)
+    ! or not ({\tt posconc}=0). For {\tt posconc}=1 and negative
+    ! boundary fluxes, the source term linearisation according to
+    ! \cite{Patankar80} is applied.
+    !
+    ! Note that fluxes \emph{entering} a boundary cell are counted positive
+    ! by convention. The lower and upper position for prescribing these fluxes
+    ! are located at the lowest und uppermost grid faces with index "0" and
+    ! index "N", respectively. If values are prescribed, they are located at
+    ! the centers with index "1" and index "N", respectively.
+    !
+    !
+    !Phil Wallhead -
+    ! 18/05/2016: Introduced porosity factors pF to convert
+    !units for calculating Fickian gradients in the sediments
+    ! 13/06/2016: Introduced special case porosity factors
+    !pFSWIup, pFSWIdw and index i_sed_top to allow for interphase mixing
+    !across SWI
+    !
+    !SY - minor changes to implement pure function
+    !
     real(rk),dimension(0:N):: do_diffusive
 
     ! number of vertical layers
@@ -36,7 +106,7 @@ contains
     ! value of lower BC
     real(rk), intent(in)                :: Ydw
     ! diffusivity of Y
-    real(rk), intent(in)                :: nuY(0:N)
+    real(rk), intent(in)                :: nuY_in(0:N)
     ! linear source term
     ! (treated implicitly)
     real(rk), intent(in)                :: Lsour(0:N)
@@ -49,22 +119,77 @@ contains
     real(rk), intent(in)                :: Yobs(0:N)
     ! concentranions
     real(rk), intent(in)                :: Y(0:N)
+    ! index to indentify the cell just below the SWI
+    integer,  intent(in)                :: i_sed_top
+    logical,  intent(in)                :: is_solid
+    ! porosity factors
+    real(rk), intent(in)                :: pF1_solutes(0:N)
+    real(rk), intent(in)                :: pF2_solutes(0:N)
+    real(rk), intent(in)                :: pF1_solids(0:N)
+    real(rk), intent(in)                :: pF2_solids(0:N)
+    ! porosity factors for sediment water interface (SWI)
+    real(rk), intent(in)                :: pFSWIup_solutes
+    real(rk), intent(in)                :: pFSWIdw_solutes
+    real(rk), intent(in)                :: pFSWIup_solids
+    real(rk), intent(in)                :: pFSWIdw_solids
+
+    ! diffusivity * porosity
+    real(rk):: nuY(0:N)
+    ! porosity factor for Fickian gradient
+    real(rk):: pF(0:N)
+    ! porosity factor for cell just above the sediment-water interface
+    real(rk):: pFSWIup
+    ! porosity factor for cell just below the sediment-water interface
+    real(rk):: pFSWIdw
 
     integer                   :: i
     real(rk)                  :: a,c,l
     real(rk), dimension(0:N)  :: au,bu,cu,du
+
+    !choose btw solute or solid
+    if (.not.is_solid) then
+      pF = pF1_solutes
+      nuY = nuY_in*pF2_solutes
+      pFSWIup = pFSWIup_solutes
+      pFSWIdw = pFSWIdw_solutes
+    else
+      pF = pF1_solids
+      nuY = nuY_in*pF2_solids
+      pFSWIup = pFSWIup_solids
+      pFSWIdw = pFSWIdw_solids
+    end if
 
     ! set up matrix
     do i=2,N-1
       c     = 2.0_rk*dt*nuY(i)  /(h(i)+h(i+1))/h(i)
       a     = 2.0_rk*dt*nuY(i-1)/(h(i)+h(i-1))/h(i)
       l     = dt*Lsour(i)
-
-      cu(i) =-cnpar*c
-      au(i) =-cnpar*a
-      bu(i) = 1.0_rk + cnpar*(a + c) - l
-      du(i) = (1.0_rk - (1.0_rk-cnpar)*(a + c))*Y(i)                  &
-            + (1.0_rk - cnpar)*( a*Y(i-1) + c*Y(i+1) ) + dt*Qsour(i)
+      !Special treatment for top cell of sediments (PWA)
+      if (i.eq.i_sed_top) then
+        !pF(i+1) -> pFSWIup, pF(i)*c -> pFSWIdw*c
+        cu(i) =-cnpar*pFSWIup*c
+        au(i) =-cnpar*pF(i-1)*a
+        bu(i) = 1.0_rk + cnpar*(pF(i)*a + pFSWIdw*c) - l
+        du(i) = (1.0_rk-(1.0_rk-cnpar)*(pF(i)*a+pFSWIdw*c))*Y(i)+&
+                (1.0_rk-cnpar)*(pF(i-1)*a*Y(i-1)+pFSWIup*c*Y(i+1) )+dt*Qsour(i)
+      !Special treatment for bottom cell of water column (PWA)
+      else if (i.eq.i_sed_top+1) then
+        !pF(i-1) -> pFSWIdw, pF(i)*a -> pFSWIup*a
+        cu(i) =-cnpar*pF(i+1)*c
+        au(i) =-cnpar*pFSWIdw*a
+        bu(i) = 1.0_rk+cnpar*(pFSWIup*a + pF(i)*c)-l
+        du(i) = (1.0_rk-(1.0_rk-cnpar)*(pFSWIup*a+pF(i)*c))*Y(i)+&
+                (1.0_rk-cnpar)*(pFSWIdw*a*Y(i-1)+pF(i+1)*c*Y(i+1) )+dt*Qsour(i)
+      else
+        cu(i) =-cnpar*pF(i+1)*c
+        au(i) =-cnpar*pF(i-1)*a
+        bu(i) = 1.0_rk+cnpar*pF(i)*(a + c)-l
+        du(i) = (1.0_rk-(1.0_rk-cnpar)*pF(i)*(a+c))*Y(i)+&
+                (1.0_rk-cnpar)*(pF(i-1)*a*Y(i-1)+pF(i+1)*c*Y(i+1))+dt*Qsour(i)
+      end if
+      !Note: all terms of coefficients involving cnpar or (1-cnpar)
+      ! derive from the Fickian gradient and therefore need to be
+      ! multiplied by the appropriate porosity factors (pF)
     end do
 
     ! set up upper boundary condition
@@ -73,15 +198,15 @@ contains
       a     = 2.0d0*dt*nuY(N-1)/(h(N)+h(N-1))/h(N)
       l     = dt*Lsour(N)
 
-      au(N) =-cnpar*a
-      if (posconc .eq. 1 .and. Yup.lt.0.0_rk) then ! Patankar (1980) trick
-         bu(N) =  1.0_rk - au(N) - l  - dt*Yup/Y(N)/h(N)
+      au(N) =-cnpar*pF(N-1)*a
+      if (posconc.eq.1.and.Yup.lt.0.0_rk) then ! Patankar (1980) trick
+         bu(N) =  1.0_rk + cnpar*pF(N)*a - l  - dt*Yup/Y(N)/h(N)
          du(N) = Y(N) + dt*Qsour(N)   &
-               + (1.0_rk - cnpar)*a*(Y(N-1)-Y(N))
+               + (1.0_rk - cnpar)*a*( pF(N-1)*Y(N-1) - pF(N)*Y(N) )
       else
-         bu(N) =  1.0_rk - au(N) - l
+         bu(N) =  1.0_rk + cnpar*pF(N)*a - l
          du(N) = Y(N) + dt*(Qsour(N)+Yup/h(N))   &
-               + (1.0_rk - cnpar)*a*(Y(N-1)-Y(N))
+               + (1.0_rk - cnpar)*a*( pF(N-1)*Y(N-1) - pF(N)*Y(N) )
       end if
     case(_DIRICHLET_)
       au(N) = 0.0_rk
@@ -95,15 +220,15 @@ contains
       c     = 2.0d0*dt*nuY(1)/(h(1)+h(2))/h(1)
       l     = dt*Lsour(1)
 
-      cu(1) =-cnpar*c
-      if (posconc.eq.1 .and. Ydw.lt.0.0_rk) then ! Patankar (1980) trick
-        bu(1) = 1.0_rk - cu(1) - l - dt*Ydw/Y(1)/h(1)
-        du(1) = Y(1) + dt*(Qsour(1))   &
-              + (1.0_rk - cnpar)*c*(Y(2)-Y(1))
+      cu(1) =-cnpar*pF(2)*c
+      if (posconc.eq.1.and.Ydw.lt.0.0_rk) then !Patankar (1980) trick
+         bu(1) = 1.0_rk + cnpar*pF(1)*c - l - dt*Ydw/Y(1)/h(1)
+         du(1) = Y(1) + dt*(Qsour(1))   &
+               + (1.0_rk - cnpar)*c*( pF(2)*Y(2) - pF(1)*Y(1) )
       else
-        bu(1) = 1.0_rk - cu(1) - l
-        du(1) = Y(1) + dt*(Qsour(1)+Ydw/h(1))   &
-              + (1.0_rk - cnpar)*c*(Y(2)-Y(1))
+         bu(1) = 1.0_rk + cnpar*pF(1)*c - l
+         du(1) = Y(1) + dt*(Qsour(1)+Ydw/h(1))   &
+               + (1.0_rk - cnpar)*c*( pF(2)*Y(2) - pF(1)*Y(1) )
       end if
     case(_DIRICHLET_)
       cu(1) = 0.0_rk

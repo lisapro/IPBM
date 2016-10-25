@@ -75,6 +75,8 @@ contains
                               "molecular_diffusivity",&
                               "bioturbation_diffusivity")
     call self%print_list_variables('Allocated brom_standard_variables:')
+    !call self%print_var("porosity")
+    !call self%print_var("porosity_on_interfaces")
     !delete unneeded list
     call kara_input%delete_list()
   end subroutine
