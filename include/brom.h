@@ -7,6 +7,7 @@
 #define _TURBULENCE_                'AKs'
 
 #define _FILE_NAME_WATER_           'water.nc'
+#define _FILE_NAME_SEDIMENTS_       'sediments.nc'
 
 #define _SECONDS_PER_CIRCLE_        300
 #define _LATITUDE_                  70._rk

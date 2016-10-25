@@ -92,22 +92,26 @@ contains
     use output_mod
 
     type(brom_state_variable):: temporary_variable
-    type(type_output):: netcdf
+    type(type_output):: netcdf_water
+    type(type_output):: netcdf_sediments
     integer:: year = _INITIALIZATION_SINCE_YEAR_
-    integer number_of_days
+    integer water_bbl_index,number_of_days
     integer day
     integer i
     !cpu time
     real(rk) t1,t2
 
-    !add number_of_boundaries for turbulence
-    netcdf = type_output(fabm_model,_FILE_NAME_WATER_,&
-                         1,number_of_layers,&
+    water_bbl_index = standard_vars%get_value("water_bbl_index")
+    netcdf_water = type_output(fabm_model,_FILE_NAME_WATER_,&
+                         water_bbl_index,number_of_layers,&
+                         number_of_layers)
+    netcdf_sediments = type_output(fabm_model,_FILE_NAME_SEDIMENTS_,&
+                         1,water_bbl_index-1,&
                          number_of_layers)
     number_of_days = standard_vars%get_1st_dim_length("day_number")
     day = standard_vars%first_day()
     call initial_date(day,year)
-    call stabilize(day,year)
+    !call stabilize(day,year)
 
     do i = 1,number_of_days
       call date(day,year)
@@ -132,14 +136,16 @@ contains
         radiative_flux)
       call cpu_time(t1)
       call day_circle()
-      call netcdf%save(fabm_model,state_vars,i,&
+      call netcdf_water%save(fabm_model,state_vars,i,&
+                  temp,salt,turb,radiative_flux,depth)
+      call netcdf_sediments%save(fabm_model,state_vars,i,&
                   temp,salt,turb,radiative_flux,depth)
       call cpu_time(t2)
       write(*,*) "number / ","julianday / ","year",i,day,year
       write(*,*) "Time taken by day circle:",t2-t1," seconds"
       day = day+1
-      temporary_variable = find_state_variable("niva_brom_bio_O2")
-      call temporary_variable%print_state_variable()
+      !temporary_variable = find_state_variable("niva_brom_bio_O2")
+      !call temporary_variable%print_state_variable()
     end do
     write(*,*) "Finish"
     _LINE_
