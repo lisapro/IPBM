@@ -495,12 +495,12 @@ contains
     class(brom_state_variable),intent(in):: self
 
     write(*,*) self%name
-    write(*,*) "is_solid:",self%is_solid
-    write(*,*) "density:",self%density
+    !write(*,*) "is_solid:",self%is_solid
+    !write(*,*) "density:",self%density
     write(*,'(f9.3)') (/ self%value(size(self%value,1):1:-1) /)
-    write(*,'(x,a,2x,i2,f9.6)') 'up',self%use_bound_up,self%bound_up
-    write(*,'(x,a,i2,f9.6)') 'down',self%use_bound_low,self%bound_low
-    write(*,*) 'sinking',self%sinking_velocity
+    !write(*,'(x,a,2x,i2,f9.6)') 'up',self%use_bound_up,self%bound_up
+    !write(*,'(x,a,i2,f9.6)') 'down',self%use_bound_low,self%bound_low
+    !write(*,*) 'sinking',self%sinking_velocity
     _LINE_
   end subroutine
 end module

@@ -52,7 +52,7 @@ contains
         _NEUMANN_,0._rk,0._rk,0._rk,0._rk)
       call state_vars(i)%print_name()
     end do
-    !_LINE_
+    _LINE_
     call fabm_initialize_state(fabm_model,1,number_of_layers)
     !linking bulk variables
     allocate(temp(number_of_layers))
@@ -101,6 +101,15 @@ contains
     !cpu time
     real(rk) t1,t2
 
+    !temp
+    !type(brom_state_variable):: oxygen
+    !real(rk),dimension(number_of_layers+1):: kz_mol
+    !real(rk),dimension(number_of_layers+1):: kz_bio
+    !real(rk),dimension(number_of_layers+1):: kz_tot
+    !integer bbl_sed_index
+    !real(rk) O2stat
+    !temp
+
     water_bbl_index = standard_vars%get_value("water_bbl_index")
     netcdf_water = type_output(fabm_model,_FILE_NAME_WATER_,&
                          water_bbl_index,number_of_layers,&
@@ -146,6 +155,19 @@ contains
       day = day+1
       !temporary_variable = find_state_variable("niva_brom_bio_O2")
       !call temporary_variable%print_state_variable()
+
+      !temp
+      !kz_mol = standard_vars%get_column("molecular_diffusivity")
+      !kz_bio = standard_vars%get_column("bioturbation_diffusivity")
+      !oxygen = find_state_variable("niva_brom_bio_O2")
+      !bbl_sed_index = standard_vars%get_value("bbl_sediments_index")
+      !!oxygen status of sediments
+      !O2stat = oxygen%value(bbl_sed_index)/&
+      !(oxygen%value(bbl_sed_index)+_KO2_)
+      !kz_tot = turb+kz_mol+kz_bio*O2stat
+      !write(*,'(f20.15)') (/ kz_tot(size(turb,1):1:-1) /)
+      !temp
+
     end do
     write(*,*) "Finish"
     _LINE_
@@ -211,7 +233,7 @@ contains
 
     if (mod(60*60*24,_SECONDS_PER_CIRCLE_)/=0) then
       call fatal_error("Check _SECONDS_PER_CIRCLE_",&
-                       "It should be multiple of 86400")
+                       "Wrong value")
     else
       number_of_circles = int(60*60*24/_SECONDS_PER_CIRCLE_)
     end if
