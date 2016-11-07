@@ -1,2 +1,4 @@
 build/
 *~
+data/sediments.nc
+data/water.nc

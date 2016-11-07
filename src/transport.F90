@@ -120,7 +120,7 @@ contains
     number_of_days = standard_vars%get_1st_dim_length("day_number")
     day = standard_vars%first_day()
     call initial_date(day,year)
-    !call stabilize(day,year)
+    call stabilize(day,year)
 
     do i = 1,number_of_days
       call date(day,year)
@@ -404,8 +404,8 @@ contains
       write(*,*) "number / ","julianday / ","pseudo day",&
                  i,day,pseudo_day
       day = day+1
-      temporary_variable = find_state_variable("niva_brom_bio_O2")
-      call temporary_variable%print_state_variable()
+      !temporary_variable = find_state_variable("niva_brom_bio_O2")
+      !call temporary_variable%print_state_variable()
     end do
   end subroutine
 
@@ -437,15 +437,15 @@ contains
   end subroutine
 
   subroutine configurate_state_variables()
-    call find_set_state_variable("niva_brom_redox_SO4",&
-      use_bound_up = _DIRICHLET_,use_bound_low = _DIRICHLET_,&
-      bound_up = 25000._rk,bound_low = 25000._rk)
+    !call find_set_state_variable("niva_brom_redox_SO4",&
+    !  use_bound_up = _DIRICHLET_,use_bound_low = _DIRICHLET_,&
+    !  bound_up = 25000._rk,bound_low = 25000._rk)
     call find_set_state_variable(inname = "niva_brom_redox_Mn4",&
       use_bound_up = _DIRICHLET_,bound_up = 0.5e-4_rk)
     call find_set_state_variable("niva_brom_redox_Fe3",&
       use_bound_up = _DIRICHLET_,bound_up = 0.4e-4_rk)
-    call find_set_state_variable("niva_brom_carb_Alk",&
-      use_bound_up = _DIRICHLET_,bound_up = 2250._rk)
+    !call find_set_state_variable("niva_brom_carb_Alk",&
+    !  use_bound_up = _DIRICHLET_,bound_up = 2250._rk)
 
     call find_set_state_variable("niva_brom_bio_Phy",&
       is_solid = .true.,density = 1.5E7_rk)
