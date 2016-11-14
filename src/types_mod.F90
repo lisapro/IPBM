@@ -235,10 +235,11 @@ contains
     end select
   end function
 
-  function get_value(self,inname)
+  function get_value(self,inname,id)
     real(rk),allocatable:: get_value
     class(list_variables),intent(in):: self
     character(len=*)     ,intent(in):: inname
+    integer,optional     ,intent(in):: id
 
     class(variable),allocatable:: get_variable
 
@@ -247,6 +248,11 @@ contains
     type is(alone_variable)
       !get_value = get_variable%value
       allocate(get_value,source=get_variable%value)
+    type is(variable_1d)
+      if (.not.present(id)) call fatal_error(&
+                       "Getting value failed",&
+                       "id should be present")
+      allocate(get_value,source=get_variable%value(id))
     class default
       call fatal_error("Getting value failed",&
                        "Wrong variable")

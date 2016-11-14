@@ -55,7 +55,13 @@ contains
 
     !open input netcdf and make list with all variables
     kara_input = type_input(_FILE_NAME_)
-    self%type_ice = ice(_ICE_LAYERS_)
+    !horizontal variables
+    call self%add_var(kara_input,_OCEAN_TIME_)
+    call self%add_day_number("day_number")
+    !ice variables
+    self%type_ice = ice(_ICE_LAYERS_,self%get_1st_dim_length("day_number"))
+    call self%add_var(kara_input,_ICE_THICKNESS_)
+    call self%add_var(kara_input,_ICE_SURFACE_TEMPERATURE_)
     !vertical variables
     call self%add_grid_on_faces(kara_input,&
       _DEPTH_ON_BOUNDARY_,_ICE_LAYERS_,"ice_water_index",&
@@ -64,9 +70,6 @@ contains
     call self%add_grid_on_centers("middle_layer_depths",&
                                   "number_of_layers")
     call self%add_layer_thicknesses("layer_thicknesses")
-    !horizontal variables
-    call self%add_var(kara_input,_OCEAN_TIME_)
-    call self%add_day_number("day_number")
     !2d variables
     !Add variables which are constants in sediments
     call self%add_constant_in_sed(kara_input,_TEMPERATURE_)
@@ -125,19 +128,21 @@ contains
     real(rk):: resolution_bbl = _RESOLUTION_BBL_
     real(rk):: width_sediments = _WIDTH_SEDIMENTS_
     real(rk):: resolution_sediments = _RESOLUTION_SEDIMENTS_
+    real(rk):: ice_thickness
 
     call name_input%get_var(inname,var)
     select type(var)
     class is(variable_1d)
       length=size(var%value,1)
     end select
+    ice_thickness = self%get_value(_ICE_THICKNESS_,1)
 
     bbl_count = width_bbl/resolution_bbl
     sediments_count = width_sediments/resolution_sediments
     allocate(value_1d(ice_layers+length+bbl_count+sediments_count))
     water_bbl = 1+bbl_count+sediments_count
     bbl_sediments = 1+sediments_count
-    ice_water = 1+length+bbl_count+sediments_count
+    ice_water = length+bbl_count+sediments_count
     total_boundaries = ice_layers+length+bbl_count+sediments_count
 
     !adding indexes of inner boundaries
@@ -153,7 +158,8 @@ contains
     select type(var)
     class is(variable_1d)
       value_1d = 0._rk
-      value_1d(water_bbl:ice_water-1) = var%value
+      value_1d(water_bbl:ice_water) = var%value
+      value_1d(ice_water+1:) = self%type_ice%do_grid_faces(ice_thickness)
       value_1d(bbl_sediments) = var%value(1)
       do i = bbl_sediments+1,water_bbl
         value_1d(i) = value_1d(i-1)-resolution_bbl
@@ -256,22 +262,33 @@ contains
     class(brom_standard_variables),intent(inout):: self
     type(type_input)              ,intent(in)   :: name_input
     character(len=*)              ,intent(in)   :: inname
-    class(variable),allocatable:: var
+    class(variable),allocatable        :: var
     real(rk),dimension(:,:),allocatable:: value_2d
+    real(rk),dimension(:)  ,allocatable:: air_temp,ice_thickness
     type(variable_2d):: new_var
     integer i,length,time
-    integer water_bbl_index
+    integer water_bbl_index,ice_water_index
 
-    length = self%get_value("number_of_layers")
+    length          = self%get_value("number_of_layers")
     water_bbl_index = self%get_value("water_bbl_index")
-    time = self%get_1st_dim_length("day_number")
+    ice_water_index = self%get_value("ice_water_index")
+    time            = self%get_1st_dim_length("day_number")
     allocate(value_2d(length,time))
+    allocate(air_temp(time))
+    allocate(ice_thickness(time))
+    ice_thickness = self%get_column(_ICE_THICKNESS_)
     value_2d = 0._rk
 
     call name_input%get_var(inname,var)
     select type(var)
     type is(variable_2d)
-      value_2d(water_bbl_index:,:time) = var%value
+      value_2d(water_bbl_index:ice_water_index-1,:time) = var%value
+      select case(inname)
+      case(_TEMPERATURE_)
+        air_temp = self%get_column(_ICE_SURFACE_TEMPERATURE_)
+        value_2d(ice_water_index:,:time) = self%type_ice%do_ice_temperature(&
+          air_temp,value_2d(ice_water_index-1,:time),ice_thickness)
+      end select
       forall (i = 1:time)&
         value_2d(:water_bbl_index-1,i) =&
         value_2d(water_bbl_index,i)
