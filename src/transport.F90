@@ -331,7 +331,6 @@ contains
     pFSWIup_solids = 1.0_rk/(1.0_rk-pF2_solutes(bbl_sed_index))
     pFSWIdw_solids = pFSWIup_solids
 
-    !bbl_sed become sed_top since (/ 0,depth /)
     forall (i = 1:number_of_parameters)
       temporary(:,i) = do_diffusive(&
           N       = number_of_layers,&
@@ -349,7 +348,7 @@ contains
           Taur  = taur_r,&
           Yobs  = zeros,&
           Y     = (/ 0._rk,state_vars(i)%value /),&
-          i_sed_top = bbl_sed_index,&
+          i_sed_top = bbl_sed_index-1,&
           is_solid = state_vars(i)%is_solid,&
           pF1_solutes = pF1_solutes,&
           pF2_solutes = pF2_solutes,&

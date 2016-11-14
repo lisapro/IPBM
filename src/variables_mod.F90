@@ -274,9 +274,6 @@ contains
     ice_water_index = self%get_value("ice_water_index")
     time            = self%get_1st_dim_length("day_number")
     allocate(value_2d(length,time))
-    allocate(air_temp(time))
-    allocate(ice_thickness(time))
-    ice_thickness = self%get_column(_ICE_THICKNESS_)
     value_2d = 0._rk
 
     call name_input%get_var(inname,var)
@@ -285,9 +282,18 @@ contains
       value_2d(water_bbl_index:ice_water_index-1,:time) = var%value
       select case(inname)
       case(_TEMPERATURE_)
-        air_temp = self%get_column(_ICE_SURFACE_TEMPERATURE_)
+        allocate(air_temp(time))
+        allocate(ice_thickness(time))
+        air_temp      = self%get_column(_ICE_SURFACE_TEMPERATURE_)
+        ice_thickness = self%get_column(_ICE_THICKNESS_)
         value_2d(ice_water_index:,:time) = self%type_ice%do_ice_temperature(&
           air_temp,value_2d(ice_water_index-1,:time),ice_thickness)
+      case(_SALINITY_)
+        value_2d(ice_water_index:,:time) = self%type_ice%do_ice_salinity(&
+          value_2d(ice_water_index-1,:time))
+      case default
+        call fatal_error("Adding temp/salt in ice",&
+                         "variables_mod.F90")
       end select
       forall (i = 1:time)&
         value_2d(:water_bbl_index-1,i) =&
@@ -296,7 +302,7 @@ contains
       call self%add_item(new_var)
     class default
       call fatal_error("Adding constant in sediments variable",&
-        "Wrong type")
+                       "Wrong type")
     end select
   end subroutine
   !
