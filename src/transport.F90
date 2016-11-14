@@ -14,18 +14,19 @@ module transport
 
   integer number_of_parameters
   integer number_of_layers
-  real(rk),allocatable,dimension(:):: temp
-  real(rk),allocatable,dimension(:):: salt
+  real(rk),allocatable,dimension(:),target:: temp
+  real(rk),allocatable,dimension(:),target:: salt
+  real(rk),allocatable,dimension(:),target:: radiative_flux
+  real(rk),allocatable,dimension(:),target:: pressure
   real(rk),allocatable,dimension(:):: turb
-  real(rk),allocatable,dimension(:):: radiative_flux
   real(rk),allocatable,dimension(:):: depth
-  real(rk),allocatable,dimension(:):: pressure
   real(rk),allocatable,dimension(:):: layer_thicknesses
   !fabm model
   type(type_model) fabm_model
   !standard variables for model
   type(brom_standard_variables) standard_vars
-  type(brom_state_variable),allocatable,dimension(:):: state_vars
+  type(brom_state_variable),allocatable,&
+                       dimension(:),target:: state_vars
 contains
   subroutine initialize_brom()
     integer i
@@ -120,7 +121,7 @@ contains
     number_of_days = standard_vars%get_1st_dim_length("day_number")
     day = standard_vars%first_day()
     call initial_date(day,year)
-    call stabilize(day,year)
+    !call stabilize(day,year)
 
     do i = 1,number_of_days
       call date(day,year)
@@ -167,7 +168,6 @@ contains
       !kz_tot = turb+kz_mol+kz_bio*O2stat
       !write(*,'(f20.15)') (/ kz_tot(size(turb,1):1:-1) /)
       !temp
-
     end do
     write(*,*) "Finish"
     _LINE_

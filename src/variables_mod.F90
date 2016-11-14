@@ -4,10 +4,12 @@
 module variables_mod
   use types_mod
   use input_mod
+  use ice_mod
   use fabm_driver
 
   implicit none
   type,extends(list_variables):: brom_standard_variables
+    type(ice) type_ice
   contains
     private
     procedure:: initialize=>initialize_standard_variables
@@ -34,7 +36,7 @@ module variables_mod
     procedure:: set_brom_state_variable
     procedure:: print_state_variable
   end type
-
+  
   interface brom_standard_variables
     module procedure brom_standard_variables_constructor
   end interface
@@ -53,10 +55,12 @@ contains
 
     !open input netcdf and make list with all variables
     kara_input = type_input(_FILE_NAME_)
+    self%type_ice = ice(_ICE_LAYERS_)
     !vertical variables
     call self%add_grid_on_faces(kara_input,&
-      _DEPTH_ON_BOUNDARY_,"water_bbl_index",&
-      "bbl_sediments_index","number_of_boundaries")
+      _DEPTH_ON_BOUNDARY_,_ICE_LAYERS_,"ice_water_index",&
+      "water_bbl_index","bbl_sediments_index",&
+      "number_of_boundaries")
     call self%add_grid_on_centers("middle_layer_depths",&
                                   "number_of_layers")
     call self%add_layer_thicknesses("layer_thicknesses")
@@ -97,11 +101,14 @@ contains
   !Adds bbl and sediments to depths of layers faces
   !
   subroutine add_grid_on_faces(self,name_input,&
-             inname,water_bbl_index,bbl_sediments_index,&
+             inname,ice_layers,ice_water_index,&
+             water_bbl_index,bbl_sediments_index,&
              number_of_boundaries)
     class(brom_standard_variables),intent(inout):: self
     type(type_input),intent(in):: name_input
     character(len=*),intent(in):: inname
+    integer         ,intent(in):: ice_layers
+    character(len=*),intent(in):: ice_water_index
     character(len=*),intent(in):: water_bbl_index
     character(len=*),intent(in):: bbl_sediments_index
     character(len=*),intent(in):: number_of_boundaries
@@ -111,7 +118,7 @@ contains
     type(alone_variable) new_var
     type(variable_1d) new_var_1d
     integer length,bbl_count,sediments_count
-    integer water_bbl,bbl_sediments,total_boundaries
+    integer ice_water,water_bbl,bbl_sediments,total_boundaries
     integer i
 
     real(rk):: width_bbl = _WIDTH_BBL_
@@ -127,12 +134,15 @@ contains
 
     bbl_count = width_bbl/resolution_bbl
     sediments_count = width_sediments/resolution_sediments
-    allocate(value_1d(length+bbl_count+sediments_count))
+    allocate(value_1d(ice_layers+length+bbl_count+sediments_count))
     water_bbl = 1+bbl_count+sediments_count
     bbl_sediments = 1+sediments_count
-    total_boundaries = length+bbl_count+sediments_count
+    ice_water = 1+length+bbl_count+sediments_count
+    total_boundaries = ice_layers+length+bbl_count+sediments_count
 
     !adding indexes of inner boundaries
+    new_var = alone_variable(ice_water_index,'',ice_water)
+    call self%add_item(new_var)
     new_var = alone_variable(water_bbl_index,'',water_bbl)
     call self%add_item(new_var)
     new_var = alone_variable(bbl_sediments_index,'',bbl_sediments)
@@ -143,7 +153,7 @@ contains
     select type(var)
     class is(variable_1d)
       value_1d = 0._rk
-      value_1d(water_bbl:) = var%value
+      value_1d(water_bbl:ice_water-1) = var%value
       value_1d(bbl_sediments) = var%value(1)
       do i = bbl_sediments+1,water_bbl
         value_1d(i) = value_1d(i-1)-resolution_bbl

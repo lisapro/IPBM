@@ -15,3 +15,4 @@
 #define _RESOLUTION_BBL_            0.1_rk
 #define _WIDTH_SEDIMENTS_           0.1_rk
 #define _RESOLUTION_SEDIMENTS_      0.02_rk
+#define _ICE_LAYERS_                5
