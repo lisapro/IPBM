@@ -35,6 +35,7 @@ module types_mod
     procedure:: get_1st_dim_length
     procedure:: print_var
     procedure:: print_list_variables
+    procedure:: get_array
     procedure:: get_column
     procedure:: get_value
   end type
@@ -166,7 +167,7 @@ contains
 
     call self%get_var(inname,get_variable)
     select type(get_variable)
-    type is(alone_variable)
+    class is(alone_variable)
       get_1st_dim_length=1
     class is(variable_1d)
       get_1st_dim_length=size(get_variable%value,1)
@@ -209,7 +210,24 @@ contains
     end if
     _LINE_
   end subroutine
+  
+  function get_array(self,inname)
+    real(rk),allocatable:: get_array(:,:)
+    class(list_variables),intent(in):: self
+    character(len=*)     ,intent(in):: inname
 
+    class(variable),allocatable:: get_variable
+
+    call self%get_var(inname,get_variable)
+    select type(get_variable)
+    class is(variable_2d)
+      allocate(get_array,source=get_variable%value)
+    class default
+      call fatal_error("Getting column failed",&
+                       "Wrong variable")
+    end select
+  end function
+  
   function get_column(self,inname,column)
     real(rk),allocatable:: get_column(:)
     class(list_variables),intent(in):: self
@@ -220,10 +238,10 @@ contains
 
     call self%get_var(inname,get_variable)
     select type(get_variable)
-    type is(variable_1d)
+    class is(variable_1d)
       !get_column = get_variable%value(:)
       allocate(get_column,source=get_variable%value(:))
-    type is(variable_2d)
+    class is(variable_2d)
       if (.not.present(column)) call fatal_error(&
                        "Getting column failed",&
                        "Column should be present")
@@ -245,10 +263,10 @@ contains
 
     call self%get_var(inname,get_variable)
     select type(get_variable)
-    type is(alone_variable)
+    class is(alone_variable)
       !get_value = get_variable%value
       allocate(get_value,source=get_variable%value)
-    type is(variable_1d)
+    class is(variable_1d)
       if (.not.present(id)) call fatal_error(&
                        "Getting value failed",&
                        "id should be present")

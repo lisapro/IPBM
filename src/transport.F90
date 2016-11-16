@@ -69,10 +69,10 @@ contains
       standard_variables%downwelling_photosynthetic_radiative_flux,&
       radiative_flux)
     allocate(depth(number_of_layers))
-    depth = standard_vars%get_column("middle_layer_depths")
+    depth = standard_vars%get_column("middle_layer_depths",1)
     allocate(layer_thicknesses(number_of_layers))
     layer_thicknesses = standard_vars%get_column(&
-                        "layer_thicknesses")
+                        "layer_thicknesses",1)
     !convert depth to pressure
     !total=water+atmosphere [dbar]
     allocate(pressure(number_of_layers))
