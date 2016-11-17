@@ -23,6 +23,7 @@ module ice_mod
     procedure,public:: do_grid
     procedure,public:: do_ice_temperature
     procedure,public:: do_ice_brine_salinity
+    procedure,public:: do_brine_relative_volume
     procedure:: do_depths
     procedure:: do_ice_bulk_salinity
     procedure:: do_ice_brine_density
@@ -237,5 +238,6 @@ contains
       (self%do_ice_bulk_density(brine_salinity,bulk_salinity)*&
        bulk_salinity)/(self%do_ice_brine_density(brine_salinity)*&
        brine_salinity)
+    do_brine_relative_volume(1,:) = 0.5_rk
   end function do_brine_relative_volume
 end module ice_mod

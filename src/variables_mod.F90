@@ -343,18 +343,19 @@ contains
     real(rk),dimension(:,:),allocatable:: porosity_factor
     type(variable_2d):: new_var
 
-    integer swi_index,length,i
+    integer ice_water_index,swi_index,length,i
     real(rk) max_porosity,min_porosity,porosity_decay
     real(rk),dimension(:)  ,allocatable:: swi_depth
     real(rk),dimension(:,:),allocatable:: depth_center
     real(rk),dimension(:,:),allocatable:: depth_boundary
 
-    max_porosity = _MAX_POROSITY_
-    min_porosity = _MIN_POROSITY_
+    max_porosity   = _MAX_POROSITY_
+    min_porosity   = _MIN_POROSITY_
     porosity_decay = _POROSITY_DECAY_
 
-    swi_index = self%get_value("bbl_sediments_index")
-    length = self%get_value("number_of_layers")
+    ice_water_index = self%get_value("ice_water_index")
+    swi_index       = self%get_value("bbl_sediments_index")
+    length          = self%get_value("number_of_layers")
     allocate(depth_center,source=self%get_array("middle_layer_depths"))
     allocate(depth_boundary,source=self%get_array(_DEPTH_ON_BOUNDARY_))
     allocate(swi_depth,source = depth_boundary(swi_index,:))
@@ -368,6 +369,8 @@ contains
         depth_center(1:swi_index-1,i)-swi_depth)/&
         porosity_decay)
     end forall
+    porosity(ice_water_index:,:) = self%type_ice%do_brine_relative_volume(&
+          .true.,self%get_column(_ICE_THICKNESS_))
     new_var = variable_2d(name_porosity,'',porosity)
     call self%add_item(new_var)
 
