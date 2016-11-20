@@ -102,14 +102,14 @@ contains
     real(rk),dimension(:),intent(in)   :: air_temp,water_temp,ice_thickness
     integer i
     
-    forall (i = 2:self%number_of_layers)
+    forall (i = 1:self%number_of_layers)
       self%t_face(i,:) = air_temp+((water_temp-air_temp)*&
         self%depth_face(i,:))/ice_thickness
       self%t_center(i,:) = air_temp+((water_temp-air_temp)*&
         self%depth_center(i,:))/ice_thickness
     end forall
-    self%t_face(1,:) = water_temp
-    self%t_center(1,:) = water_temp
+    !self%t_face(1,:) = water_temp
+    !self%t_center(1,:) = water_temp
     where (self%t_face>-0.2_rk) self%t_face = -0.2_rk
     where (self%t_center>-0.2_rk) self%t_center = -0.2_rk
     allocate(do_ice_temperature,source=self%t_center)
@@ -149,8 +149,8 @@ contains
                -5.501_rk*self%t_center**2)+(&
                -0.03669_rk*self%t_center**3)
     end where
-    self%s_brine_face(1,:) = water_salt
-    self%s_brine_center(1,:) = water_salt
+    !self%s_brine_face(1,:) = water_salt
+    !self%s_brine_center(1,:) = water_salt
     allocate(do_ice_brine_salinity,source=self%s_brine_center)
   end function do_ice_brine_salinity
   !
@@ -167,12 +167,12 @@ contains
     
     allocate(do_ice_bulk_salinity(self%number_of_layers,self%number_of_days))
     allocate(z_p(self%number_of_layers,self%number_of_days))
-    forall (i = 2:self%number_of_layers)
+    forall (i = 1:self%number_of_layers)
       z_p(i,:) = depth(i,:)/ice_thickness
       do_ice_bulk_salinity(i,:) = 19.539_rk*(z_p(i,:)**2)&
                                  -19.93_rk*z_p(i,:)+8.913_rk
     end forall
-    do_ice_bulk_salinity(1,:) =  self%s_brine_center(1,:)
+    !do_ice_bulk_salinity(1,:) =  self%s_brine_center(1,:)
   end function do_ice_bulk_salinity
   !
   !Private procedure, brine density through ice [g*m-3]
@@ -213,6 +213,7 @@ contains
   !
   function do_brine_relative_volume(self,is_center,ice_thickness)
     real(rk),allocatable,dimension(:,:):: do_brine_relative_volume
+    !real(rk),allocatable,dimension(:,:):: temporary
     class(ice)           ,intent(inout):: self
     logical              ,intent(in)   :: is_center
     real(rk),dimension(:),intent(in)   :: ice_thickness
@@ -223,6 +224,8 @@ contains
   
     allocate(do_brine_relative_volume(&
       self%number_of_layers,self%number_of_days))
+    !allocate(temporary(&
+    !  self%number_of_layers,self%number_of_days))
     select case(is_center)
     case(.true.)
       allocate(brine_salinity,source=self%s_brine_center)
@@ -238,6 +241,9 @@ contains
       (self%do_ice_bulk_density(brine_salinity,bulk_salinity)*&
        bulk_salinity)/(self%do_ice_brine_density(brine_salinity)*&
        brine_salinity)
-    do_brine_relative_volume(1,:) = 0.5_rk
+    !do_brine_relative_volume(1,:) = 0.5_rk
+    where (do_brine_relative_volume > 0.9_rk) &
+      do_brine_relative_volume = 0.9_rk
+    !temporary = do_brine_relative_volume
   end function do_brine_relative_volume
 end module ice_mod

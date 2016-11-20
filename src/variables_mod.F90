@@ -405,6 +405,9 @@ contains
         depth_boundary(1:swi_index,i)-swi_depth)/&
         porosity_decay)
     end forall
+    porosity(ice_water_index,:) = 0.9_rk
+    porosity(ice_water_index+1:,:) = self%type_ice%do_brine_relative_volume(&
+          .false.,self%get_column(_ICE_THICKNESS_))
     new_var = variable_2d(name_porosity_faces,'',porosity)
     call self%add_item(new_var)
 
@@ -453,12 +456,13 @@ contains
     type(variable_1d):: new_var_1d
     integer i,time
     integer number_of_boundaries
-    integer water_bbl_index
+    integer water_bbl_index,ice_water_index
     integer bbl_sediments_index
 
     number_of_boundaries &
       = self%get_value("number_of_boundaries")
     water_bbl_index = self%get_value("water_bbl_index")
+    ice_water_index = self%get_value("ice_water_index")
     bbl_sediments_index &
       = self%get_value("bbl_sediments_index")
     time = self%get_1st_dim_length("day_number")
@@ -469,7 +473,7 @@ contains
     call name_input%get_var(name_eddy_diffusivity,var)
     select type(var)
     type is(variable_2d)
-      eddy_kz(water_bbl_index:,:time) = var%value
+      eddy_kz(water_bbl_index:ice_water_index-1,:time) = var%value
       !linear interpolation in bbl
       forall (i = bbl_sediments_index+1:water_bbl_index)
         eddy_kz(i,:) = &
