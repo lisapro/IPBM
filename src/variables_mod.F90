@@ -449,11 +449,11 @@ contains
 
     class(variable)        ,allocatable:: var
     real(rk),dimension(:,:),allocatable:: eddy_kz
-    real(rk),dimension(:)  ,allocatable:: value_1d
-    real(rk),dimension(:)  ,allocatable:: tortuosity
-    real(rk),dimension(:)  ,allocatable:: depth_boundary
+    real(rk),dimension(:,:),allocatable:: value_2d
+    real(rk),dimension(:,:),allocatable:: tortuosity
+    real(rk),dimension(:,:),allocatable:: depth_boundary
     type(variable_2d):: new_var_2d
-    type(variable_1d):: new_var_1d
+    !type(variable_1d):: new_var_1d
     integer i,time
     integer number_of_boundaries
     integer water_bbl_index,ice_water_index
@@ -488,34 +488,34 @@ contains
     end select
 
     !add molecular diffusivity
-    allocate(tortuosity(number_of_boundaries))
-    tortuosity = self%get_column("tortuosity_on_interfaces")
-    allocate(value_1d(number_of_boundaries))
-    value_1d = _INFINITE_DILLUTION_MOLECULAR_DIFFUSIVITY_
-    value_1d(:bbl_sediments_index) = &
+    allocate(tortuosity(number_of_boundaries,time))
+    tortuosity = self%get_array("tortuosity_on_interfaces")
+    allocate(value_2d(number_of_boundaries,time))
+    value_2d = _INFINITE_DILLUTION_MOLECULAR_DIFFUSIVITY_
+    value_2d(:bbl_sediments_index,:) = &
     _RELATIVE_DYNAMIC_VISCOSITY_*&
     _INFINITE_DILLUTION_MOLECULAR_DIFFUSIVITY_/&
-    tortuosity(:bbl_sediments_index)**2
-    new_var_1d = variable_1d(name_molecular_diffusivity,'',value_1d)
-    call self%add_item(new_var_1d)
+    tortuosity(:bbl_sediments_index,:)**2
+    new_var_2d = variable_2d(name_molecular_diffusivity,'',value_2d)
+    call self%add_item(new_var_2d)
 
     !add bioturbation diffusivity
-    allocate(depth_boundary(number_of_boundaries))
-    depth_boundary = self%get_column(_DEPTH_ON_BOUNDARY_)
-    value_1d = 0._rk
-    do i = 1,bbl_sediments_index
+    allocate(depth_boundary(number_of_boundaries,time))
+    depth_boundary = self%get_array(_DEPTH_ON_BOUNDARY_)
+    value_2d = 0._rk
+    forall (i = 1:bbl_sediments_index)
     !accuracy problem
-      if (depth_boundary(i)-depth_boundary(bbl_sediments_index)&
-          <_MIXED_LAYER_DEPTH_) then
-        value_1d(i) = _MAX_BIOTURBATION_DIFFUSIVITY_
-      else
-        value_1d(i) = _MAX_BIOTURBATION_DIFFUSIVITY_*exp(-1._rk*(&
-          depth_boundary(i)-depth_boundary(bbl_sediments_index)-&
+      where (depth_boundary(i,:)-depth_boundary(bbl_sediments_index,:)&
+          <_MIXED_LAYER_DEPTH_)
+        value_2d(i,:) = _MAX_BIOTURBATION_DIFFUSIVITY_
+      else where
+        value_2d(i,:) = _MAX_BIOTURBATION_DIFFUSIVITY_*exp(-1._rk*(&
+          depth_boundary(i,:)-depth_boundary(bbl_sediments_index,:)-&
           _MIXED_LAYER_DEPTH_)/_DECAY_BIOTURBATION_SCALE_)
-      end if
-    end do
-    new_var_1d = variable_1d(name_bioturbation_diffusivity,'',value_1d)
-    call self%add_item(new_var_1d)
+      end where
+    end forall
+    new_var_2d = variable_2d(name_bioturbation_diffusivity,'',value_2d)
+    call self%add_item(new_var_2d)
   end subroutine
 
   pure subroutine set_brom_state_variable(self,is_solid,&
