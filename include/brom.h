@@ -6,6 +6,7 @@
 #define _SALINITY_                  'salt'
 #define _TURBULENCE_                'AKs'
 #define _ICE_THICKNESS_             'hice'
+#define _SNOW_THICKNESS_			'snow_thick'
 #define _ICE_SURFACE_TEMPERATURE_   'tisrf'
 
 #define _FILE_NAME_WATER_           'water.nc'

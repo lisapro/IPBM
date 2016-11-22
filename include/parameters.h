@@ -5,7 +5,10 @@
 #define _NEUMANN_   1
 
 !light parameters:
-#define _ERLOV_     0.05_rk
+#define _ICE_ALBEDO_      0.744_rk
+#define _ICE_SCATTERED_   0.97_rk
+#define _ICE_EXTINCTION_  0.93_rk
+#define _ERLOV_           0.05_rk
 
 !porosity parameters:
 !(Soetaert etc., 1996)

@@ -60,6 +60,7 @@ contains
     call self%add_day_number("day_number")
     !ice variables
     call self%add_var(kara_input,_ICE_THICKNESS_)
+    call self%add_var(kara_input,_SNOW_THICKNESS_)
     call self%add_var(kara_input,_ICE_SURFACE_TEMPERATURE_)
     self%type_ice = ice(_ICE_LAYERS_,self%get_1st_dim_length("day_number"),&
       self%get_column(_ICE_THICKNESS_))
@@ -186,7 +187,7 @@ contains
     class(brom_standard_variables),intent(inout):: self
     character(len=*),intent(in):: inname
     character(len=*),intent(in):: number_of_layers
-    class(variable)      ,allocatable:: var
+    class(variable)        ,allocatable:: var
     real(rk),dimension(:,:),allocatable:: value_2d
     type(alone_variable):: new_var
     type(variable_2d):: new_var_2d

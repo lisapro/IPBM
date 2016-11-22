@@ -77,6 +77,7 @@ contains
     !total=water+atmosphere [dbar]
     allocate(pressure(number_of_layers))
     pressure = depth + 10._rk
+    pressure(standard_vars%get_value("ice_water_index"):) = 10._rk
     call fabm_link_bulk_data(&
       fabm_model,standard_variables%pressure,pressure)
     !linking horizontal variables
@@ -92,11 +93,11 @@ contains
   subroutine sarafan()
     use output_mod
 
-    type(brom_state_variable):: temporary_variable
+    !type(brom_state_variable):: temporary_variable
     type(type_output):: netcdf_water
     type(type_output):: netcdf_sediments
     integer:: year = _INITIALIZATION_SINCE_YEAR_
-    integer water_bbl_index,number_of_days
+    integer ice_water_index,water_bbl_index,number_of_days
     integer day
     integer i
     !cpu time
@@ -112,8 +113,9 @@ contains
     !temp
 
     water_bbl_index = standard_vars%get_value("water_bbl_index")
+    ice_water_index = standard_vars%get_value("ice_water_index")
     netcdf_water = type_output(fabm_model,_FILE_NAME_WATER_,&
-                         water_bbl_index,number_of_layers,&
+                         water_bbl_index,ice_water_index-1,&
                          number_of_layers)
     netcdf_sediments = type_output(fabm_model,_FILE_NAME_SEDIMENTS_,&
                          1,water_bbl_index-1,&
@@ -125,8 +127,10 @@ contains
 
     do i = 1,number_of_days
       call date(day,year)
-      radiative_flux = calculate_radiative_flux(&
-        surface_radiative_flux(_LATITUDE_,day),depth)
+      call calculate_radiative_flux(&
+        surface_radiative_flux(_LATITUDE_,day),&
+        standard_vars%get_value(_SNOW_THICKNESS_,i),&
+        standard_vars%get_value(_ICE_THICKNESS_ ,i))
       temp = standard_vars%get_column(_TEMPERATURE_,i)
       salt = standard_vars%get_column(_SALINITY_,i)
       turb = standard_vars%get_column(_TURBULENCE_,i)
@@ -145,7 +149,7 @@ contains
         standard_variables%downwelling_photosynthetic_radiative_flux,&
         radiative_flux)
       call cpu_time(t1)
-      call day_circle()
+      call day_circle(i)
       call netcdf_water%save(fabm_model,state_vars,i,&
                   temp,salt,turb,radiative_flux,depth)
       call netcdf_sediments%save(fabm_model,state_vars,i,&
@@ -209,13 +213,32 @@ contains
     if (surface_radiative_flux<0._rk) surface_radiative_flux = 0._rk
   end function
 
-  pure function calculate_radiative_flux(surface_flux,depth)
-    real(rk),intent(in)             :: surface_flux
-    real(rk),dimension(:),intent(in):: depth
-    real(rk),dimension(size(depth)):: calculate_radiative_flux
-
-    calculate_radiative_flux = surface_flux*exp(-_ERLOV_*depth)
-  end function
+  subroutine calculate_radiative_flux(surface_flux,snow_thick,ice_thick)
+    real(rk),intent(in):: surface_flux
+    real(rk),intent(in):: snow_thick
+    real(rk),intent(in):: ice_thick
+    integer  ice_water_index
+    real(rk) par_alb,par_scat
+    real(rk),allocatable:: ice_depths(:)
+    
+    ice_water_index = standard_vars%get_value("ice_water_index")
+    !ice_column
+    !surface_flux in Watts, to calculate it in micromoles photons per m2*s =>
+    !=> [w] = 4.6*[micromole photons]
+    !Grenfell and Maykutt 1977 indicate that the magnitude and shape
+    !of the albedo curves depend strongly on the amount of liquid
+    !water present in the upper part of the ice, so it fluctuates
+    !throught year (true also for extinction coefficient)
+    par_alb = surface_flux*(1._rk-_ICE_ALBEDO_)
+    !after scattered surface of ice
+    par_scat = par_alb*_ICE_SCATTERED_
+    allocate(ice_depths,source=ice_thick-depth(ice_water_index:))
+    radiative_flux(ice_water_index:) = &
+      par_scat*exp(-_ICE_EXTINCTION_*ice_depths)
+    !water column calculations
+    radiative_flux(:ice_water_index-1) = &
+      surface_flux*exp(-_ERLOV_*depth(:ice_water_index-1))
+  end subroutine
 
   pure function sinusoidal(julian_day,multiplier)
     integer, intent(in):: julian_day
@@ -226,11 +249,29 @@ contains
                   julian_day-40._rk)/365._rk))*multiplier
   end function
 
-  subroutine day_circle()
-    integer i,j
+  subroutine day_circle(id)
+    integer,intent(in):: id !number of the count
+    
+    real(rk),dimension(number_of_layers+1):: pF1_solutes
+    real(rk),dimension(number_of_layers+1):: pF2_solutes
+    real(rk),dimension(number_of_layers+1):: pF1_solids
+    real(rk),dimension(number_of_layers+1):: pF2_solids
+    real(rk),dimension(number_of_layers+1):: kz_mol
+    real(rk),dimension(number_of_layers+1):: kz_bio
+    integer i,j,bbl_sed_index
     integer number_of_circles
     real(rk),dimension(number_of_layers,number_of_parameters):: increment
 
+    bbl_sed_index = standard_vars%get_value("bbl_sediments_index")
+    pF1_solutes = &
+    (/ 0._rk,standard_vars%get_column("porosity_factor_solutes_1",id) /)
+    pF2_solutes = standard_vars%get_column("porosity_factor_solutes_2",id)
+    pF1_solids = &
+    (/ 0._rk,standard_vars%get_column("porosity_factor_solids_1",id) /)
+    pF2_solids = standard_vars%get_column("porosity_factor_solids_2",id)
+    kz_mol = standard_vars%get_column("molecular_diffusivity",id)
+    kz_bio = standard_vars%get_column("bioturbation_diffusivity",id)
+    
     if (mod(60*60*24,_SECONDS_PER_CIRCLE_)/=0) then
       call fatal_error("Check _SECONDS_PER_CIRCLE_",&
                        "Wrong value")
@@ -247,47 +288,42 @@ contains
         state_vars(j)%value = state_vars(j)%value+increment(:,j)
 
       !diffusion
-      call brom_do_diffusion()
+      call brom_do_diffusion(bbl_sed_index,&
+                             pF1_solutes,pF2_solutes,pF1_solids,&
+                             pF2_solids,kz_mol,kz_bio)
     end do
   end subroutine
 
-  subroutine brom_do_diffusion()
+  subroutine brom_do_diffusion(bbl_sed_index,&
+                               pF1_solutes,pF2_solutes,pF1_solids,&
+                               pF2_solids,kz_mol,kz_bio)
     use diff_mod
-
+    integer,intent(in):: bbl_sed_index
+    real(rk),dimension(number_of_layers+1),intent(in):: pF1_solutes
+    real(rk),dimension(number_of_layers+1),intent(in):: pF2_solutes
+    real(rk),dimension(number_of_layers+1),intent(in):: pF1_solids
+    real(rk),dimension(number_of_layers+1),intent(in):: pF2_solids
+    real(rk),dimension(number_of_layers+1),intent(in):: kz_mol
+    real(rk),dimension(number_of_layers+1),intent(in):: kz_bio
+    
     type(brom_state_variable):: oxygen
-    real(rk),dimension(number_of_layers+1):: pF1_solutes
-    real(rk),dimension(number_of_layers+1):: pF2_solutes
-    real(rk),dimension(number_of_layers+1):: pF1_solids
-    real(rk),dimension(number_of_layers+1):: pF2_solids
-    real(rk),dimension(number_of_layers+1):: kz_mol
-    real(rk),dimension(number_of_layers+1):: kz_bio
-    real(rk),dimension(number_of_layers+1):: kz_tot
     real(rk),dimension(number_of_layers+1):: ones
     real(rk),dimension(number_of_layers+1):: zeros
     real(rk),dimension(number_of_layers+1):: taur_r
+    real(rk),dimension(number_of_layers+1):: kz_tot
     real(rk),dimension(number_of_parameters):: surface_flux
     real(rk),dimension(0:number_of_layers,&
                          number_of_parameters):: temporary
-    integer i, bbl_sed_index
+    integer i
     real(rk) O2stat
     real(rk) pFSWIup_solutes, pFSWIdw_solutes
     real(rk) pFSWIup_solids , pFSWIdw_solids
 
-    pF1_solutes = &
-    (/ 0._rk,standard_vars%get_column("porosity_factor_solutes_1") /)
-    pF2_solutes = standard_vars%get_column("porosity_factor_solutes_2")
-    pF1_solids = &
-    (/ 0._rk,standard_vars%get_column("porosity_factor_solids_1") /)
-    pF2_solids = standard_vars%get_column("porosity_factor_solids_2")
-    kz_mol = standard_vars%get_column("molecular_diffusivity")
-    kz_bio = standard_vars%get_column("bioturbation_diffusivity")
-
-    ones=1._rk
-    zeros=0._rk
-    taur_r=1.d20
+    ones  = 1._rk
+    zeros = 0._rk
+    taur_r= 1.e20_rk
 
     oxygen = find_state_variable("niva_brom_bio_O2")
-    bbl_sed_index = standard_vars%get_value("bbl_sediments_index")
     !oxygen status of sediments
     O2stat = oxygen%value(bbl_sed_index)/&
       (oxygen%value(bbl_sed_index)+_KO2_)
@@ -375,8 +411,10 @@ contains
     counter = days_in_year*10
     do i = 1,counter
       call date(day,year)
-      radiative_flux = calculate_radiative_flux(&
-        surface_radiative_flux(_LATITUDE_,day),depth)
+      call calculate_radiative_flux(&
+        surface_radiative_flux(_LATITUDE_,day),&
+        standard_vars%get_value(_SNOW_THICKNESS_,i),&
+        standard_vars%get_value(_ICE_THICKNESS_ ,i))
       !day from 1 to 365 or 366
       pseudo_day = i-int(i/days_in_year)*&
                    days_in_year+1
@@ -398,7 +436,7 @@ contains
         fabm_model,&
         standard_variables%downwelling_photosynthetic_radiative_flux,&
         radiative_flux)
-      call day_circle()
+      call day_circle(i)
       write(*,*) "Stabilizing initial array of values, in progress ..."
       write(*,*) "number / ","julianday / ","pseudo day",&
                  i,day,pseudo_day
