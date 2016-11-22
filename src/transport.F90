@@ -20,7 +20,6 @@ module transport
   real(rk),allocatable,dimension(:),target:: pressure
   real(rk),allocatable,dimension(:):: turb
   real(rk),allocatable,dimension(:):: depth
-  real(rk),allocatable,dimension(:):: layer_thicknesses
   !fabm model
   type(type_model) fabm_model
   !standard variables for model
@@ -70,9 +69,6 @@ contains
       radiative_flux)
     allocate(depth(number_of_layers))
     depth = standard_vars%get_column("middle_layer_depths",1)
-    allocate(layer_thicknesses(number_of_layers))
-    layer_thicknesses = standard_vars%get_column(&
-                        "layer_thicknesses",1)
     !convert depth to pressure
     !total=water+atmosphere [dbar]
     allocate(pressure(number_of_layers))
@@ -112,8 +108,8 @@ contains
     !real(rk) O2stat
     !temp
 
-    water_bbl_index = standard_vars%get_value("water_bbl_index")
     ice_water_index = standard_vars%get_value("ice_water_index")
+    water_bbl_index = standard_vars%get_value("water_bbl_index")
     netcdf_water = type_output(fabm_model,_FILE_NAME_WATER_,&
                          water_bbl_index,ice_water_index-1,&
                          number_of_layers)
@@ -131,9 +127,9 @@ contains
         surface_radiative_flux(_LATITUDE_,day),&
         standard_vars%get_value(_SNOW_THICKNESS_,i),&
         standard_vars%get_value(_ICE_THICKNESS_ ,i))
-      temp = standard_vars%get_column(_TEMPERATURE_,i)
-      salt = standard_vars%get_column(_SALINITY_,i)
-      turb = standard_vars%get_column(_TURBULENCE_,i)
+      temp  = standard_vars%get_column(_TEMPERATURE_,i)
+      salt  = standard_vars%get_column(_SALINITY_,i)
+      turb  = standard_vars%get_column(_TURBULENCE_,i)
       call find_set_state_variable("niva_brom_bio_PO4",&
         use_bound_up = _DIRICHLET_,bound_up = sinusoidal(day,0.45_rk))
       call find_set_state_variable("niva_brom_bio_NO3",&
@@ -149,6 +145,7 @@ contains
         standard_variables%downwelling_photosynthetic_radiative_flux,&
         radiative_flux)
       call cpu_time(t1)
+      depth = standard_vars%get_column("middle_layer_depths",i)
       call day_circle(i)
       call netcdf_water%save(fabm_model,state_vars,i,&
                   temp,salt,turb,radiative_flux,depth)
@@ -258,6 +255,7 @@ contains
     real(rk),dimension(number_of_layers+1):: pF2_solids
     real(rk),dimension(number_of_layers+1):: kz_mol
     real(rk),dimension(number_of_layers+1):: kz_bio
+    real(rk),dimension(number_of_layers+1):: layer_thicknesses
     integer i,j,bbl_sed_index
     integer number_of_circles
     real(rk),dimension(number_of_layers,number_of_parameters):: increment
@@ -271,7 +269,9 @@ contains
     pF2_solids = standard_vars%get_column("porosity_factor_solids_2",id)
     kz_mol = standard_vars%get_column("molecular_diffusivity",id)
     kz_bio = standard_vars%get_column("bioturbation_diffusivity",id)
-    
+    layer_thicknesses = &
+    (/ 0._rk,standard_vars%get_column("layer_thicknesses",id) /)
+
     if (mod(60*60*24,_SECONDS_PER_CIRCLE_)/=0) then
       call fatal_error("Check _SECONDS_PER_CIRCLE_",&
                        "Wrong value")
@@ -290,13 +290,15 @@ contains
       !diffusion
       call brom_do_diffusion(bbl_sed_index,&
                              pF1_solutes,pF2_solutes,pF1_solids,&
-                             pF2_solids,kz_mol,kz_bio)
+                             pF2_solids,kz_mol,kz_bio,&
+                             layer_thicknesses)
     end do
   end subroutine
 
   subroutine brom_do_diffusion(bbl_sed_index,&
                                pF1_solutes,pF2_solutes,pF1_solids,&
-                               pF2_solids,kz_mol,kz_bio)
+                               pF2_solids,kz_mol,kz_bio,&
+                               layer_thicknesses)
     use diff_mod
     integer,intent(in):: bbl_sed_index
     real(rk),dimension(number_of_layers+1),intent(in):: pF1_solutes
@@ -305,6 +307,7 @@ contains
     real(rk),dimension(number_of_layers+1),intent(in):: pF2_solids
     real(rk),dimension(number_of_layers+1),intent(in):: kz_mol
     real(rk),dimension(number_of_layers+1),intent(in):: kz_bio
+    real(rk),dimension(number_of_layers+1),intent(in):: layer_thicknesses
     
     type(brom_state_variable):: oxygen
     real(rk),dimension(number_of_layers+1):: ones
@@ -373,7 +376,7 @@ contains
           dt      = _SECONDS_PER_CIRCLE_,&
           cnpar   = 0.6_rk,&
           posconc = 1,&
-          h  = (/ 0._rk,layer_thicknesses /),&
+          h    = layer_thicknesses,&
           Bcup = state_vars(i)%use_bound_up,&
           Bcdw = state_vars(i)%use_bound_low,&
           Yup  = state_vars(i)%bound_up,&
