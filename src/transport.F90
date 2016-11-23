@@ -14,12 +14,11 @@ module transport
 
   integer number_of_parameters
   integer number_of_layers
+  real(rk),allocatable,dimension(:):: depth
   real(rk),allocatable,dimension(:),target:: temp
   real(rk),allocatable,dimension(:),target:: salt
   real(rk),allocatable,dimension(:),target:: radiative_flux
   real(rk),allocatable,dimension(:),target:: pressure
-  real(rk),allocatable,dimension(:):: turb
-  real(rk),allocatable,dimension(:):: depth
   !fabm model
   type(type_model) fabm_model
   !standard variables for model
@@ -61,7 +60,6 @@ contains
     allocate(salt(number_of_layers))
     call fabm_link_bulk_data(&
       fabm_model,standard_variables%practical_salinity,salt)
-    allocate(turb(number_of_layers+1))
     allocate(radiative_flux(number_of_layers))
     call fabm_link_bulk_data(&
       fabm_model,&
@@ -89,53 +87,60 @@ contains
   subroutine sarafan()
     use output_mod
 
-    !type(brom_state_variable):: temporary_variable
+    type(type_output):: netcdf_ice
     type(type_output):: netcdf_water
     type(type_output):: netcdf_sediments
     integer:: year = _INITIALIZATION_SINCE_YEAR_
     integer ice_water_index,water_bbl_index,number_of_days
-    integer day
-    integer i
+    integer surface_index
+    integer day,i
     !cpu time
+    real(rk) ice
     real(rk) t1,t2
-
-    !temp
-    !type(brom_state_variable):: oxygen
-    !real(rk),dimension(number_of_layers+1):: kz_mol
-    !real(rk),dimension(number_of_layers+1):: kz_bio
-    !real(rk),dimension(number_of_layers+1):: kz_tot
-    !integer bbl_sed_index
-    !real(rk) O2stat
-    !temp
+    real(rk),allocatable,dimension(:):: indices
+    
+    allocate(indices(number_of_layers))
+    indices = (/(i,i=number_of_layers,1,-1)/)
 
     ice_water_index = standard_vars%get_value("ice_water_index")
     water_bbl_index = standard_vars%get_value("water_bbl_index")
+    number_of_days = standard_vars%get_1st_dim_length("day_number")
+    
+    netcdf_ice = type_output(fabm_model,_FILE_NAME_ICE_,&
+                         ice_water_index,number_of_layers,&
+                         number_of_layers)
     netcdf_water = type_output(fabm_model,_FILE_NAME_WATER_,&
                          water_bbl_index,ice_water_index-1,&
                          number_of_layers)
     netcdf_sediments = type_output(fabm_model,_FILE_NAME_SEDIMENTS_,&
                          1,water_bbl_index-1,&
                          number_of_layers)
-    number_of_days = standard_vars%get_1st_dim_length("day_number")
+    
     day = standard_vars%first_day()
     call initial_date(day,year)
     !call stabilize(day,year)
 
     do i = 1,number_of_days
       call date(day,year)
+      
+      ice   = standard_vars%get_value(_ICE_THICKNESS_,i)
+      depth = standard_vars%get_column("middle_layer_depths",i)
+      temp  = standard_vars%get_column(_TEMPERATURE_,i)
+      salt  = standard_vars%get_column(_SALINITY_,i)
       call calculate_radiative_flux(&
         surface_radiative_flux(_LATITUDE_,day),&
         standard_vars%get_value(_SNOW_THICKNESS_,i),&
         standard_vars%get_value(_ICE_THICKNESS_ ,i))
-      temp  = standard_vars%get_column(_TEMPERATURE_,i)
-      salt  = standard_vars%get_column(_SALINITY_,i)
-      turb  = standard_vars%get_column(_TURBULENCE_,i)
-      call find_set_state_variable("niva_brom_bio_PO4",&
-        use_bound_up = _DIRICHLET_,bound_up = sinusoidal(day,0.45_rk))
-      call find_set_state_variable("niva_brom_bio_NO3",&
-        use_bound_up = _DIRICHLET_,bound_up = sinusoidal(day,3.8_rk))
-      call find_set_state_variable("niva_brom_redox_Si",&
-        use_bound_up = _DIRICHLET_,bound_up = sinusoidal(day,2._rk))
+      
+      if (ice<0.1_rk) then
+        surface_index = ice_water_index-1
+        !move nutrients to water
+      else
+        surface_index = number_of_layers
+        !recalculate concentration on layers
+      end if
+      
+      call fabm_model%set_surface_index(surface_index)
       call fabm_link_bulk_data(&
         fabm_model,standard_variables%temperature,temp)
       call fabm_link_bulk_data(&
@@ -144,31 +149,28 @@ contains
         fabm_model,&
         standard_variables%downwelling_photosynthetic_radiative_flux,&
         radiative_flux)
+    
+      call find_set_state_variable("niva_brom_bio_PO4",&
+        use_bound_up = _DIRICHLET_,bound_up = sinusoidal(day,0.45_rk))
+      call find_set_state_variable("niva_brom_bio_NO3",&
+        use_bound_up = _DIRICHLET_,bound_up = sinusoidal(day,3.8_rk))
+      call find_set_state_variable("niva_brom_redox_Si",&
+        use_bound_up = _DIRICHLET_,bound_up = sinusoidal(day,2._rk))
+      
+      
       call cpu_time(t1)
-      depth = standard_vars%get_column("middle_layer_depths",i)
-      call day_circle(i)
-      call netcdf_water%save(fabm_model,state_vars,i,&
-                  temp,salt,turb,radiative_flux,depth)
-      call netcdf_sediments%save(fabm_model,state_vars,i,&
-                  temp,salt,turb,radiative_flux,depth)
+      call day_circle(i,surface_index)
+      call netcdf_ice%save(fabm_model,state_vars,indices,i,&
+                           temp,salt,depth,radiative_flux)
+      call netcdf_water%save(fabm_model,state_vars,depth,i,&
+                             temp,salt,depth,radiative_flux)
+      call netcdf_sediments%save(fabm_model,state_vars,depth,i,&
+                                 temp,salt,depth,radiative_flux)
       call cpu_time(t2)
+      
       write(*,*) "number / ","julianday / ","year",i,day,year
       write(*,*) "Time taken by day circle:",t2-t1," seconds"
       day = day+1
-      !temporary_variable = find_state_variable("niva_brom_bio_O2")
-      !call temporary_variable%print_state_variable()
-
-      !temp
-      !kz_mol = standard_vars%get_column("molecular_diffusivity")
-      !kz_bio = standard_vars%get_column("bioturbation_diffusivity")
-      !oxygen = find_state_variable("niva_brom_bio_O2")
-      !bbl_sed_index = standard_vars%get_value("bbl_sediments_index")
-      !!oxygen status of sediments
-      !O2stat = oxygen%value(bbl_sed_index)/&
-      !(oxygen%value(bbl_sed_index)+_KO2_)
-      !kz_tot = turb+kz_mol+kz_bio*O2stat
-      !write(*,'(f20.15)') (/ kz_tot(size(turb,1):1:-1) /)
-      !temp
     end do
     write(*,*) "Finish"
     _LINE_
@@ -246,8 +248,9 @@ contains
                   julian_day-40._rk)/365._rk))*multiplier
   end function
 
-  subroutine day_circle(id)
+  subroutine day_circle(id,surface_index)
     integer,intent(in):: id !number of the count
+    integer,intent(in):: surface_index
 
     real(rk),dimension(number_of_layers+1):: pF1_solutes
     real(rk),dimension(number_of_layers+1):: pF2_solutes
@@ -255,10 +258,11 @@ contains
     real(rk),dimension(number_of_layers+1):: pF2_solids
     real(rk),dimension(number_of_layers+1):: kz_mol
     real(rk),dimension(number_of_layers+1):: kz_bio
+    real(rk),dimension(number_of_layers+1):: kz_turb
     real(rk),dimension(number_of_layers+1):: layer_thicknesses
     integer i,j,bbl_sed_index
     integer number_of_circles
-    real(rk),dimension(number_of_layers,number_of_parameters):: increment
+    real(rk),dimension(surface_index,number_of_parameters):: increment
 
     bbl_sed_index = standard_vars%get_value("bbl_sediments_index")
     pF1_solutes = &
@@ -269,6 +273,7 @@ contains
     pF2_solids = standard_vars%get_column("porosity_factor_solids_2",id)
     kz_mol = standard_vars%get_column("molecular_diffusivity",id)
     kz_bio = standard_vars%get_column("bioturbation_diffusivity",id)
+    kz_turb = standard_vars%get_column(_TURBULENCE_,id)
     layer_thicknesses = &
     (/ 0._rk,standard_vars%get_column("layer_thicknesses",id) /)
 
@@ -282,24 +287,26 @@ contains
     do i = 1,number_of_circles
       !biogeochemistry
       increment = 0._rk
-      call fabm_do(fabm_model,1,number_of_layers,increment)
+      call fabm_do(fabm_model,1,surface_index,increment)
       increment = _SECONDS_PER_CIRCLE_*increment
       forall(j = 1:number_of_parameters)&
-        state_vars(j)%value = state_vars(j)%value+increment(:,j)
+        state_vars(j)%value(:surface_index) = &
+          state_vars(j)%value(:surface_index)+increment(:,j)
 
       !diffusion
-      call brom_do_diffusion(bbl_sed_index,&
+      call brom_do_diffusion(surface_index,bbl_sed_index,&
                              pF1_solutes,pF2_solutes,pF1_solids,&
-                             pF2_solids,kz_mol,kz_bio,&
+                             pF2_solids,kz_mol,kz_bio,kz_turb,&
                              layer_thicknesses)
     end do
   end subroutine
 
-  subroutine brom_do_diffusion(bbl_sed_index,&
+  subroutine brom_do_diffusion(surface_index,bbl_sed_index,&
                                pF1_solutes,pF2_solutes,pF1_solids,&
-                               pF2_solids,kz_mol,kz_bio,&
+                               pF2_solids,kz_mol,kz_bio,kz_turb,&
                                layer_thicknesses)
     use diff_mod
+    integer,intent(in):: surface_index
     integer,intent(in):: bbl_sed_index
     real(rk),dimension(number_of_layers+1),intent(in):: pF1_solutes
     real(rk),dimension(number_of_layers+1),intent(in):: pF2_solutes
@@ -307,6 +314,7 @@ contains
     real(rk),dimension(number_of_layers+1),intent(in):: pF2_solids
     real(rk),dimension(number_of_layers+1),intent(in):: kz_mol
     real(rk),dimension(number_of_layers+1),intent(in):: kz_bio
+    real(rk),dimension(number_of_layers+1),intent(in):: kz_turb
     real(rk),dimension(number_of_layers+1),intent(in):: layer_thicknesses
 
     type(brom_state_variable):: oxygen
@@ -330,7 +338,7 @@ contains
     !oxygen status of sediments
     O2stat = oxygen%value(bbl_sed_index)/&
       (oxygen%value(bbl_sed_index)+_KO2_)
-    kz_tot = turb+kz_mol+kz_bio*O2stat
+    kz_tot = kz_turb+kz_mol+kz_bio*O2stat
 
     surface_flux = 0._rk
     call fabm_do_surface(fabm_model,surface_flux)
@@ -372,82 +380,81 @@ contains
 
     forall (i = 1:number_of_parameters)
       temporary(:,i) = do_diffusive(&
-          N       = number_of_layers,&
+          N       = surface_index,&
           dt      = _SECONDS_PER_CIRCLE_,&
           cnpar   = 0.6_rk,&
           posconc = 1,&
-          h    = layer_thicknesses,&
+          h    = layer_thicknesses(:surface_index+1),&
           Bcup = state_vars(i)%use_bound_up,&
           Bcdw = state_vars(i)%use_bound_low,&
           Yup  = state_vars(i)%bound_up,&
           Ydw  = state_vars(i)%bound_low,&
-          nuY_in  = kz_tot,&
-          Lsour = zeros,&
-          Qsour = zeros,&
-          Taur  = taur_r,&
-          Yobs  = zeros,&
-          Y     = (/ 0._rk,state_vars(i)%value /),&
+          nuY_in  = kz_tot(:surface_index+1),&
+          Lsour = zeros(:surface_index+1),&
+          Qsour = zeros(:surface_index+1),&
+          Taur  = taur_r(:surface_index+1),&
+          Yobs  = zeros(:surface_index+1),&
+          Y     = (/ 0._rk,state_vars(i)%value(:surface_index) /),&
           i_sed_top = bbl_sed_index-1,&
           is_solid = state_vars(i)%is_solid,&
-          pF1_solutes = pF1_solutes,&
-          pF2_solutes = pF2_solutes,&
-          pF1_solids = pF1_solids,&
-          pF2_solids = pF2_solids,&
+          pF1_solutes = pF1_solutes(:surface_index+1),&
+          pF2_solutes = pF2_solutes(:surface_index+1),&
+          pF1_solids = pF1_solids(:surface_index+1),&
+          pF2_solids = pF2_solids(:surface_index+1),&
           pFSWIup_solutes = pFSWIup_solutes,&
           pFSWIdw_solutes = pFSWIdw_solutes,&
           pFSWIup_solids = pFSWIup_solids,&
           pFSWIdw_solids = pFSWIdw_solids)
-      state_vars(i)%value = temporary(1:number_of_layers,i)
+      state_vars(i)%value(1:surface_index) = temporary(1:surface_index,i)
     end forall
   end subroutine
 
-  subroutine stabilize(inday,inyear)
-    integer,intent(in):: inday,inyear
-
-    type(brom_state_variable):: temporary_variable
-    integer day,year
-    integer pseudo_day,days_in_year,counter
-    integer i
-
-    day = inday; year = inyear;
-    days_in_year = 365+merge(1,0,(mod(year,4).eq.0))
-    counter = days_in_year*10
-    do i = 1,counter
-      call date(day,year)
-      call calculate_radiative_flux(&
-        surface_radiative_flux(_LATITUDE_,day),&
-        standard_vars%get_value(_SNOW_THICKNESS_,i),&
-        standard_vars%get_value(_ICE_THICKNESS_ ,i))
-      !day from 1 to 365 or 366
-      pseudo_day = i-int(i/days_in_year)*&
-                   days_in_year+1
-      temp = standard_vars%get_column(_TEMPERATURE_,pseudo_day)
-      salt = standard_vars%get_column(_SALINITY_,pseudo_day)
-      turb = standard_vars%get_column(_TURBULENCE_,pseudo_day)
-
-      call find_set_state_variable("niva_brom_bio_PO4",&
-        use_bound_up = _DIRICHLET_,bound_up = sinusoidal(day,0.45_rk))
-      call find_set_state_variable("niva_brom_bio_NO3",&
-        use_bound_up = _DIRICHLET_,bound_up = sinusoidal(day,3.8_rk))
-      call find_set_state_variable("niva_brom_redox_Si",&
-        use_bound_up = _DIRICHLET_,bound_up = sinusoidal(day,2._rk))
-      call fabm_link_bulk_data(&
-        fabm_model,standard_variables%temperature,temp)
-      call fabm_link_bulk_data(&
-        fabm_model,standard_variables%practical_salinity,salt)
-      call fabm_link_bulk_data(&
-        fabm_model,&
-        standard_variables%downwelling_photosynthetic_radiative_flux,&
-        radiative_flux)
-      call day_circle(pseudo_day)
-      write(*,*) "Stabilizing initial array of values, in progress ..."
-      write(*,*) "number / ","julianday / ","pseudo day",&
-                 i,day,pseudo_day
-      day = day+1
-      !temporary_variable = find_state_variable("niva_brom_bio_O2")
-      !call temporary_variable%print_state_variable()
-    end do
-  end subroutine
+  !subroutine stabilize(inday,inyear)
+  !  integer,intent(in):: inday,inyear
+  !
+  !  type(brom_state_variable):: temporary_variable
+  !  integer day,year
+  !  integer pseudo_day,days_in_year,counter
+  !  integer i
+  !
+  !  day = inday; year = inyear;
+  !  days_in_year = 365+merge(1,0,(mod(year,4).eq.0))
+  !  counter = days_in_year*10
+  !  do i = 1,counter
+  !    call date(day,year)
+  !    call calculate_radiative_flux(&
+  !      surface_radiative_flux(_LATITUDE_,day),&
+  !      standard_vars%get_value(_SNOW_THICKNESS_,i),&
+  !      standard_vars%get_value(_ICE_THICKNESS_ ,i))
+  !    !day from 1 to 365 or 366
+  !    pseudo_day = i-int(i/days_in_year)*&
+  !                 days_in_year+1
+  !    temp = standard_vars%get_column(_TEMPERATURE_,pseudo_day)
+  !    salt = standard_vars%get_column(_SALINITY_,pseudo_day)
+  !
+  !    call find_set_state_variable("niva_brom_bio_PO4",&
+  !      use_bound_up = _DIRICHLET_,bound_up = sinusoidal(day,0.45_rk))
+  !    call find_set_state_variable("niva_brom_bio_NO3",&
+  !      use_bound_up = _DIRICHLET_,bound_up = sinusoidal(day,3.8_rk))
+  !    call find_set_state_variable("niva_brom_redox_Si",&
+  !      use_bound_up = _DIRICHLET_,bound_up = sinusoidal(day,2._rk))
+  !    call fabm_link_bulk_data(&
+  !      fabm_model,standard_variables%temperature,temp)
+  !    call fabm_link_bulk_data(&
+  !      fabm_model,standard_variables%practical_salinity,salt)
+  !    call fabm_link_bulk_data(&
+  !      fabm_model,&
+  !      standard_variables%downwelling_photosynthetic_radiative_flux,&
+  !      radiative_flux)
+  !    call day_circle(pseudo_day)
+  !    write(*,*) "Stabilizing initial array of values, in progress ..."
+  !    write(*,*) "number / ","julianday / ","pseudo day",&
+  !               i,day,pseudo_day
+  !    day = day+1
+  !    !temporary_variable = find_state_variable("niva_brom_bio_O2")
+  !    !call temporary_variable%print_state_variable()
+  !  end do
+  !end subroutine
 
   subroutine find_set_state_variable(inname,is_solid,&
       use_bound_up,use_bound_low,bound_up,bound_low,&
@@ -480,10 +487,10 @@ contains
     !call find_set_state_variable("niva_brom_redox_SO4",&
     !  use_bound_up = _DIRICHLET_,use_bound_low = _DIRICHLET_,&
     !  bound_up = 25000._rk,bound_low = 25000._rk)
-    call find_set_state_variable(inname = "niva_brom_redox_Mn4",&
-      use_bound_up = _DIRICHLET_,bound_up = 0.5e-4_rk)
-    call find_set_state_variable("niva_brom_redox_Fe3",&
-      use_bound_up = _DIRICHLET_,bound_up = 0.4e-4_rk)
+    !call find_set_state_variable(inname = "niva_brom_redox_Mn4",&
+    !  use_bound_up = _DIRICHLET_,bound_up = 0.5e-4_rk)
+    !call find_set_state_variable("niva_brom_redox_Fe3",&
+    !  use_bound_up = _DIRICHLET_,bound_up = 0.4e-4_rk)
     !call find_set_state_variable("niva_brom_carb_Alk",&
     !  use_bound_up = _DIRICHLET_,bound_up = 2250._rk)
 

@@ -19,7 +19,7 @@ module output_mod
     integer            :: nc_id
     !parameter_ids
     integer            :: z_id,time_id,iz_id
-    integer            :: t_id,s_id,kz2_id
+    integer            :: t_id,s_id,depth_id
     integer,allocatable:: parameter_id(:)
     integer,allocatable:: parameter_id_diag(:)
   contains
@@ -75,11 +75,11 @@ contains
     self%nc_id = -1
     call check(nf90_create(infile,NF90_CLOBBER,self%nc_id))
     !define the dimensions
-    call check(nf90_def_dim(self%nc_id,"depth",nlev,z_dim_id))
+    call check(nf90_def_dim(self%nc_id,"z",nlev,z_dim_id))
     call check(nf90_def_dim(self%nc_id,"time",time_len,time_dim_id))
     !define coordinates
     dim1d = z_dim_id
-    call check(nf90_def_var(self%nc_id,"depth",NF90_REAL,dim1d,self%z_id))
+    call check(nf90_def_var(self%nc_id,"z",NF90_REAL,dim1d,self%z_id))
     dim1d = time_dim_id
     call check(nf90_def_var(self%nc_id,"time",NF90_REAL,dim1d,self%time_id))
     !define variables
@@ -114,25 +114,25 @@ contains
     end do
     call check(nf90_def_var(self%nc_id,"temp",NF90_REAL,dim_ids,self%t_id))
     call check(nf90_def_var(self%nc_id,"salt",NF90_REAL,dim_ids,self%s_id))
-    call check(nf90_def_var(self%nc_id,"turb",NF90_REAL,dim_ids,&
-                            self%kz2_id))
+    call check(nf90_def_var(self%nc_id,"depth",NF90_REAL,dim_ids,&
+                            self%depth_id))
     call check(nf90_def_var(self%nc_id,"radiative_flux",&
                             NF90_REAL,dim_ids,self%iz_id))
     !end define
     call check(nf90_enddef(self%nc_id))
   end subroutine initialize
 
-  subroutine save(self,model,state_vars,day,&
-                  temp,salt,turb,radiative_flux,depth)
+  subroutine save(self,model,state_vars,z,day,&
+                  temp,salt,depth,radiative_flux)
     class(type_output),intent(inout):: self
     type (type_model)                    ,intent(in):: model
     type(brom_state_variable),allocatable,intent(in):: state_vars(:)
+    real(rk),allocatable,dimension(:)    ,intent(in):: z
     integer                              ,intent(in):: day
     real(rk),allocatable,dimension(:)    ,intent(in):: temp
     real(rk),allocatable,dimension(:)    ,intent(in):: salt
-    real(rk),allocatable,dimension(:)    ,intent(in):: turb
-    real(rk),allocatable,dimension(:)    ,intent(in):: radiative_flux
     real(rk),allocatable,dimension(:)    ,intent(in):: depth
+    real(rk),allocatable,dimension(:)    ,intent(in):: radiative_flux
 
     integer ip,i
     integer edges(2),start(2),start_time(1),edges_time(1)
@@ -149,7 +149,7 @@ contains
 
     if (self%first) then
       call check(nf90_put_var(self%nc_id,self%z_id,&
-                 depth(self%first_layer:self%last_layer),start,edges))
+                 z(self%first_layer:self%last_layer),start,edges))
       self%first = .false.
     end if
 
@@ -178,8 +178,8 @@ contains
       call check(nf90_put_var(self%nc_id,self%s_id,&
                               salt(self%first_layer:self%last_layer),&
                               start,edges))
-      call check(nf90_put_var(self%nc_id,self%kz2_id,&
-                              turb(self%first_layer:self%last_layer),&
+      call check(nf90_put_var(self%nc_id,self%depth_id,&
+                              depth(self%first_layer:self%last_layer),&
                               start,edges))
       call check(nf90_put_var(self%nc_id,self%iz_id,&
                               radiative_flux(&
