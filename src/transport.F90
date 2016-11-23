@@ -98,14 +98,14 @@ contains
     real(rk) ice
     real(rk) t1,t2
     real(rk),allocatable,dimension(:):: indices
-    
+
     allocate(indices(number_of_layers))
     indices = (/(i,i=number_of_layers,1,-1)/)
 
     ice_water_index = standard_vars%get_value("ice_water_index")
     water_bbl_index = standard_vars%get_value("water_bbl_index")
     number_of_days = standard_vars%get_1st_dim_length("day_number")
-    
+
     netcdf_ice = type_output(fabm_model,_FILE_NAME_ICE_,&
                          ice_water_index,number_of_layers,&
                          number_of_layers)
@@ -115,14 +115,14 @@ contains
     netcdf_sediments = type_output(fabm_model,_FILE_NAME_SEDIMENTS_,&
                          1,water_bbl_index-1,&
                          number_of_layers)
-    
+
     day = standard_vars%first_day()
     call initial_date(day,year)
     !call stabilize(day,year)
 
     do i = 1,number_of_days
       call date(day,year)
-      
+
       ice   = standard_vars%get_value(_ICE_THICKNESS_,i)
       depth = standard_vars%get_column("middle_layer_depths",i)
       temp  = standard_vars%get_column(_TEMPERATURE_,i)
@@ -131,7 +131,7 @@ contains
         surface_radiative_flux(_LATITUDE_,day),&
         standard_vars%get_value(_SNOW_THICKNESS_,i),&
         standard_vars%get_value(_ICE_THICKNESS_ ,i))
-      
+
       if (ice<0.1_rk) then
         surface_index = ice_water_index-1
         !move nutrients to water
@@ -139,7 +139,7 @@ contains
         surface_index = number_of_layers
         !recalculate concentration on layers
       end if
-      
+
       call fabm_model%set_surface_index(surface_index)
       call fabm_link_bulk_data(&
         fabm_model,standard_variables%temperature,temp)
@@ -149,15 +149,15 @@ contains
         fabm_model,&
         standard_variables%downwelling_photosynthetic_radiative_flux,&
         radiative_flux)
-    
+
       call find_set_state_variable("niva_brom_bio_PO4",&
         use_bound_up = _DIRICHLET_,bound_up = sinusoidal(day,0.45_rk))
       call find_set_state_variable("niva_brom_bio_NO3",&
         use_bound_up = _DIRICHLET_,bound_up = sinusoidal(day,3.8_rk))
       call find_set_state_variable("niva_brom_redox_Si",&
         use_bound_up = _DIRICHLET_,bound_up = sinusoidal(day,2._rk))
-      
-      
+
+
       call cpu_time(t1)
       call day_circle(i,surface_index)
       call netcdf_ice%save(fabm_model,state_vars,indices,i,&
@@ -167,7 +167,7 @@ contains
       call netcdf_sediments%save(fabm_model,state_vars,depth,i,&
                                  temp,salt,depth,radiative_flux)
       call cpu_time(t2)
-      
+
       write(*,*) "number / ","julianday / ","year",i,day,year
       write(*,*) "Time taken by day circle:",t2-t1," seconds"
       day = day+1

@@ -406,7 +406,7 @@ contains
         depth_boundary(1:swi_index,i)-swi_depth)/&
         porosity_decay)
     end forall
-    porosity(ice_water_index,:) = 0.9_rk
+    porosity(ice_water_index,:) = 1._rk
     porosity(ice_water_index+1:,:) = self%type_ice%do_brine_relative_volume(&
           .false.,self%get_column(_ICE_THICKNESS_))
     new_var = variable_2d(name_porosity_faces,'',porosity)

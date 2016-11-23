@@ -2,3 +2,4 @@ build/
 *~
 data/sediments.nc
 data/water.nc
+data/ice.nc
