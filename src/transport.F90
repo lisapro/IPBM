@@ -71,8 +71,9 @@ contains
     depth = standard_vars%get_column("middle_layer_depths",1)
     !convert depth to pressure
     !total=water+atmosphere [dbar]
-    allocate(pressure(number_of_layers))
-    pressure = depth + 10._rk
+    allocate(pressure,&
+      source=standard_vars%get_column("middle_layer_depths",1)+10._rk)
+    !pressure = depth + 10._rk
     pressure(standard_vars%get_value("ice_water_index"):) = 10._rk
     call fabm_link_bulk_data(&
       fabm_model,standard_variables%pressure,pressure)
@@ -217,7 +218,7 @@ contains
     integer  ice_water_index
     real(rk) par_alb,par_scat
     real(rk),allocatable:: ice_depths(:)
-    
+
     ice_water_index = standard_vars%get_value("ice_water_index")
     !ice_column
     !surface_flux in Watts, to calculate it in micromoles photons per m2*s =>
@@ -248,7 +249,7 @@ contains
 
   subroutine day_circle(id)
     integer,intent(in):: id !number of the count
-    
+
     real(rk),dimension(number_of_layers+1):: pF1_solutes
     real(rk),dimension(number_of_layers+1):: pF2_solutes
     real(rk),dimension(number_of_layers+1):: pF1_solids
@@ -308,7 +309,7 @@ contains
     real(rk),dimension(number_of_layers+1),intent(in):: kz_mol
     real(rk),dimension(number_of_layers+1),intent(in):: kz_bio
     real(rk),dimension(number_of_layers+1),intent(in):: layer_thicknesses
-    
+
     type(brom_state_variable):: oxygen
     real(rk),dimension(number_of_layers+1):: ones
     real(rk),dimension(number_of_layers+1):: zeros
