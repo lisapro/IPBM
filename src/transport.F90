@@ -71,9 +71,8 @@ contains
     depth = standard_vars%get_column("middle_layer_depths",1)
     !convert depth to pressure
     !total=water+atmosphere [dbar]
-    allocate(pressure,&
-      source=standard_vars%get_column("middle_layer_depths",1)+10._rk)
-    !pressure = depth + 10._rk
+    allocate(pressure(number_of_layers))
+    pressure = depth + 10._rk
     pressure(standard_vars%get_value("ice_water_index"):) = 10._rk
     call fabm_link_bulk_data(&
       fabm_model,standard_variables%pressure,pressure)
@@ -440,7 +439,7 @@ contains
         fabm_model,&
         standard_variables%downwelling_photosynthetic_radiative_flux,&
         radiative_flux)
-      call day_circle(i)
+      call day_circle(pseudo_day)
       write(*,*) "Stabilizing initial array of values, in progress ..."
       write(*,*) "number / ","julianday / ","pseudo day",&
                  i,day,pseudo_day
