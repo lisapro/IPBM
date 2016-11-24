@@ -57,10 +57,10 @@ contains
   subroutine do_depths(self,ice_thickness)
     class(ice)           ,intent(inout):: self
     real(rk),dimension(:),intent(in):: ice_thickness
-    
+
     real(rk),allocatable,dimension(:):: delta
     integer i
-  
+
     self%depth_face(1,:)   = ice_thickness-0.03_rk
     self%depth_center(1,:) = (self%depth_face(1,:)+ice_thickness)/2._rk
     allocate(delta(self%number_of_days))
@@ -79,10 +79,10 @@ contains
     real(rk),allocatable,dimension(:,:):: do_grid
     class(ice)           ,intent(inout):: self
     real(rk),dimension(:),intent(in)   :: ice_thickness
-    
+
     real(rk),allocatable,dimension(:):: delta
     integer i
-    
+
     allocate(do_grid(self%number_of_layers,self%number_of_days))
     do_grid(1,:) = 0.03_rk
     allocate(delta(self%number_of_days))
@@ -101,7 +101,7 @@ contains
     class(ice),intent(inout)           :: self
     real(rk),dimension(:),intent(in)   :: air_temp,water_temp,ice_thickness
     integer i
-    
+
     forall (i = 1:self%number_of_layers)
       self%t_face(i,:) = air_temp+((water_temp-air_temp)*&
         self%depth_face(i,:))/ice_thickness
@@ -122,7 +122,7 @@ contains
     real(rk),allocatable,dimension(:,:):: do_ice_brine_salinity
     class(ice),intent(inout)           :: self
     real(rk),dimension(:),intent(in)   :: water_salt
-    
+
     where (self%t_face<0._rk.and.self%t_face>=-22.9_rk)
       self%s_brine_face = -3.9921_rk+(-22.700_rk*self%t_face)+(&
                -1.0015_rk*self%t_face**2)+(&
@@ -164,7 +164,7 @@ contains
     !ratio btwn the distance from the ice surface and ice thickness
     real(rk),allocatable,dimension(:,:):: z_p
     integer i
-    
+
     allocate(do_ice_bulk_salinity(self%number_of_layers,self%number_of_days))
     allocate(z_p(self%number_of_layers,self%number_of_days))
     forall (i = 1:self%number_of_layers)
@@ -217,11 +217,11 @@ contains
     class(ice)           ,intent(inout):: self
     logical              ,intent(in)   :: is_center
     real(rk),dimension(:),intent(in)   :: ice_thickness
-    
+
     real(rk),allocatable,dimension(:,:):: brine_salinity
     real(rk),allocatable,dimension(:,:):: bulk_salinity
     real(rk),allocatable,dimension(:,:):: depth
-  
+
     allocate(do_brine_relative_volume(&
       self%number_of_layers,self%number_of_days))
     !allocate(temporary(&

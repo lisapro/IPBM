@@ -70,7 +70,7 @@ contains
     !convert depth to pressure
     !total=water+atmosphere [dbar]
     allocate(pressure(number_of_layers))
-    pressure = depth + 10._rk
+    pressure = depth+10._rk
     pressure(standard_vars%get_value("ice_water_index"):) = 10._rk
     call fabm_link_bulk_data(&
       fabm_model,standard_variables%pressure,pressure)
@@ -94,8 +94,9 @@ contains
     integer ice_water_index,water_bbl_index,number_of_days
     integer surface_index
     integer day,i
-    !cpu time
+    !ice thickness
     real(rk) ice
+    !cpu time
     real(rk) t1,t2
     real(rk),allocatable,dimension(:):: indices
 
@@ -134,12 +135,11 @@ contains
 
       if (ice<0.1_rk) then
         surface_index = ice_water_index-1
-        !move nutrients to water
       else
         surface_index = number_of_layers
-        !recalculate concentration on layers
       end if
 
+      !change surface index due to ice depth
       call fabm_model%set_surface_index(surface_index)
       call fabm_link_bulk_data(&
         fabm_model,standard_variables%temperature,temp)
@@ -150,12 +150,15 @@ contains
         standard_variables%downwelling_photosynthetic_radiative_flux,&
         radiative_flux)
 
-      call find_set_state_variable("niva_brom_bio_PO4",&
-        use_bound_up = _DIRICHLET_,bound_up = sinusoidal(day,0.45_rk))
-      call find_set_state_variable("niva_brom_bio_NO3",&
-        use_bound_up = _DIRICHLET_,bound_up = sinusoidal(day,3.8_rk))
-      call find_set_state_variable("niva_brom_redox_Si",&
-        use_bound_up = _DIRICHLET_,bound_up = sinusoidal(day,2._rk))
+      !
+      !have to change to flux on ice_water_index layer
+      !
+      !call find_set_state_variable("niva_brom_bio_PO4",&
+      !  use_bound_up = _DIRICHLET_,bound_up = sinusoidal(day,0.45_rk))
+      !call find_set_state_variable("niva_brom_bio_NO3",&
+      !  use_bound_up = _DIRICHLET_,bound_up = sinusoidal(day,3.8_rk))
+      !call find_set_state_variable("niva_brom_redox_Si",&
+      !  use_bound_up = _DIRICHLET_,bound_up = sinusoidal(day,2._rk))
 
 
       call cpu_time(t1)
@@ -279,7 +282,7 @@ contains
 
     if (mod(60*60*24,_SECONDS_PER_CIRCLE_)/=0) then
       call fatal_error("Check _SECONDS_PER_CIRCLE_",&
-                       "Wrong value")
+                       "should fit 86400/_SECONDS_PER_CIRCLE_=integer")
     else
       number_of_circles = int(60*60*24/_SECONDS_PER_CIRCLE_)
     end if
@@ -484,6 +487,9 @@ contains
   end subroutine
 
   subroutine configurate_state_variables()
+    !
+    !have to change to flux on ice_water_index layer
+    !
     !call find_set_state_variable("niva_brom_redox_SO4",&
     !  use_bound_up = _DIRICHLET_,use_bound_low = _DIRICHLET_,&
     !  bound_up = 25000._rk,bound_low = 25000._rk)

@@ -36,7 +36,7 @@ module variables_mod
     procedure:: set_brom_state_variable
     procedure:: print_state_variable
   end type
-  
+
   interface brom_standard_variables
     module procedure brom_standard_variables_constructor
   end interface
@@ -118,8 +118,8 @@ contains
     character(len=*),intent(in):: bbl_sediments_index
     character(len=*),intent(in):: number_of_boundaries
 
-    class(variable)      ,allocatable:: var
-    real(rk),dimension(:),allocatable:: ice_thickness
+    class(variable)        ,allocatable:: var
+    real(rk),dimension(:)  ,allocatable:: ice_thickness
     real(rk),dimension(:,:),allocatable:: value_2d
     type(alone_variable) new_var
     type(variable_2d) new_var_2d
