@@ -14,6 +14,7 @@ module variables_mod
     private
     procedure:: initialize=>initialize_standard_variables
     procedure:: add_var=>add_standard_var
+    procedure:: add_ice_thickness
     procedure:: add_grid_on_faces
     procedure:: add_grid_on_centers
     procedure:: add_day_number
@@ -59,10 +60,10 @@ contains
     call self%add_var(kara_input,_OCEAN_TIME_)
     call self%add_day_number("day_number")
     !ice variables
-    call self%add_var(kara_input,_ICE_THICKNESS_)
+    call self%add_ice_thickness(kara_input)
     call self%add_var(kara_input,_SNOW_THICKNESS_)
     call self%add_var(kara_input,_ICE_SURFACE_TEMPERATURE_)
-    self%type_ice = ice(_ICE_LAYERS_,self%get_1st_dim_length("day_number"),&
+    self%type_ice = ice(self%get_1st_dim_length("day_number"),&
       self%get_column(_ICE_THICKNESS_))
     !vertical variables
     call self%add_grid_on_faces(kara_input,&
@@ -101,6 +102,26 @@ contains
     !memory allocation problems occur without it
     allocate(temp,source=var)
     call self%add_item(temp)
+  end subroutine
+  !
+  !Add discretized ice_thicknesses
+  !
+  subroutine add_ice_thickness(self,name_input)
+    class(brom_standard_variables),intent(inout):: self
+    type(type_input)              ,intent(in)   :: name_input
+    class(variable),allocatable:: var
+    type(variable_1d) new_var_1d
+    real(rk),dimension(:),allocatable:: value_1d
+
+    call name_input%get_var(_ICE_THICKNESS_,var)
+    !memory allocation problems occur without it
+    select type(var)
+    class is(variable_1d)
+      allocate(value_1d(size(var%value,1)))
+      value_1d = var%value-mod(var%value,_ICE_LAYERS_RESOLUTION_)
+      new_var_1d = variable_1d(var%name,'',value_1d)
+      call self%add_item(new_var_1d)
+    end select
   end subroutine
   !
   !Adds bbl and sediments to depths of layers faces
@@ -219,7 +240,7 @@ contains
 
     call self%get_var(_OCEAN_TIME_,var)
     select type(var)
-    type is(variable_1d)
+    class is(variable_1d)
       var%value = var%value/86400._rk
       var%name = inname
       call self%add_item(var)
@@ -235,7 +256,7 @@ contains
 
     call self%get_var("day_number",var)
     select type(var)
-    type is(variable_1d)
+    class is(variable_1d)
       first_day = int(var%value(1))
     end select
   end function
@@ -473,7 +494,7 @@ contains
     !add eddy diffusivity
     call name_input%get_var(name_eddy_diffusivity,var)
     select type(var)
-    type is(variable_2d)
+    class is(variable_2d)
       eddy_kz(water_bbl_index:ice_water_index-1,:time) = var%value
       !linear interpolation in bbl
       forall (i = bbl_sediments_index+1:water_bbl_index)

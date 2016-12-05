@@ -1,3 +1,5 @@
+#include "../include/brom.h"
+
 module ice_mod
   use fabm_types, only: rk
 
@@ -34,21 +36,26 @@ module ice_mod
     procedure constructor_ice
   end interface
 contains
-  function constructor_ice(number_of_layers,number_of_days,&
-                           ice_thickness)
+  function constructor_ice(number_of_days,ice_thickness)
     type(ice):: constructor_ice
-    integer,intent(in):: number_of_layers
     integer,intent(in):: number_of_days
     real(rk),dimension(:),intent(in):: ice_thickness
 
-    constructor_ice%number_of_layers = number_of_layers
+    constructor_ice%number_of_layers = &
+      int(maxval(ice_thickness)/_ICE_LAYERS_RESOLUTION_)
     constructor_ice%number_of_days   = number_of_days
-    allocate(constructor_ice%depth_face    (number_of_layers,number_of_days))
-    allocate(constructor_ice%depth_center  (number_of_layers,number_of_days))
-    allocate(constructor_ice%t_face        (number_of_layers,number_of_days))
-    allocate(constructor_ice%t_center      (number_of_layers,number_of_days))
-    allocate(constructor_ice%s_brine_face  (number_of_layers,number_of_days))
-    allocate(constructor_ice%s_brine_center(number_of_layers,number_of_days))
+    allocate(constructor_ice%&
+    depth_face    (constructor_ice%number_of_layers,number_of_days))
+    allocate(constructor_ice%&
+    depth_center  (constructor_ice%number_of_layers,number_of_days))
+    allocate(constructor_ice%&
+    t_face        (constructor_ice%number_of_layers,number_of_days))
+    allocate(constructor_ice%&
+    t_center      (constructor_ice%number_of_layers,number_of_days))
+    allocate(constructor_ice%&
+    s_brine_face  (constructor_ice%number_of_layers,number_of_days))
+    allocate(constructor_ice%&
+    s_brine_center(constructor_ice%number_of_layers,number_of_days))
     call constructor_ice%do_depths(ice_thickness)
   end function constructor_ice
   !
@@ -58,19 +65,20 @@ contains
     class(ice)           ,intent(inout):: self
     real(rk),dimension(:),intent(in):: ice_thickness
 
-    real(rk),allocatable,dimension(:):: delta
     integer i
 
-    self%depth_face(1,:)   = ice_thickness-0.03_rk
-    self%depth_center(1,:) = (self%depth_face(1,:)+ice_thickness)/2._rk
-    allocate(delta(self%number_of_days))
-    delta = (ice_thickness-0.03)/(self%number_of_layers-1)
-    do i = 2,self%number_of_layers
-      self%depth_face(i,:)   = self%depth_face(i-1,:)-delta
+    forall (i = 1:self%number_of_layers)
+      self%depth_face(i,:) = ice_thickness-i*_ICE_LAYERS_RESOLUTION_
+    end forall
+    where (self%depth_face<0._rk)
+      self%depth_face = 0._rk
+    end where
+    forall (i = 1:self%number_of_layers-1)
       self%depth_center(i,:) = &
-        (self%depth_face(i,:)+self%depth_face(i-1,:))/2._rk
-    end do
-    self%depth_face(self%number_of_layers,:) = 0._rk
+        (self%depth_face(i,:)+self%depth_face(i+1,:))/2._rk
+    end forall
+    self%depth_center(self%number_of_layers,:) = &
+      (self%depth_face(self%number_of_layers,:)+0._rk)/2._rk
   end subroutine do_depths
   !
   !Returns range from ice-water, upper faces - z [m]
