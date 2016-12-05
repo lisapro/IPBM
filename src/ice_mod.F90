@@ -11,6 +11,7 @@ module ice_mod
     private
     integer number_of_layers
     integer number_of_days
+    integer,allocatable,dimension(:):: air_ice_index
     !depth, upper faces, centers
     real(rk),allocatable,dimension(:,:):: depth_face
     real(rk),allocatable,dimension(:,:):: depth_center
@@ -22,6 +23,8 @@ module ice_mod
     real(rk),allocatable,dimension(:,:):: s_brine_center
   contains
     private
+    procedure,public:: get_active_layers
+    procedure,public:: get_number_of_layers
     procedure,public:: do_grid
     procedure,public:: do_ice_temperature
     procedure,public:: do_ice_brine_salinity
@@ -45,6 +48,8 @@ contains
       int(maxval(ice_thickness)/_ICE_LAYERS_RESOLUTION_)
     constructor_ice%number_of_days   = number_of_days
     allocate(constructor_ice%&
+    air_ice_index (constructor_ice%number_of_days))
+    allocate(constructor_ice%&
     depth_face    (constructor_ice%number_of_layers,number_of_days))
     allocate(constructor_ice%&
     depth_center  (constructor_ice%number_of_layers,number_of_days))
@@ -59,7 +64,7 @@ contains
     call constructor_ice%do_depths(ice_thickness)
   end function constructor_ice
   !
-  !Private, saves depths for lower faces and layer centers
+  !Private, saves depths for upper faces and layer centers
   !
   subroutine do_depths(self,ice_thickness)
     class(ice)           ,intent(inout):: self
@@ -73,13 +78,31 @@ contains
     where (self%depth_face<0._rk)
       self%depth_face = 0._rk
     end where
-    forall (i = 1:self%number_of_layers-1)
+    self%air_ice_index = minloc(self%depth_face,1)
+    forall (i = 2:self%number_of_layers)
       self%depth_center(i,:) = &
-        (self%depth_face(i,:)+self%depth_face(i+1,:))/2._rk
+        (self%depth_face(i,:)+self%depth_face(i-1,:))/2._rk
     end forall
-    self%depth_center(self%number_of_layers,:) = &
-      (self%depth_face(self%number_of_layers,:)+0._rk)/2._rk
+    self%depth_center(1,:) = &
+      (self%depth_face(1,:)+ice_thickness)/2._rk
   end subroutine do_depths
+  !
+  !Returns number of ice layers
+  !
+  integer function get_number_of_layers(self)
+    class(ice)           ,intent(inout):: self
+
+    get_number_of_layers = self%number_of_layers
+  end function get_number_of_layers
+  !
+  !Returns number of ice layers
+  !
+  integer function get_active_layers(self,day)
+    class(ice)           ,intent(inout):: self
+    integer,intent(in):: day
+
+    get_active_layers = self%air_ice_index(day)
+  end function get_active_layers
   !
   !Returns range from ice-water, upper faces - z [m]
   !
@@ -88,15 +111,19 @@ contains
     class(ice)           ,intent(inout):: self
     real(rk),dimension(:),intent(in)   :: ice_thickness
 
-    real(rk),allocatable,dimension(:):: delta
-    integer i
+    integer i,j
 
     allocate(do_grid(self%number_of_layers,self%number_of_days))
-    do_grid(1,:) = 0.03_rk
-    allocate(delta(self%number_of_days))
-    delta = (ice_thickness-0.03)/(self%number_of_layers-1)
-    do i = 2,self%number_of_layers
-      do_grid(i,:) = do_grid(i-1,:)+delta
+    !do i = 1,self%number_of_layers
+    !  do_grid(i,:) = i*_ICE_LAYERS_RESOLUTION_
+    !  where (do_grid(i,:)>ice_thickness)
+    !    do_grid(i,:) = 0._rk
+    !  end where
+    !end do
+    do j = 1,self%number_of_days
+      do i = 1,self%air_ice_index(j)
+        do_grid(i,j) = i*_ICE_LAYERS_RESOLUTION_
+      end do
     end do
   end function do_grid
   !

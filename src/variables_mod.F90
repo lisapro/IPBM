@@ -67,8 +67,8 @@ contains
       self%get_column(_ICE_THICKNESS_))
     !vertical variables
     call self%add_grid_on_faces(kara_input,&
-      _DEPTH_ON_BOUNDARY_,_ICE_LAYERS_,"ice_water_index",&
-      "water_bbl_index","bbl_sediments_index",&
+      _DEPTH_ON_BOUNDARY_,self%type_ice%get_number_of_layers(),&
+      "ice_water_index","water_bbl_index","bbl_sediments_index",&
       "number_of_boundaries")
     call self%add_grid_on_centers("middle_layer_depths",&
                                   "number_of_layers")
@@ -216,6 +216,7 @@ contains
 
     call self%get_var(_DEPTH_ON_BOUNDARY_,var)
     length = self%get_value("number_of_boundaries")-1._rk
+    
     time = self%get_1st_dim_length("day_number")
     allocate(value_2d(length,time))
     new_var = alone_variable(number_of_layers,'',length)
