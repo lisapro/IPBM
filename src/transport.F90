@@ -99,13 +99,16 @@ contains
     !cpu time
     real(rk) t1,t2
     real(rk),allocatable,dimension(:):: indices
+    real(rk),allocatable,dimension(:):: air_ice_indexes
 
     allocate(indices(number_of_layers))
     indices = (/(i,i=number_of_layers,1,-1)/)
 
-    ice_water_index = standard_vars%get_value("ice_water_index")
-    water_bbl_index = standard_vars%get_value("water_bbl_index")
+    ice_water_index = standard_vars%get_value ("ice_water_index")
+    water_bbl_index = standard_vars%get_value ("water_bbl_index")
     number_of_days = standard_vars%get_1st_dim_length("day_number")
+    allocate(air_ice_indexes(number_of_days))
+    air_ice_indexes = standard_vars%get_column("air_ice_indexes")
 
     netcdf_ice = type_output(fabm_model,_FILE_NAME_ICE_,&
                          ice_water_index,number_of_layers,&
@@ -128,19 +131,16 @@ contains
       depth = standard_vars%get_column("middle_layer_depths",i)
       temp  = standard_vars%get_column(_TEMPERATURE_,i)
       salt  = standard_vars%get_column(_SALINITY_,i)
+      
+      surface_index = air_ice_indexes(i)
       call calculate_radiative_flux(&
         surface_radiative_flux(_LATITUDE_,day),&
         standard_vars%get_value(_SNOW_THICKNESS_,i),&
         standard_vars%get_value(_ICE_THICKNESS_ ,i))
 
-      if (ice<0.1_rk) then
-        surface_index = ice_water_index-1
-      else
-        surface_index = number_of_layers
-      end if
-
       !change surface index due to ice depth
-      call fabm_model%set_surface_index(surface_index)
+      !index for boundaries so for layers it should be -1
+      call fabm_model%set_surface_index(surface_index-1)
       call fabm_link_bulk_data(&
         fabm_model,standard_variables%temperature,temp)
       call fabm_link_bulk_data(&
@@ -159,7 +159,6 @@ contains
       !  use_bound_up = _DIRICHLET_,bound_up = sinusoidal(day,3.8_rk))
       !call find_set_state_variable("niva_brom_redox_Si",&
       !  use_bound_up = _DIRICHLET_,bound_up = sinusoidal(day,2._rk))
-
 
       call cpu_time(t1)
       call day_circle(i,surface_index)
@@ -265,7 +264,8 @@ contains
     real(rk),dimension(number_of_layers+1):: layer_thicknesses
     integer i,j,bbl_sed_index
     integer number_of_circles
-    real(rk),dimension(surface_index,number_of_parameters):: increment
+    !index for boundaries so for layers it should be -1
+    real(rk),dimension(surface_index-1,number_of_parameters):: increment
 
     bbl_sed_index = standard_vars%get_value("bbl_sediments_index")
     pF1_solutes = &
@@ -290,11 +290,11 @@ contains
     do i = 1,number_of_circles
       !biogeochemistry
       increment = 0._rk
-      call fabm_do(fabm_model,1,surface_index,increment)
+      call fabm_do(fabm_model,1,surface_index-1,increment)
       increment = _SECONDS_PER_CIRCLE_*increment
       forall(j = 1:number_of_parameters)&
-        state_vars(j)%value(:surface_index) = &
-          state_vars(j)%value(:surface_index)+increment(:,j)
+        state_vars(j)%value(:surface_index-1) = &
+          state_vars(j)%value(:surface_index-1)+increment(:,j)
 
       !diffusion
       call brom_do_diffusion(surface_index,bbl_sed_index,&
@@ -382,33 +382,33 @@ contains
     pFSWIdw_solids = pFSWIup_solids
 
     forall (i = 1:number_of_parameters)
-      temporary(:,i) = do_diffusive(&
-          N       = surface_index,&
+      temporary(:surface_index-1,i) = do_diffusive(&
+          N       = surface_index-1,&
           dt      = _SECONDS_PER_CIRCLE_,&
           cnpar   = 0.6_rk,&
           posconc = 1,&
-          h    = layer_thicknesses(:surface_index+1),&
+          h    = layer_thicknesses(:surface_index),&
           Bcup = state_vars(i)%use_bound_up,&
           Bcdw = state_vars(i)%use_bound_low,&
           Yup  = state_vars(i)%bound_up,&
           Ydw  = state_vars(i)%bound_low,&
-          nuY_in  = kz_tot(:surface_index+1),&
-          Lsour = zeros(:surface_index+1),&
-          Qsour = zeros(:surface_index+1),&
-          Taur  = taur_r(:surface_index+1),&
-          Yobs  = zeros(:surface_index+1),&
-          Y     = (/ 0._rk,state_vars(i)%value(:surface_index) /),&
+          nuY_in  = kz_tot(:surface_index),&
+          Lsour = zeros(:surface_index),&
+          Qsour = zeros(:surface_index),&
+          Taur  = taur_r(:surface_index),&
+          Yobs  = zeros(:surface_index),&
+          Y     = (/ 0._rk,state_vars(i)%value(:surface_index-1) /),&
           i_sed_top = bbl_sed_index-1,&
           is_solid = state_vars(i)%is_solid,&
-          pF1_solutes = pF1_solutes(:surface_index+1),&
-          pF2_solutes = pF2_solutes(:surface_index+1),&
-          pF1_solids = pF1_solids(:surface_index+1),&
-          pF2_solids = pF2_solids(:surface_index+1),&
+          pF1_solutes = pF1_solutes(:surface_index),&
+          pF2_solutes = pF2_solutes(:surface_index),&
+          pF1_solids = pF1_solids(:surface_index),&
+          pF2_solids = pF2_solids(:surface_index),&
           pFSWIup_solutes = pFSWIup_solutes,&
           pFSWIdw_solutes = pFSWIdw_solutes,&
           pFSWIup_solids = pFSWIup_solids,&
           pFSWIdw_solids = pFSWIdw_solids)
-      state_vars(i)%value(1:surface_index) = temporary(1:surface_index,i)
+      state_vars(i)%value(1:surface_index-1) = temporary(1:surface_index-1,i)
     end forall
   end subroutine
 

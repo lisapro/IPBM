@@ -6,12 +6,12 @@ module variables_mod
   use input_mod
   use ice_mod
   use fabm_driver
-    
+
   implicit none
   !NaN value
   REAL(rk), PARAMETER :: D_QNAN = &
             TRANSFER((/ Z'00000000', Z'7FF80000' /),1.0_rk)
-  
+
   type,extends(list_variables):: brom_standard_variables
     type(ice) type_ice
   contains
@@ -212,7 +212,7 @@ contains
     class(brom_standard_variables),intent(inout):: self
     character(len=*),intent(in):: inname
     character(len=*),intent(in):: number_of_layers
-    character(len=*),intent(in):: air_ice_indexes 
+    character(len=*),intent(in):: air_ice_indexes
     class(variable)        ,allocatable:: var
     real(rk),dimension(:,:),allocatable:: value_2d
     type(alone_variable):: new_var
@@ -394,8 +394,9 @@ contains
     real(rk),dimension(:,:),allocatable:: porosity_factor
     type(variable_2d):: new_var
 
-    integer ice_water_index,swi_index,length,i
+    integer ice_water_index,swi_index,length,time,i
     real(rk) max_porosity,min_porosity,porosity_decay
+    real(rk),dimension(:)  ,allocatable:: air_ice_indexes
     real(rk),dimension(:)  ,allocatable:: swi_depth
     real(rk),dimension(:,:),allocatable:: depth_center
     real(rk),dimension(:,:),allocatable:: depth_boundary
@@ -407,14 +408,17 @@ contains
     ice_water_index = self%get_value("ice_water_index")
     swi_index       = self%get_value("bbl_sediments_index")
     length          = self%get_value("number_of_layers")
+    time            = self%get_1st_dim_length("day_number")
+    allocate(air_ice_indexes(time))
+    air_ice_indexes = self%get_column("air_ice_indexes")
     allocate(depth_center,source=self%get_array("middle_layer_depths"))
     allocate(depth_boundary,source=self%get_array(_DEPTH_ON_BOUNDARY_))
     allocate(swi_depth,source = depth_boundary(swi_index,:))
 
     !for layers
-    allocate(porosity(length,self%get_1st_dim_length("day_number")))
+    allocate(porosity(length,time))
     porosity = 1._rk
-    forall (i = 1:self%get_1st_dim_length("day_number"))
+    forall (i = 1:time)
       porosity(1:swi_index-1,i) = min_porosity+(&
         max_porosity-min_porosity)*exp(-1._rk*(&
         depth_center(1:swi_index-1,i)-swi_depth)/&
@@ -426,7 +430,7 @@ contains
     call self%add_item(new_var)
 
     !porosity factor 1 for solutes
-    allocate(porosity_factor(length,self%get_1st_dim_length("day_number")))
+    allocate(porosity_factor(length,time))
     porosity_factor = 1._rk/porosity
     !PW:
     !Factor to convert [mass per unit total volume]
@@ -436,7 +440,9 @@ contains
 
     !porosity factor 1 for solids
     porosity_factor = 1._rk
-    porosity_factor(ice_water_index:,:) = D_QNAN
+    do i = 1,time
+      porosity_factor(air_ice_indexes(i):,i) = D_QNAN
+    end do
     porosity_factor(1:swi_index-1,:) = 1._rk/&
       (1._rk-porosity(1:swi_index-1,:))
     !PW:
@@ -449,7 +455,7 @@ contains
     deallocate(porosity_factor)
 
     !for boundaries
-    allocate(porosity(length+1,self%get_1st_dim_length("day_number")))
+    allocate(porosity(length+1,time))
     porosity = 1._rk
     forall (i = 1:self%get_1st_dim_length("day_number"))
       porosity(1:swi_index,i) = min_porosity+(&
@@ -464,7 +470,7 @@ contains
     call self%add_item(new_var)
 
     !porosity factor 2 for solutes
-    allocate(porosity_factor(length+1,self%get_1st_dim_length("day_number")))
+    allocate(porosity_factor(length+1,time))
     porosity_factor = porosity
     !PW:
     !Porosity-related area restriction factor for fluxes
@@ -474,7 +480,9 @@ contains
 
     !porosity factor 2 for solids
     porosity_factor = 1._rk
-    porosity_factor(ice_water_index+1:,:) = D_QNAN
+    do i = 1,time
+      porosity_factor(air_ice_indexes(i)+1:,i) = D_QNAN
+    end do
     porosity_factor(1:swi_index,:) = &
       1._rk-porosity(1:swi_index,:)
     !PW:
@@ -485,7 +493,7 @@ contains
 
     !tortuosity on layer interfaces
     !Boudreau 1996, eq. 4.120
-    allocate(tortuosity(length+1,self%get_1st_dim_length("day_number")))
+    allocate(tortuosity(length+1,time))
     tortuosity = sqrt(1._rk-2._rk*log(porosity))
     new_var = variable_2d(name_tortuosity,'',tortuosity)
     call self%add_item(new_var)
@@ -505,6 +513,7 @@ contains
     real(rk),dimension(:,:),allocatable:: value_2d
     real(rk),dimension(:,:),allocatable:: tortuosity
     real(rk),dimension(:,:),allocatable:: depth_boundary
+    real(rk),dimension(:)  ,allocatable:: air_ice_indexes
     type(variable_2d):: new_var_2d
     !type(variable_1d):: new_var_1d
     integer i,time
@@ -519,6 +528,8 @@ contains
     bbl_sediments_index &
       = self%get_value("bbl_sediments_index")
     time = self%get_1st_dim_length("day_number")
+    allocate(air_ice_indexes(time))
+    air_ice_indexes = self%get_column("air_ice_indexes")
     allocate(eddy_kz(number_of_boundaries,time))
     eddy_kz = 0._rk
 
@@ -526,13 +537,16 @@ contains
     call name_input%get_var(name_eddy_diffusivity,var)
     select type(var)
     class is(variable_2d)
-      eddy_kz(water_bbl_index:ice_water_index-1,:time) = var%value
+      eddy_kz(water_bbl_index:ice_water_index-1,:) = var%value
       !linear interpolation in bbl
       forall (i = bbl_sediments_index+1:water_bbl_index)
         eddy_kz(i,:) = &
         (i-bbl_sediments_index)*eddy_kz(water_bbl_index+1,:)/(&
         water_bbl_index+1-bbl_sediments_index)
       end forall
+      do i = 1,time
+        eddy_kz(air_ice_indexes(i)+1:,i) = D_QNAN
+      end do
       new_var_2d = variable_2d(name_eddy_diffusivity,'',eddy_kz)
       call self%add_item(new_var_2d)
     class default
@@ -546,9 +560,13 @@ contains
     allocate(value_2d(number_of_boundaries,time))
     value_2d = _INFINITE_DILLUTION_MOLECULAR_DIFFUSIVITY_
     value_2d(:bbl_sediments_index,:) = &
-    _RELATIVE_DYNAMIC_VISCOSITY_*&
-    _INFINITE_DILLUTION_MOLECULAR_DIFFUSIVITY_/&
-    tortuosity(:bbl_sediments_index,:)**2
+      _RELATIVE_DYNAMIC_VISCOSITY_*&
+      _INFINITE_DILLUTION_MOLECULAR_DIFFUSIVITY_/&
+      tortuosity(:bbl_sediments_index,:)**2
+    
+    do i = 1,time
+      value_2d(air_ice_indexes(i)+1:,i) = D_QNAN
+    end do
     new_var_2d = variable_2d(name_molecular_diffusivity,'',value_2d)
     call self%add_item(new_var_2d)
 
@@ -567,6 +585,9 @@ contains
           _MIXED_LAYER_DEPTH_)/_DECAY_BIOTURBATION_SCALE_)
       end where
     end forall
+    do i = 1,time
+      value_2d(air_ice_indexes(i)+1:,i) = D_QNAN
+    end do
     new_var_2d = variable_2d(name_bioturbation_diffusivity,'',value_2d)
     call self%add_item(new_var_2d)
   end subroutine
