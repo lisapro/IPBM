@@ -71,7 +71,7 @@ contains
       "ice_water_index","water_bbl_index","bbl_sediments_index",&
       "number_of_boundaries")
     call self%add_grid_on_centers("middle_layer_depths",&
-                                  "number_of_layers")
+                                  "number_of_layers","air_ice_indexes")
     call self%add_layer_thicknesses("layer_thicknesses")
     !2d variables
     !Add variables which are constants in sediments
@@ -204,28 +204,42 @@ contains
     end select
   end subroutine
 
-  subroutine add_grid_on_centers(self,inname,number_of_layers)
+  subroutine add_grid_on_centers(self,inname,number_of_layers,&
+                                 air_ice_indexes)
     class(brom_standard_variables),intent(inout):: self
     character(len=*),intent(in):: inname
     character(len=*),intent(in):: number_of_layers
+    character(len=*),intent(in):: air_ice_indexes
     class(variable)        ,allocatable:: var
     real(rk),dimension(:,:),allocatable:: value_2d
     type(alone_variable):: new_var
+    type(variable_1d):: new_var_1d
     type(variable_2d):: new_var_2d
-    integer i,length,time
+    integer i,j,length,time
+    integer ice_water_i
+    integer,dimension(:),allocatable:: active_layers
 
-    call self%get_var(_DEPTH_ON_BOUNDARY_,var)
-    length = self%get_value("number_of_boundaries")-1._rk
-    
+        
     time = self%get_1st_dim_length("day_number")
-    allocate(value_2d(length,time))
+    allocate(active_layers(time))
+    ice_water_i = self%get_value("ice_water_index")
+    active_layers = ice_water_i+self%type_ice%get_active_layers()
+    new_var_1d = variable_1d(air_ice_indexes,'',active_layers)
+  
+    length = self%get_value("number_of_boundaries")-1._rk  
     new_var = alone_variable(number_of_layers,'',length)
     call self%add_item(new_var)
 
+    call self%get_var(_DEPTH_ON_BOUNDARY_,var)
     select type(var)
     class is(variable_2d)
-      forall(i = 1:length)&
-        value_2d(i,:) = abs((var%value(i+1,:)+var%value(i,:))/2._rk)
+      allocate(value_2d(length,time))
+      do j = 1,time
+        do i = 1,(active_layers(j)-1)
+          value_2d(i,j) = abs((var%value(i+1,j)+&
+                          var%value(i,j))/2._rk)
+        end do
+      end do
       new_var_2d = variable_2d(inname,'',value_2d)
       call self%add_item(new_var_2d)
     class default

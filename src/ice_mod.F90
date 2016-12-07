@@ -65,6 +65,7 @@ contains
   end function constructor_ice
   !
   !Private, saves depths for upper faces and layer centers
+  !saves air_ice_index
   !
   subroutine do_depths(self,ice_thickness)
     class(ice)           ,intent(inout):: self
@@ -79,6 +80,9 @@ contains
       self%depth_face = 0._rk
     end where
     self%air_ice_index = minloc(self%depth_face,1)
+    where (ice_thickness < 0.03_rk)
+      self%air_ice_index = 0
+    end where
     forall (i = 2:self%number_of_layers)
       self%depth_center(i,:) = &
         (self%depth_face(i,:)+self%depth_face(i-1,:))/2._rk
@@ -97,11 +101,11 @@ contains
   !
   !Returns number of ice layers
   !
-  integer function get_active_layers(self,day)
+  function get_active_layers(self)
+    integer,allocatable  ,dimension(:) :: get_active_layers
     class(ice)           ,intent(inout):: self
-    integer,intent(in):: day
 
-    get_active_layers = self%air_ice_index(day)
+    allocate(get_active_layers,source=self%air_ice_index)
   end function get_active_layers
   !
   !Returns range from ice-water, upper faces - z [m]
