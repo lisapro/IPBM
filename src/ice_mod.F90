@@ -1,10 +1,14 @@
 #include "../include/brom.h"
+#include "../include/parameters.h"
 
 module ice_mod
   use fabm_types, only: rk
 
   implicit none
   private
+  !NaN value
+  REAL(rk), PARAMETER :: D_QNAN = &
+            TRANSFER((/ Z'00000000', Z'7FF80000' /),1.0_rk)
   public:: ice
 
   type ice
@@ -70,14 +74,13 @@ contains
   subroutine do_depths(self,ice_thickness)
     class(ice)           ,intent(inout):: self
     real(rk),dimension(:),intent(in):: ice_thickness
-
     integer i
 
     forall (i = 1:self%number_of_layers)
       self%depth_face(i,:) = ice_thickness-i*_ICE_LAYERS_RESOLUTION_
     end forall
     where (self%depth_face<0._rk)
-      self%depth_face = 0._rk
+      self%depth_face = D_QNAN
     end where
     self%air_ice_index = minloc(self%depth_face,1)
     where (ice_thickness < 0.03_rk)
@@ -118,6 +121,7 @@ contains
     integer i,j
 
     allocate(do_grid(self%number_of_layers,self%number_of_days))
+    do_grid = D_QNAN
     !do i = 1,self%number_of_layers
     !  do_grid(i,:) = i*_ICE_LAYERS_RESOLUTION_
     !  where (do_grid(i,:)>ice_thickness)
@@ -140,7 +144,7 @@ contains
     class(ice),intent(inout)           :: self
     real(rk),dimension(:),intent(in)   :: air_temp,water_temp,ice_thickness
     integer i
-
+    
     forall (i = 1:self%number_of_layers)
       self%t_face(i,:) = air_temp+((water_temp-air_temp)*&
         self%depth_face(i,:))/ice_thickness
@@ -149,8 +153,10 @@ contains
     end forall
     !self%t_face(1,:) = water_temp
     !self%t_center(1,:) = water_temp
-    where (self%t_face>-0.2_rk) self%t_face = -0.2_rk
-    where (self%t_center>-0.2_rk) self%t_center = -0.2_rk
+    where (self%t_face>-2._rk) self%t_face = -2._rk
+    where (self%t_center>-2._rk) self%t_center = -2._rk
+    !where (self%t_face/=self%t_face) self%t_face = 0._rk
+    !where (self%t_center/=self%t_center) self%t_center = 0._rk
     allocate(do_ice_temperature,source=self%t_center)
   end function do_ice_temperature
   !
@@ -162,32 +168,79 @@ contains
     class(ice),intent(inout)           :: self
     real(rk),dimension(:),intent(in)   :: water_salt
 
-    where (self%t_face<0._rk.and.self%t_face>=-22.9_rk)
-      self%s_brine_face = -3.9921_rk+(-22.700_rk*self%t_face)+(&
-               -1.0015_rk*self%t_face**2)+(&
-               -0.019956_rk*self%t_face**3)
-    else where (self%t_face<-22.9_rk.and.self%t_face>=-44._rk)
-      self%s_brine_face = 206.24_rk+(-1.8907_rk*self%t_face)+(&
-               -0.060868_rk*self%t_face**2)+(&
-               -0.0010247_rk*self%t_face**3)
-    else where (self%t_face<-44._rk)
-      self%s_brine_face = -4442.1_rk+(-277.86_rk*self%t_face)+(&
-               -5.501_rk*self%t_face**2)+(&
-               -0.03669_rk*self%t_face**3)
-    end where
-    where (self%t_center<0._rk.and.self%t_center>=-22.9_rk)
-      self%s_brine_center = -3.9921_rk+(-22.700_rk*self%t_center)+(&
-               -1.0015_rk*self%t_center**2)+(&
-               -0.019956_rk*self%t_center**3)
-    else where (self%t_center<-22.9_rk.and.self%t_center>=-44._rk)
-      self%s_brine_center = 206.24_rk+(-1.8907_rk*self%t_center)+(&
-               -0.060868_rk*self%t_center**2)+(&
-               -0.0010247_rk*self%t_center**3)
-    else where (self%t_center<-44._rk)
-      self%s_brine_center = -4442.1_rk+(-277.86_rk*self%t_center)+(&
-               -5.501_rk*self%t_center**2)+(&
-               -0.03669_rk*self%t_center**3)
-    end where
+    integer i,j
+    
+    self%s_brine_face = D_QNAN
+    do j = 1,self%number_of_days
+      do i = 1,self%air_ice_index(j)
+        if (self%t_face(i,j)<0._rk.and.self%t_face(i,j)>=-22.9_rk) then
+          self%s_brine_face(i,j) = -3.9921_rk+(-22.700_rk*self%t_face(i,j))+(&
+                   -1.0015_rk*self%t_face(i,j)**2)+(&
+                   -0.019956_rk*self%t_face(i,j)**3)
+        else if (self%t_face(i,j)<-22.9_rk.and.self%t_face(i,j)>=-44._rk) then
+          self%s_brine_face(i,j) = 206.24_rk+(-1.8907_rk*self%t_face(i,j))+(&
+                   -0.060868_rk*self%t_face(i,j)**2)+(&
+                   -0.0010247_rk*self%t_face(i,j)**3)
+        else if (self%t_face(i,j)<-44._rk) then
+          self%s_brine_face(i,j) = -4442.1_rk+(-277.86_rk*self%t_face(i,j))+(&
+                   -5.501_rk*self%t_face(i,j)**2)+(&
+                   -0.03669_rk*self%t_face(i,j)**3)
+        !else
+        !  self%s_brine_face(i,j) = 0._rk
+        end if
+      end do
+    end do
+    !where (self%t_face<0._rk.and.self%t_face>=-22.9_rk)
+    !  self%s_brine_face = -3.9921_rk+(-22.700_rk*self%t_face)+(&
+    !           -1.0015_rk*self%t_face**2)+(&
+    !           -0.019956_rk*self%t_face**3)
+    !else where (self%t_face<-22.9_rk.and.self%t_face>=-44._rk)
+    !  self%s_brine_face = 206.24_rk+(-1.8907_rk*self%t_face)+(&
+    !           -0.060868_rk*self%t_face**2)+(&
+    !           -0.0010247_rk*self%t_face**3)
+    !else where (self%t_face<-44._rk)
+    !  self%s_brine_face = -4442.1_rk+(-277.86_rk*self%t_face)+(&
+    !           -5.501_rk*self%t_face**2)+(&
+    !           -0.03669_rk*self%t_face**3)
+    !else where
+    !  self%s_brine_face = 0._rk
+    !end where
+    
+    self%s_brine_center = D_QNAN
+    do j = 1,self%number_of_days
+      do i = 1,self%air_ice_index(j)
+        if (self%t_center(i,j)<0._rk.and.self%t_center(i,j)>=-22.9_rk) then
+          self%s_brine_center(i,j) = -3.9921_rk+(-22.700_rk*self%t_center(i,j))+(&
+                   -1.0015_rk*self%t_center(i,j)**2)+(&
+                   -0.019956_rk*self%t_center(i,j)**3)
+        else if (self%t_center(i,j)<-22.9_rk.and.self%t_center(i,j)>=-44._rk) then
+          self%s_brine_center(i,j) = 206.24_rk+(-1.8907_rk*self%t_center(i,j))+(&
+                   -0.060868_rk*self%t_center(i,j)**2)+(&
+                   -0.0010247_rk*self%t_center(i,j)**3)
+        else if (self%t_center(i,j)<-44._rk) then
+          self%s_brine_center(i,j) = -4442.1_rk+(-277.86_rk*self%t_center(i,j))+(&
+                   -5.501_rk*self%t_center(i,j)**2)+(&
+                   -0.03669_rk*self%t_center(i,j)**3)
+        !else
+        !  self%s_brine_center(i,j) = 0._rk
+        end if
+      end do
+    end do
+    !where (self%t_center<0._rk.and.self%t_center>=-22.9_rk)
+    !  self%s_brine_center = -3.9921_rk+(-22.700_rk*self%t_center)+(&
+    !           -1.0015_rk*self%t_center**2)+(&
+    !           -0.019956_rk*self%t_center**3)
+    !else where (self%t_center<-22.9_rk.and.self%t_center>=-44._rk)
+    !  self%s_brine_center = 206.24_rk+(-1.8907_rk*self%t_center)+(&
+    !           -0.060868_rk*self%t_center**2)+(&
+    !           -0.0010247_rk*self%t_center**3)
+    !else where (self%t_center<-44._rk)
+    !  self%s_brine_center = -4442.1_rk+(-277.86_rk*self%t_center)+(&
+    !           -5.501_rk*self%t_center**2)+(&
+    !           -0.03669_rk*self%t_center**3)
+    !else where
+    !  self%s_brine_center = 0._rk
+    !end where
     !self%s_brine_face(1,:) = water_salt
     !self%s_brine_center(1,:) = water_salt
     allocate(do_ice_brine_salinity,source=self%s_brine_center)

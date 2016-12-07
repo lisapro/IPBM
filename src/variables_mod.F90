@@ -6,8 +6,12 @@ module variables_mod
   use input_mod
   use ice_mod
   use fabm_driver
-
+    
   implicit none
+  !NaN value
+  REAL(rk), PARAMETER :: D_QNAN = &
+            TRANSFER((/ Z'00000000', Z'7FF80000' /),1.0_rk)
+  
   type,extends(list_variables):: brom_standard_variables
     type(ice) type_ice
   contains
@@ -114,7 +118,6 @@ contains
     real(rk),dimension(:),allocatable:: value_1d
 
     call name_input%get_var(_ICE_THICKNESS_,var)
-    !memory allocation problems occur without it
     select type(var)
     class is(variable_1d)
       allocate(value_1d(size(var%value,1)))
@@ -209,7 +212,7 @@ contains
     class(brom_standard_variables),intent(inout):: self
     character(len=*),intent(in):: inname
     character(len=*),intent(in):: number_of_layers
-    character(len=*),intent(in):: air_ice_indexes
+    character(len=*),intent(in):: air_ice_indexes 
     class(variable)        ,allocatable:: var
     real(rk),dimension(:,:),allocatable:: value_2d
     type(alone_variable):: new_var
@@ -219,14 +222,14 @@ contains
     integer ice_water_i
     integer,dimension(:),allocatable:: active_layers
 
-        
     time = self%get_1st_dim_length("day_number")
     allocate(active_layers(time))
     ice_water_i = self%get_value("ice_water_index")
     active_layers = ice_water_i+self%type_ice%get_active_layers()
     new_var_1d = variable_1d(air_ice_indexes,'',active_layers)
-  
-    length = self%get_value("number_of_boundaries")-1._rk  
+    call self%add_item(new_var_1d)
+
+    length = self%get_value("number_of_boundaries")-1._rk
     new_var = alone_variable(number_of_layers,'',length)
     call self%add_item(new_var)
 
@@ -234,6 +237,7 @@ contains
     select type(var)
     class is(variable_2d)
       allocate(value_2d(length,time))
+      value_2d = D_QNAN
       do j = 1,time
         do i = 1,(active_layers(j)-1)
           value_2d(i,j) = abs((var%value(i+1,j)+&
@@ -279,20 +283,30 @@ contains
   subroutine add_layer_thicknesses(self,inname)
     class(brom_standard_variables),intent(inout):: self
     character(len=*)              ,intent(in)   :: inname
-    class(variable)      ,allocatable:: var
+    class(variable)        ,allocatable:: var
+    real(rk),dimension(:)  ,allocatable:: air_ice_indexes
     real(rk),dimension(:,:),allocatable:: value_2d
     type(variable_2d):: new_var
-    integer i,length,time
+    integer i,j,length,time
 
     call self%get_var(_DEPTH_ON_BOUNDARY_,var)
     length = self%get_value("number_of_layers")
     time = self%get_1st_dim_length("day_number")
     allocate(value_2d(length,time))
+    value_2d = D_QNAN
+    allocate(air_ice_indexes(time))
+    air_ice_indexes = self%get_column("air_ice_indexes")
 
     select type(var)
     class is(variable_2d)
-      forall(i = 1:length)&
-        value_2d(i,:) = abs(var%value(i+1,:)-var%value(i,:))
+      !forall(i = 1:length)&
+      !  value_2d(i,:) = abs(var%value(i+1,:)-var%value(i,:))
+      do j = 1,time
+        do i = 1,(air_ice_indexes(j)-1)
+          value_2d(i,j) = abs(var%value(i+1,j)-&
+                          var%value(i,j))
+        end do
+      end do
       new_var = variable_2d(inname,'',value_2d)
       call self%add_item(new_var)
     class default
@@ -422,6 +436,7 @@ contains
 
     !porosity factor 1 for solids
     porosity_factor = 1._rk
+    porosity_factor(ice_water_index:,:) = D_QNAN
     porosity_factor(1:swi_index-1,:) = 1._rk/&
       (1._rk-porosity(1:swi_index-1,:))
     !PW:
@@ -459,6 +474,7 @@ contains
 
     !porosity factor 2 for solids
     porosity_factor = 1._rk
+    porosity_factor(ice_water_index+1:,:) = D_QNAN
     porosity_factor(1:swi_index,:) = &
       1._rk-porosity(1:swi_index,:)
     !PW:
