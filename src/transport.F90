@@ -27,6 +27,12 @@ module transport
                        dimension(:),target:: state_vars
 contains
   subroutine initialize_brom()
+    real(rk),dimension(:),allocatable:: air_ice_indexes
+    real(rk),dimension(:),allocatable:: pF2
+    !NaN value
+    REAL(rk), PARAMETER :: D_QNAN = &
+              TRANSFER((/ Z'00000000', Z'7FF80000' /),1.0_rk)
+    integer ice_water_index
     integer i
 
     !initializing fabm
@@ -52,7 +58,19 @@ contains
       call state_vars(i)%print_name()
     end do
     _LINE_
+    !initializing values
     call fabm_initialize_state(fabm_model,1,number_of_layers)
+    allocate(air_ice_indexes,source=&
+             standard_vars%get_column("air_ice_indexes"))
+    allocate(pF2(number_of_layers))
+    pF2=standard_vars%get_column("porosity_factor_solutes_2",1)
+    ice_water_index = standard_vars%get_value("ice_water_index")
+    forall (i = 1:number_of_parameters)
+      state_vars(i)%value(ice_water_index:air_ice_indexes(1)-1) = &
+      state_vars(i)%value(ice_water_index:air_ice_indexes(1)-1)*&
+      pF2(ice_water_index+1:air_ice_indexes(1))
+      state_vars(i)%value(air_ice_indexes(1):) = D_QNAN
+    end forall
     !linking bulk variables
     allocate(temp(number_of_layers))
     call fabm_link_bulk_data(&
@@ -131,7 +149,7 @@ contains
       depth = standard_vars%get_column("middle_layer_depths",i)
       temp  = standard_vars%get_column(_TEMPERATURE_,i)
       salt  = standard_vars%get_column(_SALINITY_,i)
-      
+
       surface_index = air_ice_indexes(i)
       call calculate_radiative_flux(&
         surface_radiative_flux(_LATITUDE_,day),&
@@ -288,6 +306,12 @@ contains
     end if
 
     do i = 1,number_of_circles
+      !diffusion
+      call brom_do_diffusion(surface_index,bbl_sed_index,&
+                             pF1_solutes,pF2_solutes,pF1_solids,&
+                             pF2_solids,kz_mol,kz_bio,kz_turb,&
+                             layer_thicknesses)
+
       !biogeochemistry
       increment = 0._rk
       call fabm_do(fabm_model,1,surface_index-1,increment)
@@ -295,12 +319,6 @@ contains
       forall(j = 1:number_of_parameters)&
         state_vars(j)%value(:surface_index-1) = &
           state_vars(j)%value(:surface_index-1)+increment(:,j)
-
-      !diffusion
-      call brom_do_diffusion(surface_index,bbl_sed_index,&
-                             pF1_solutes,pF2_solutes,pF1_solids,&
-                             pF2_solids,kz_mol,kz_bio,kz_turb,&
-                             layer_thicknesses)
     end do
   end subroutine
 

@@ -563,7 +563,7 @@ contains
       _RELATIVE_DYNAMIC_VISCOSITY_*&
       _INFINITE_DILLUTION_MOLECULAR_DIFFUSIVITY_/&
       tortuosity(:bbl_sediments_index,:)**2
-    
+
     do i = 1,time
       value_2d(air_ice_indexes(i)+1:,i) = D_QNAN
     end do
