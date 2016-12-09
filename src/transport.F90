@@ -505,20 +505,24 @@ contains
         state_vars%value(ice_water_index-1) =&
           state_vars%value(ice_water_index-1)+&
           state_vars%value(ice_water_index-1+i)*&
-          layer_thicknesses(ice_water_index-1+i)/&
+          _ICE_LAYERS_RESOLUTION_/&
           layer_thicknesses(ice_water_index-1)
         state_vars%value(ice_water_index-1+i) = 0._rk
       end do
-      do i=ice_growth,air_ice_indexes(id)
-        state_vars%value(ice_water_index-1+i) =&
-          state_vars%value(ice_water_index+i)
+      do i=ice_water_index,air_ice_indexes(id)+ice_growth-1
+        state_vars%value(i) = state_vars%value(i+ice_growth)
       end do
+    !freezing
     else if (ice_growth>0) then
       do i=air_ice_indexes(id)-1,ice_water_index+ice_growth,-1
         state_vars%value(i)=state_vars%value(i-ice_growth)
       end do
       do i=ice_water_index,ice_water_index+ice_growth-1
-        state_vars%value(i) = 0._rk
+        state_vars%value(i) = state_vars%value(ice_water_index-1)*&
+          _ICE_LAYERS_RESOLUTION_/&
+          layer_thicknesses(ice_water_index-1)
+        state_vars%value(ice_water_index-1) = &
+          state_vars%value(ice_water_index-1)-state_vars%value(i)
       end do
     end if
   end subroutine recalculate_ice
