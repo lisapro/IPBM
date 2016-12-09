@@ -27,12 +27,12 @@ module transport
                        dimension(:),target:: state_vars
 contains
   subroutine initialize_brom()
-    real(rk),dimension(:),allocatable:: air_ice_indexes
+    !real(rk),dimension(:),allocatable:: air_ice_indexes
     real(rk),dimension(:),allocatable:: pF2
     !NaN value
     REAL(rk), PARAMETER :: D_QNAN = &
               TRANSFER((/ Z'00000000', Z'7FF80000' /),1.0_rk)
-    integer ice_water_index
+    !integer ice_water_index
     integer i
 
     !initializing fabm
@@ -60,16 +60,19 @@ contains
     _LINE_
     !initializing values
     call fabm_initialize_state(fabm_model,1,number_of_layers)
-    allocate(air_ice_indexes,source=&
-             standard_vars%get_column("air_ice_indexes"))
-    allocate(pF2(number_of_layers))
+    !allocate(air_ice_indexes,source=&
+    !         standard_vars%get_column("air_ice_indexes"))
+    allocate(pF2(number_of_layers+1))
     pF2=standard_vars%get_column("porosity_factor_solutes_2",1)
-    ice_water_index = standard_vars%get_value("ice_water_index")
+    !ice_water_index = standard_vars%get_value("ice_water_index")
+    !forall (i = 1:number_of_parameters)
+    !  state_vars(i)%value(ice_water_index:air_ice_indexes(1)-1) = &
+    !  state_vars(i)%value(ice_water_index:air_ice_indexes(1)-1)*&
+    !  pF2(ice_water_index+1:air_ice_indexes(1))
+    !  state_vars(i)%value(air_ice_indexes(1):) = D_QNAN
+    !end forall
     forall (i = 1:number_of_parameters)
-      state_vars(i)%value(ice_water_index:air_ice_indexes(1)-1) = &
-      state_vars(i)%value(ice_water_index:air_ice_indexes(1)-1)*&
-      pF2(ice_water_index+1:air_ice_indexes(1))
-      state_vars(i)%value(air_ice_indexes(1):) = D_QNAN
+      state_vars(i)%value = state_vars(i)%value*pF2(2:)
     end forall
     !linking bulk variables
     allocate(temp(number_of_layers))
@@ -304,7 +307,7 @@ contains
     else
       number_of_circles = int(60*60*24/_SECONDS_PER_CIRCLE_)
     end if
-
+    call recalculate_ice(id)
     do i = 1,number_of_circles
       !diffusion
       call brom_do_diffusion(surface_index,bbl_sed_index,&
@@ -428,7 +431,7 @@ contains
           pFSWIdw_solids = pFSWIdw_solids)
       state_vars(i)%value(1:surface_index-1) = temporary(1:surface_index-1,i)
     end forall
-  end subroutine
+                               end subroutine
 
   !subroutine stabilize(inday,inyear)
   !  integer,intent(in):: inday,inyear
@@ -477,6 +480,49 @@ contains
   !  end do
   !end subroutine
 
+  subroutine recalculate_ice(id)
+    integer,intent(in):: id
+    real(rk),dimension(:),allocatable:: air_ice_indexes
+    real(rk),dimension(:),allocatable:: layer_thicknesses
+    integer i,ice_growth,ice_water_index
+
+    allocate(air_ice_indexes,&
+             source=standard_vars%get_column("air_ice_indexes"))
+    allocate(layer_thicknesses,&
+             source=standard_vars%get_column("layer_thicknesses",id))
+    ice_water_index = standard_vars%get_value("ice_water_index")
+    !calculates number of layers freezed or melted
+    if (id==1) then
+      ice_growth = 0
+    else
+      ice_growth = int(air_ice_indexes(id)-air_ice_indexes(id-1))
+    end if
+    !recalculating
+    !melting
+    if (ice_growth<0) then
+      ice_growth = abs(ice_growth)
+      do i=1,ice_growth
+        state_vars%value(ice_water_index-1) =&
+          state_vars%value(ice_water_index-1)+&
+          state_vars%value(ice_water_index-1+i)*&
+          layer_thicknesses(ice_water_index-1+i)/&
+          layer_thicknesses(ice_water_index-1)
+        state_vars%value(ice_water_index-1+i) = 0._rk
+      end do
+      do i=ice_growth,air_ice_indexes(id)
+        state_vars%value(ice_water_index-1+i) =&
+          state_vars%value(ice_water_index+i)
+      end do
+    else if (ice_growth>0) then
+      do i=air_ice_indexes(id)-1,ice_water_index+ice_growth,-1
+        state_vars%value(i)=state_vars%value(i-ice_growth)
+      end do
+      do i=ice_water_index,ice_water_index+ice_growth-1
+        state_vars%value(i) = 0._rk
+      end do
+    end if
+  end subroutine recalculate_ice
+  
   subroutine find_set_state_variable(inname,is_solid,&
       use_bound_up,use_bound_low,bound_up,bound_low,&
       density,sinking_velocity)
