@@ -27,12 +27,12 @@ module transport
                        dimension(:),target:: state_vars
 contains
   subroutine initialize_brom()
-    !real(rk),dimension(:),allocatable:: air_ice_indexes
-    real(rk),dimension(:),allocatable:: pF2
+    real(rk),allocatable,dimension(:):: air_ice_indexes
+    real(rk),allocatable,dimension(:):: porosity
     !NaN value
     REAL(rk), PARAMETER :: D_QNAN = &
               TRANSFER((/ Z'00000000', Z'7FF80000' /),1.0_rk)
-    !integer ice_water_index
+    integer water_sediments_index
     integer i
 
     !initializing fabm
@@ -60,19 +60,21 @@ contains
     _LINE_
     !initializing values
     call fabm_initialize_state(fabm_model,1,number_of_layers)
-    !allocate(air_ice_indexes,source=&
-    !         standard_vars%get_column("air_ice_indexes"))
-    allocate(pF2(number_of_layers+1))
-    pF2=standard_vars%get_column("porosity_factor_solutes_2",1)
+    allocate(air_ice_indexes,source=&
+             standard_vars%get_column("air_ice_indexes"))
+    allocate(porosity(number_of_layers))
+    porosity=standard_vars%get_column("porosity",1)
     !ice_water_index = standard_vars%get_value("ice_water_index")
     !forall (i = 1:number_of_parameters)
     !  state_vars(i)%value(ice_water_index:air_ice_indexes(1)-1) = &
     !  state_vars(i)%value(ice_water_index:air_ice_indexes(1)-1)*&
     !  pF2(ice_water_index+1:air_ice_indexes(1))
-    !  state_vars(i)%value(air_ice_indexes(1):) = D_QNAN
     !end forall
+    water_sediments_index = standard_vars%get_value("bbl_sediments_index")
     forall (i = 1:number_of_parameters)
-      state_vars(i)%value = state_vars(i)%value*pF2(2:)
+      state_vars(i)%value(:water_sediments_index)&
+        = state_vars(i)%value*porosity(:water_sediments_index)
+      state_vars(i)%value(air_ice_indexes(1):) = D_QNAN
     end forall
     !linking bulk variables
     allocate(temp(number_of_layers))
@@ -116,7 +118,7 @@ contains
     integer surface_index
     integer day,i
     !ice thickness
-    real(rk) ice
+    !real(rk) ice
     !cpu time
     real(rk) t1,t2
     real(rk),allocatable,dimension(:):: indices
@@ -148,7 +150,7 @@ contains
     do i = 1,number_of_days
       call date(day,year)
 
-      ice   = standard_vars%get_value(_ICE_THICKNESS_,i)
+      !ice   = standard_vars%get_value(_ICE_THICKNESS_,i)
       depth = standard_vars%get_column("middle_layer_depths",i)
       temp  = standard_vars%get_column(_TEMPERATURE_,i)
       salt  = standard_vars%get_column(_SALINITY_,i)
@@ -433,52 +435,66 @@ contains
     end forall
                                end subroutine
 
-  !subroutine stabilize(inday,inyear)
-  !  integer,intent(in):: inday,inyear
-  !
-  !  type(brom_state_variable):: temporary_variable
-  !  integer day,year
-  !  integer pseudo_day,days_in_year,counter
-  !  integer i
-  !
-  !  day = inday; year = inyear;
-  !  days_in_year = 365+merge(1,0,(mod(year,4).eq.0))
-  !  counter = days_in_year*10
-  !  do i = 1,counter
-  !    call date(day,year)
-  !    call calculate_radiative_flux(&
-  !      surface_radiative_flux(_LATITUDE_,day),&
-  !      standard_vars%get_value(_SNOW_THICKNESS_,i),&
-  !      standard_vars%get_value(_ICE_THICKNESS_ ,i))
-  !    !day from 1 to 365 or 366
-  !    pseudo_day = i-int(i/days_in_year)*&
-  !                 days_in_year+1
-  !    temp = standard_vars%get_column(_TEMPERATURE_,pseudo_day)
-  !    salt = standard_vars%get_column(_SALINITY_,pseudo_day)
-  !
-  !    call find_set_state_variable("niva_brom_bio_PO4",&
-  !      use_bound_up = _DIRICHLET_,bound_up = sinusoidal(day,0.45_rk))
-  !    call find_set_state_variable("niva_brom_bio_NO3",&
-  !      use_bound_up = _DIRICHLET_,bound_up = sinusoidal(day,3.8_rk))
-  !    call find_set_state_variable("niva_brom_redox_Si",&
-  !      use_bound_up = _DIRICHLET_,bound_up = sinusoidal(day,2._rk))
-  !    call fabm_link_bulk_data(&
-  !      fabm_model,standard_variables%temperature,temp)
-  !    call fabm_link_bulk_data(&
-  !      fabm_model,standard_variables%practical_salinity,salt)
-  !    call fabm_link_bulk_data(&
-  !      fabm_model,&
-  !      standard_variables%downwelling_photosynthetic_radiative_flux,&
-  !      radiative_flux)
-  !    call day_circle(pseudo_day)
-  !    write(*,*) "Stabilizing initial array of values, in progress ..."
-  !    write(*,*) "number / ","julianday / ","pseudo day",&
-  !               i,day,pseudo_day
-  !    day = day+1
-  !    !temporary_variable = find_state_variable("niva_brom_bio_O2")
-  !    !call temporary_variable%print_state_variable()
-  !  end do
-  !end subroutine
+  subroutine stabilize(inday,inyear)
+    integer,intent(in):: inday,inyear
+  
+    type(brom_state_variable):: temporary_variable
+    integer day,year
+    integer pseudo_day,days_in_year,counter
+    integer i
+    integer surface_index
+    real(rk),allocatable,dimension(:):: air_ice_indexes
+  
+    allocate(air_ice_indexes,source = &
+             standard_vars%get_column("air_ice_indexes"))
+    day = inday; year = inyear;
+    days_in_year = 365+merge(1,0,(mod(year,4).eq.0))
+    counter = days_in_year*1
+    do i = 1,counter
+      !ice   = standard_vars%get_value(_ICE_THICKNESS_,i)
+      depth = standard_vars%get_column("middle_layer_depths",i)
+      temp  = standard_vars%get_column(_TEMPERATURE_,i)
+      salt  = standard_vars%get_column(_SALINITY_,i)
+
+      surface_index = air_ice_indexes(i)
+      call date(day,year)
+      call calculate_radiative_flux(&
+        surface_radiative_flux(_LATITUDE_,day),&
+        standard_vars%get_value(_SNOW_THICKNESS_,i),&
+        standard_vars%get_value(_ICE_THICKNESS_ ,i))
+      
+      !day from 1 to 365 or 366
+      pseudo_day = i-int(i/days_in_year)*&
+                   days_in_year
+      if(pseudo_day==0) pseudo_day = 1
+      
+      !call find_set_state_variable("niva_brom_bio_PO4",&
+      !  use_bound_up = _DIRICHLET_,bound_up = sinusoidal(day,0.45_rk))
+      !call find_set_state_variable("niva_brom_bio_NO3",&
+      !  use_bound_up = _DIRICHLET_,bound_up = sinusoidal(day,3.8_rk))
+      !call find_set_state_variable("niva_brom_redox_Si",&
+      !  use_bound_up = _DIRICHLET_,bound_up = sinusoidal(day,2._rk))
+      
+      !change surface index due to ice depth
+      !index for boundaries so for layers it should be -1
+      call fabm_model%set_surface_index(surface_index-1)
+      call fabm_link_bulk_data(&
+        fabm_model,standard_variables%temperature,temp)
+      call fabm_link_bulk_data(&
+        fabm_model,standard_variables%practical_salinity,salt)
+      call fabm_link_bulk_data(&
+        fabm_model,&
+        standard_variables%downwelling_photosynthetic_radiative_flux,&
+        radiative_flux)
+      call day_circle(pseudo_day,surface_index)
+      write(*,*) "Stabilizing initial array of values, in progress ..."
+      write(*,*) "number / ","julianday / ","pseudo day",&
+                 i,day,pseudo_day
+      day = day+1
+      !temporary_variable = find_state_variable("niva_brom_bio_O2")
+      !call temporary_variable%print_state_variable()
+    end do
+  end subroutine
 
   subroutine recalculate_ice(id)
     integer,intent(in):: id
@@ -518,11 +534,12 @@ contains
         state_vars%value(i)=state_vars%value(i-ice_growth)
       end do
       do i=ice_water_index,ice_water_index+ice_growth-1
-        state_vars%value(i) = state_vars%value(ice_water_index-1)*&
+        state_vars%value(i) = state_vars%value(ice_water_index-1)
+        state_vars%value(ice_water_index-1) = &
+          state_vars%value(ice_water_index-1)-&
+          state_vars%value(ice_water_index-1)*&
           _ICE_LAYERS_RESOLUTION_/&
           layer_thicknesses(ice_water_index-1)
-        state_vars%value(ice_water_index-1) = &
-          state_vars%value(ice_water_index-1)-state_vars%value(i)
       end do
     end if
   end subroutine recalculate_ice
