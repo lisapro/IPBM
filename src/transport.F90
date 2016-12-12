@@ -12,6 +12,7 @@ module transport
   private
   public initialize_brom,sarafan
 
+  integer previous_ice_index
   integer number_of_parameters
   integer number_of_layers
   real(rk),allocatable,dimension(:):: depth
@@ -105,6 +106,7 @@ contains
       380._rk)
     call fabm_check_ready(fabm_model)
     call configurate_state_variables()
+    previous_ice_index=0
   end subroutine
 
   subroutine sarafan()
@@ -186,11 +188,14 @@ contains
       call cpu_time(t1)
       call day_circle(i,surface_index)
       call netcdf_ice%save(fabm_model,state_vars,indices,i,&
-                           temp,salt,depth,radiative_flux)
+                           temp,salt,depth,radiative_flux,&
+                           int(air_ice_indexes(i)))
       call netcdf_water%save(fabm_model,state_vars,depth,i,&
-                             temp,salt,depth,radiative_flux)
+                             temp,salt,depth,radiative_flux,&
+                             int(air_ice_indexes(i)))
       call netcdf_sediments%save(fabm_model,state_vars,depth,i,&
-                                 temp,salt,depth,radiative_flux)
+                                 temp,salt,depth,radiative_flux,&
+                                 int(air_ice_indexes(i)))
       call cpu_time(t2)
 
       write(*,*) "number / ","julianday / ","year",i,day,year
@@ -464,9 +469,12 @@ contains
         standard_vars%get_value(_ICE_THICKNESS_ ,i))
       
       !day from 1 to 365 or 366
-      pseudo_day = i-int(i/days_in_year)*&
-                   days_in_year
-      if(pseudo_day==0) pseudo_day = 1
+      if (mod(i,days_in_year).eq.0) then
+        pseudo_day = days_in_year
+      else
+        pseudo_day = i-int(i/days_in_year)*&
+                     days_in_year
+      end if
       
       !call find_set_state_variable("niva_brom_bio_PO4",&
       !  use_bound_up = _DIRICHLET_,bound_up = sinusoidal(day,0.45_rk))
@@ -497,7 +505,7 @@ contains
   end subroutine
 
   subroutine recalculate_ice(id)
-    integer,intent(in):: id
+    integer,intent(in)   :: id
     real(rk),dimension(:),allocatable:: air_ice_indexes
     real(rk),dimension(:),allocatable:: layer_thicknesses
     integer i,ice_growth,ice_water_index
@@ -508,11 +516,12 @@ contains
              source=standard_vars%get_column("layer_thicknesses",id))
     ice_water_index = standard_vars%get_value("ice_water_index")
     !calculates number of layers freezed or melted
-    if (id==1) then
+    if (previous_ice_index==0) then
       ice_growth = 0
     else
-      ice_growth = int(air_ice_indexes(id)-air_ice_indexes(id-1))
+      ice_growth = int(air_ice_indexes(id))-previous_ice_index
     end if
+    previous_ice_index = int(air_ice_indexes(id))
     !recalculating
     !melting
     if (ice_growth<0) then

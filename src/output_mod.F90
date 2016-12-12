@@ -123,7 +123,8 @@ contains
   end subroutine initialize
 
   subroutine save(self,model,state_vars,z,day,&
-                  temp,salt,depth,radiative_flux)
+                  temp,salt,depth,radiative_flux,&
+                  air_ice_index)
     class(type_output),intent(inout):: self
     type (type_model)                    ,intent(in):: model
     type(brom_state_variable),allocatable,intent(in):: state_vars(:)
@@ -133,7 +134,11 @@ contains
     real(rk),allocatable,dimension(:)    ,intent(in):: salt
     real(rk),allocatable,dimension(:)    ,intent(in):: depth
     real(rk),allocatable,dimension(:)    ,intent(in):: radiative_flux
+    integer                              ,intent(in):: air_ice_index
 
+    !NaN value
+    REAL(rk), PARAMETER :: D_QNAN = &
+              TRANSFER((/ Z'00000000', Z'7FF80000' /),1.0_rk)
     integer ip,i
     integer edges(2),start(2),start_time(1),edges_time(1)
     real(rk) temp_matrix(self%number_of_layers)
@@ -165,6 +170,7 @@ contains
       do ip = 1,size(model%diagnostic_variables)
         if (model%diagnostic_variables(ip)%save) then
           temp_matrix = fabm_get_bulk_diagnostic_data(model,ip)
+          temp_matrix(air_ice_index:) = D_QNAN
           if (maxval(abs(temp_matrix)).lt.1.0E37) then
             call check(nf90_put_var(self%nc_id,self%parameter_id_diag(ip),&
                        temp_matrix(self%first_layer:self%last_layer),&
