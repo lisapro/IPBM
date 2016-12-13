@@ -147,7 +147,7 @@ contains
 
     day = standard_vars%first_day()
     call initial_date(day,year)
-    !call stabilize(day,year)
+    call stabilize(day,year)
 
     do i = 1,number_of_days
       call date(day,year)
@@ -265,8 +265,14 @@ contains
     radiative_flux(ice_water_index:) = &
       par_scat*exp(-_ICE_EXTINCTION_*ice_depths)
     !water column calculations
-    radiative_flux(:ice_water_index-1) = &
-      surface_flux*exp(-_ERLOV_*depth(:ice_water_index-1))
+    if (ice_thick==0._rk) then
+      radiative_flux(:ice_water_index-1) = &
+        surface_flux*exp(-_ERLOV_*depth(:ice_water_index-1))
+    else
+      radiative_flux(:ice_water_index-1) = &
+        radiative_flux(ice_water_index)*&
+        exp(-_ERLOV_*depth(:ice_water_index-1))
+    end if
   end subroutine
 
   pure function sinusoidal(julian_day,multiplier)
@@ -438,35 +444,24 @@ contains
           pFSWIdw_solids = pFSWIdw_solids)
       state_vars(i)%value(1:surface_index-1) = temporary(1:surface_index-1,i)
     end forall
-                               end subroutine
+  end subroutine
 
   subroutine stabilize(inday,inyear)
     integer,intent(in):: inday,inyear
-  
+
     type(brom_state_variable):: temporary_variable
     integer day,year
     integer pseudo_day,days_in_year,counter
     integer i
     integer surface_index
     real(rk),allocatable,dimension(:):: air_ice_indexes
-  
+
     allocate(air_ice_indexes,source = &
              standard_vars%get_column("air_ice_indexes"))
     day = inday; year = inyear;
     days_in_year = 365+merge(1,0,(mod(year,4).eq.0))
-    counter = days_in_year*1
+    counter = days_in_year*2
     do i = 1,counter
-      !ice   = standard_vars%get_value(_ICE_THICKNESS_,i)
-      depth = standard_vars%get_column("middle_layer_depths",i)
-      temp  = standard_vars%get_column(_TEMPERATURE_,i)
-      salt  = standard_vars%get_column(_SALINITY_,i)
-
-      surface_index = air_ice_indexes(i)
-      call date(day,year)
-      call calculate_radiative_flux(&
-        surface_radiative_flux(_LATITUDE_,day),&
-        standard_vars%get_value(_SNOW_THICKNESS_,i),&
-        standard_vars%get_value(_ICE_THICKNESS_ ,i))
       
       !day from 1 to 365 or 366
       if (mod(i,days_in_year).eq.0) then
@@ -475,14 +470,25 @@ contains
         pseudo_day = i-int(i/days_in_year)*&
                      days_in_year
       end if
-      
+      !ice   = standard_vars%get_value(_ICE_THICKNESS_,pseudo_day)
+      depth = standard_vars%get_column("middle_layer_depths",pseudo_day)
+      temp  = standard_vars%get_column(_TEMPERATURE_,pseudo_day)
+      salt  = standard_vars%get_column(_SALINITY_,pseudo_day)
+
+      surface_index = air_ice_indexes(pseudo_day)
+      call date(day,year)
+      call calculate_radiative_flux(&
+        surface_radiative_flux(_LATITUDE_,day),&
+        standard_vars%get_value(_SNOW_THICKNESS_,pseudo_day),&
+        standard_vars%get_value(_ICE_THICKNESS_ ,pseudo_day))
+
       !call find_set_state_variable("niva_brom_bio_PO4",&
       !  use_bound_up = _DIRICHLET_,bound_up = sinusoidal(day,0.45_rk))
       !call find_set_state_variable("niva_brom_bio_NO3",&
       !  use_bound_up = _DIRICHLET_,bound_up = sinusoidal(day,3.8_rk))
       !call find_set_state_variable("niva_brom_redox_Si",&
       !  use_bound_up = _DIRICHLET_,bound_up = sinusoidal(day,2._rk))
-      
+
       !change surface index due to ice depth
       !index for boundaries so for layers it should be -1
       call fabm_model%set_surface_index(surface_index-1)
@@ -552,7 +558,7 @@ contains
       end do
     end if
   end subroutine recalculate_ice
-  
+
   subroutine find_set_state_variable(inname,is_solid,&
       use_bound_up,use_bound_low,bound_up,bound_low,&
       density,sinking_velocity)
