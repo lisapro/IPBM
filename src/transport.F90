@@ -460,7 +460,7 @@ contains
              standard_vars%get_column("air_ice_indexes"))
     day = inday; year = inyear;
     days_in_year = 365+merge(1,0,(mod(year,4).eq.0))
-    counter = days_in_year*2
+    counter = days_in_year*5
     do i = 1,counter
       
       !day from 1 to 365 or 366
