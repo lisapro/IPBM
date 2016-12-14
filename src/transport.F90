@@ -54,8 +54,8 @@ contains
       call fabm_link_bulk_state_data(&
         fabm_model,i,state_vars(i)%value)
       state_vars(i)%name = fabm_model%state_variables(i)%name
-      call state_vars(i)%set_brom_state_variable(.false.,_NEUMANN_,&
-        _NEUMANN_,0._rk,0._rk,0._rk,0._rk)
+      call state_vars(i)%set_brom_state_variable(.false.,.false.,&
+        _NEUMANN_,_NEUMANN_,0._rk,0._rk,0._rk,0._rk)
       call state_vars(i)%print_name()
     end do
     _LINE_
@@ -462,7 +462,7 @@ contains
     days_in_year = 365+merge(1,0,(mod(year,4).eq.0))
     counter = days_in_year*5
     do i = 1,counter
-      
+
       !day from 1 to 365 or 366
       if (mod(i,days_in_year).eq.0) then
         pseudo_day = days_in_year
@@ -560,10 +560,11 @@ contains
   end subroutine recalculate_ice
 
   subroutine find_set_state_variable(inname,is_solid,&
-      use_bound_up,use_bound_low,bound_up,bound_low,&
-      density,sinking_velocity)
+      is_gas,use_bound_up,use_bound_low,bound_up,&
+      bound_low,density,sinking_velocity)
     character(len=*),                      intent(in):: inname
     logical,optional,                      intent(in):: is_solid
+    logical,optional,                      intent(in):: is_gas
     integer,optional,                      intent(in):: use_bound_up
     integer,optional,                      intent(in):: use_bound_low
     real(rk),optional,                     intent(in):: bound_up
@@ -577,8 +578,8 @@ contains
     do i = 1,number_of_vars
       if (state_vars(i)%name.eq.inname) then
         call state_vars(i)%set_brom_state_variable(is_solid,&
-          use_bound_up,use_bound_low,bound_up,bound_low,&
-          density,sinking_velocity)
+          is_gas,use_bound_up,use_bound_low,bound_up,&
+          bound_low,density,sinking_velocity)
         return
       end if
     end do
@@ -599,6 +600,11 @@ contains
     !  use_bound_up = _DIRICHLET_,bound_up = 0.4e-4_rk)
     !call find_set_state_variable("niva_brom_carb_Alk",&
     !  use_bound_up = _DIRICHLET_,bound_up = 2250._rk)
+
+    call find_set_state_variable("niva_brom_bio_NH4"  ,is_gas = .true.)
+    call find_set_state_variable("niva_brom_bio_O2"   ,is_gas = .true.)
+    call find_set_state_variable("niva_brom_redox_H2S",is_gas = .true.)
+    call find_set_state_variable("niva_brom_redox_CH4",is_gas = .true.)
 
     call find_set_state_variable("niva_brom_bio_Phy",&
       is_solid = .true.,density = 1.5E7_rk)

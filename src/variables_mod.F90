@@ -31,6 +31,7 @@ module variables_mod
 
   type,extends(variable_1d):: brom_state_variable
     logical  is_solid
+    logical  is_gas
     integer  use_bound_up
     integer  use_bound_low
     real(rk) bound_up
@@ -593,10 +594,11 @@ contains
   end subroutine
 
   pure subroutine set_brom_state_variable(self,is_solid,&
-      use_bound_up,use_bound_low,bound_up,bound_low,&
-      density,sinking_velocity)
+      is_gas,use_bound_up,use_bound_low,bound_up,&
+      bound_low,density,sinking_velocity)
     class(brom_state_variable),intent(inout):: self
     logical,optional          ,intent(in)   :: is_solid
+    logical,optional          ,intent(in)   :: is_gas
     integer,optional          ,intent(in)   :: use_bound_up
     integer,optional          ,intent(in)   :: use_bound_low
     real(rk),optional         ,intent(in)   :: bound_up
@@ -605,6 +607,7 @@ contains
     real(rk),optional         ,intent(in)   :: sinking_velocity
 
     if(present(is_solid)) self%is_solid = is_solid
+    if(present(is_gas)) self%is_gas = is_gas
     if(present(use_bound_up)) self%use_bound_up = use_bound_up
     if(present(use_bound_low)) self%use_bound_low = use_bound_low
     if(present(bound_up)) self%bound_up = bound_up
