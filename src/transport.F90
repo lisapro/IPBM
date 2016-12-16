@@ -5,7 +5,7 @@ module transport
   use fabm
   use fabm_config
   use fabm_driver
-  use fabm_types,only: rk
+  use fabm_types
   use variables_mod
 
   implicit none
@@ -16,12 +16,15 @@ module transport
   integer number_of_parameters
   integer number_of_layers
   real(rk),allocatable,dimension(:):: depth
+  real(rk),allocatable,dimension(:):: porosity
   real(rk),allocatable,dimension(:),target:: temp
   real(rk),allocatable,dimension(:),target:: salt
   real(rk),allocatable,dimension(:),target:: radiative_flux
   real(rk),allocatable,dimension(:),target:: pressure
   !fabm model
   type(type_model) fabm_model
+  !porosity
+  type(type_bulk_standard_variable) fabm_porosity
   !standard variables for model
   type(brom_standard_variables) standard_vars
   type(brom_state_variable),allocatable,&
@@ -29,7 +32,6 @@ module transport
 contains
   subroutine initialize_brom()
     real(rk),allocatable,dimension(:):: air_ice_indexes
-    real(rk),allocatable,dimension(:):: porosity
     !NaN value
     REAL(rk), PARAMETER :: D_QNAN = &
               TRANSFER((/ Z'00000000', Z'7FF80000' /),1.0_rk)
@@ -65,6 +67,8 @@ contains
              standard_vars%get_column("air_ice_indexes"))
     allocate(porosity(number_of_layers))
     porosity=standard_vars%get_column("porosity",1)
+    fabm_porosity = type_bulk_standard_variable(name="porosity",units="1")
+    call fabm_link_bulk_data(fabm_model,fabm_porosity,porosity)
     !ice_water_index = standard_vars%get_value("ice_water_index")
     !forall (i = 1:number_of_parameters)
     !  state_vars(i)%value(ice_water_index:air_ice_indexes(1)-1) = &
@@ -147,12 +151,13 @@ contains
 
     day = standard_vars%first_day()
     call initial_date(day,year)
-    call stabilize(day,year)
+    !call stabilize(day,year)
 
     do i = 1,number_of_days
       call date(day,year)
 
       !ice   = standard_vars%get_value(_ICE_THICKNESS_,i)
+      porosity = standard_vars%get_column("porosity",i)
       depth = standard_vars%get_column("middle_layer_depths",i)
       temp  = standard_vars%get_column(_TEMPERATURE_,i)
       salt  = standard_vars%get_column(_SALINITY_,i)
@@ -166,6 +171,7 @@ contains
       !change surface index due to ice depth
       !index for boundaries so for layers it should be -1
       call fabm_model%set_surface_index(surface_index-1)
+      call fabm_link_bulk_data(fabm_model,fabm_porosity,porosity)
       call fabm_link_bulk_data(&
         fabm_model,standard_variables%temperature,temp)
       call fabm_link_bulk_data(&
