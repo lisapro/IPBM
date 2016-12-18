@@ -302,12 +302,13 @@ contains
     real(rk),dimension(number_of_layers+1):: kz_bio
     real(rk),dimension(number_of_layers+1):: kz_turb
     real(rk),dimension(number_of_layers+1):: layer_thicknesses
-    integer i,j,bbl_sed_index
+    integer i,j,bbl_sed_index,ice_water_index
     integer number_of_circles
     !index for boundaries so for layers it should be -1
     real(rk),dimension(surface_index-1,number_of_parameters):: increment
 
     bbl_sed_index = standard_vars%get_value("bbl_sediments_index")
+    ice_water_index = standard_vars%get_value("ice_water_index")
     pF1_solutes = &
     (/ 0._rk,standard_vars%get_column("porosity_factor_solutes_1",id) /)
     pF2_solutes = standard_vars%get_column("porosity_factor_solutes_2",id)
@@ -329,7 +330,7 @@ contains
     call recalculate_ice(id)
     do i = 1,number_of_circles
       !diffusion
-      call brom_do_diffusion(surface_index,bbl_sed_index,&
+      call brom_do_diffusion(surface_index,bbl_sed_index,ice_water_index,&
                              pF1_solutes,pF2_solutes,pF1_solids,&
                              pF2_solids,kz_mol,kz_bio,kz_turb,&
                              layer_thicknesses)
@@ -344,13 +345,14 @@ contains
     end do
   end subroutine
 
-  subroutine brom_do_diffusion(surface_index,bbl_sed_index,&
+  subroutine brom_do_diffusion(surface_index,bbl_sed_index,ice_water_index,&
                                pF1_solutes,pF2_solutes,pF1_solids,&
                                pF2_solids,kz_mol,kz_bio,kz_turb,&
                                layer_thicknesses)
     use diff_mod
     integer,intent(in):: surface_index
     integer,intent(in):: bbl_sed_index
+    integer,intent(in):: ice_water_index
     real(rk),dimension(number_of_layers+1),intent(in):: pF1_solutes
     real(rk),dimension(number_of_layers+1),intent(in):: pF2_solutes
     real(rk),dimension(number_of_layers+1),intent(in):: pF1_solids
@@ -440,6 +442,8 @@ contains
           Y     = (/ 0._rk,state_vars(i)%value(:surface_index-1) /),&
           i_sed_top = bbl_sed_index-1,&
           is_solid = state_vars(i)%is_solid,&
+          i_ice_water = ice_water_index,&
+          is_gas = state_vars(i)%is_gas,&
           pF1_solutes = pF1_solutes(:surface_index),&
           pF2_solutes = pF2_solutes(:surface_index),&
           pF1_solids = pF1_solids(:surface_index),&

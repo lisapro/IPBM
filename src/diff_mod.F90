@@ -9,7 +9,8 @@ module diff_mod
 contains
   pure function do_diffusive(N,dt,cnpar,posconc,h,Bcup,Bcdw,&
                 Yup,Ydw,nuY_in,Lsour,Qsour,Taur,Yobs,Y,&
-                i_sed_top,is_solid,pF1_solutes,pF2_solutes,&
+                i_sed_top,is_solid,i_ice_water,is_gas,&
+                pF1_solutes,pF2_solutes,&
                 pF1_solids,pF2_solids,pFSWIup_solutes,&
                 pFSWIdw_solutes,pFSWIup_solids,pFSWIdw_solids)
 
@@ -122,6 +123,9 @@ contains
     ! index to indentify the cell just below the SWI
     integer,  intent(in)                :: i_sed_top
     logical,  intent(in)                :: is_solid
+    ! for gases handling in ice core
+    integer,  intent(in)                :: i_ice_water
+    logical,  intent(in)                :: is_gas
     ! porosity factors
     real(rk), intent(in)                :: pF1_solutes(0:N)
     real(rk), intent(in)                :: pF2_solutes(0:N)
@@ -146,10 +150,18 @@ contains
     real(rk)                  :: a,c,l
     real(rk), dimension(0:N)  :: au,bu,cu,du
 
-    !choose btw solute or solid
+    !choose btw solute, solid and gas
     if (.not.is_solid) then
-      pF = pF1_solutes
-      nuY = nuY_in*pF2_solutes
+      if (.not.is_gas) then
+        pF = pF1_solutes
+        nuY = nuY_in*pF2_solutes
+      else
+        pF(:i_ice_water-1) = pF1_solutes(:i_ice_water-1)
+        pF(i_ice_water:) = 1._rk
+        nuY(:i_ice_water-1) = nuY_in(:i_ice_water-1)*&
+                              pF2_solutes(:i_ice_water-1)
+        nuY(i_ice_water:) = nuY_in(i_ice_water:)
+      end if
       pFSWIup = pFSWIup_solutes
       pFSWIdw = pFSWIdw_solutes
     else
