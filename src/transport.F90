@@ -92,7 +92,8 @@ contains
     water_sediments_index = standard_vars%get_value("bbl_sediments_index")
     forall (i = 1:number_of_parameters)
       state_vars(i)%value(:water_sediments_index)&
-        = state_vars(i)%value*porosity(:water_sediments_index)
+        = state_vars(i)%value(:water_sediments_index)*&
+          porosity(:water_sediments_index)
       state_vars(i)%value(air_ice_index:) = D_QNAN
     end forall
     !linking bulk variables
