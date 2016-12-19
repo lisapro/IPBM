@@ -539,7 +539,8 @@ contains
     real(rk),dimension(:),allocatable:: air_ice_indexes
     real(rk),dimension(:),allocatable:: layer_thicknesses
     !real(rk) ice_water_layer_thickness
-    integer i,j,ice_growth,ice_water_index
+    integer i,j
+    integer ice_growth_save,ice_growth,ice_water_index
 
     allocate(air_ice_indexes,&
              source=standard_vars%get_column("air_ice_indexes"))
@@ -549,14 +550,15 @@ contains
     !ice_water_layer_thickness = layer_thicknesses(ice_water_index-1)
     !calculates number of layers freezed or melted
     if (previous_ice_index==0) then
-      ice_growth = 0
+      ice_growth_save = 0
     else
-      ice_growth = int(air_ice_indexes(id))-previous_ice_index
+      ice_growth_save = int(air_ice_indexes(id))-previous_ice_index
     end if
     previous_ice_index = int(air_ice_indexes(id))
 
     do j = 1,number_of_parameters
       !recalculating
+      ice_growth = ice_growth_save
       !melting
       if (ice_growth<0) then
         ice_growth = abs(ice_growth)
