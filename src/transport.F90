@@ -49,6 +49,7 @@ contains
               TRANSFER((/ Z'00000000', Z'7FF80000' /),1.0_rk)
     integer water_sediments_index
     integer i
+    integer air_ice_index
 
     !initializing fabm
     _LINE_
@@ -77,6 +78,7 @@ contains
     call fabm_initialize_state(fabm_model,1,number_of_layers)
     allocate(air_ice_indexes,source=&
              standard_vars%get_column("air_ice_indexes"))
+    air_ice_index = air_ice_indexes(1)
     allocate(porosity(number_of_layers))
     porosity=standard_vars%get_column("porosity",1)
     fabm_porosity = type_bulk_standard_variable(name="porosity",units="1")
@@ -91,7 +93,7 @@ contains
     forall (i = 1:number_of_parameters)
       state_vars(i)%value(:water_sediments_index)&
         = state_vars(i)%value*porosity(:water_sediments_index)
-      state_vars(i)%value(air_ice_indexes(1):) = D_QNAN
+      state_vars(i)%value(air_ice_index:) = D_QNAN
     end forall
     !linking bulk variables
     allocate(temp(number_of_layers))
@@ -111,7 +113,7 @@ contains
     !total=water+atmosphere [dbar]
     allocate(pressure(number_of_layers))
     pressure = depth+10._rk
-    pressure(standard_vars%get_value("ice_water_index"):) = 10._rk
+    pressure(int(standard_vars%get_value("ice_water_index")):) = 10._rk
     call fabm_link_bulk_data(&
       fabm_model,standard_variables%pressure,pressure)
     !linking horizontal variables
@@ -536,13 +538,15 @@ contains
     integer,intent(in)   :: id
     real(rk),dimension(:),allocatable:: air_ice_indexes
     real(rk),dimension(:),allocatable:: layer_thicknesses
-    integer i,ice_growth,ice_water_index
+    !real(rk) ice_water_layer_thickness
+    integer i,j,ice_growth,ice_water_index
 
     allocate(air_ice_indexes,&
              source=standard_vars%get_column("air_ice_indexes"))
     allocate(layer_thicknesses,&
              source=standard_vars%get_column("layer_thicknesses",id))
     ice_water_index = standard_vars%get_value("ice_water_index")
+    !ice_water_layer_thickness = layer_thicknesses(ice_water_index-1)
     !calculates number of layers freezed or melted
     if (previous_ice_index==0) then
       ice_growth = 0
@@ -550,35 +554,39 @@ contains
       ice_growth = int(air_ice_indexes(id))-previous_ice_index
     end if
     previous_ice_index = int(air_ice_indexes(id))
-    !recalculating
-    !melting
-    if (ice_growth<0) then
-      ice_growth = abs(ice_growth)
-      do i=1,ice_growth
-        state_vars%value(ice_water_index-1) =&
-          state_vars%value(ice_water_index-1)+&
-          state_vars%value(ice_water_index-1+i)*&
-          _ICE_LAYERS_RESOLUTION_/&
-          layer_thicknesses(ice_water_index-1)
-        state_vars%value(ice_water_index-1+i) = 0._rk
-      end do
-      do i=ice_water_index,air_ice_indexes(id)+ice_growth-1
-        state_vars%value(i) = state_vars%value(i+ice_growth)
-      end do
-    !freezing
-    else if (ice_growth>0) then
-      do i=air_ice_indexes(id)-1,ice_water_index+ice_growth,-1
-        state_vars%value(i)=state_vars%value(i-ice_growth)
-      end do
-      do i=ice_water_index,ice_water_index+ice_growth-1
-        state_vars%value(i) = state_vars%value(ice_water_index-1)
-        state_vars%value(ice_water_index-1) = &
-          state_vars%value(ice_water_index-1)-&
-          state_vars%value(ice_water_index-1)*&
-          _ICE_LAYERS_RESOLUTION_/&
-          layer_thicknesses(ice_water_index-1)
-      end do
-    end if
+
+    do j = 1,number_of_parameters
+      !recalculating
+      !melting
+      if (ice_growth<0) then
+        ice_growth = abs(ice_growth)
+        do i=1,ice_growth
+          state_vars(j)%value(ice_water_index-1) =&
+            state_vars(j)%value(ice_water_index-1)+&
+            state_vars(j)%value(ice_water_index-1+i)*&
+            _ICE_LAYERS_RESOLUTION_/&
+            layer_thicknesses(ice_water_index-1)
+            !ice_water_layer_thickness
+          state_vars(j)%value(ice_water_index-1+i) = 0._rk
+        end do
+        do i=ice_water_index,int(air_ice_indexes(id))+ice_growth-1
+          state_vars(j)%value(i) = state_vars(j)%value(i+ice_growth)
+        end do
+      !freezing
+      else if (ice_growth>0) then
+        do i=int(air_ice_indexes(id)-1),ice_water_index+ice_growth,-1
+          state_vars(j)%value(i)=state_vars(j)%value(i-ice_growth)
+        end do
+        do i=ice_water_index,ice_water_index+ice_growth-1
+          state_vars(j)%value(i) = state_vars(j)%value(ice_water_index-1)
+          state_vars(j)%value(ice_water_index-1) = &
+            state_vars(j)%value(ice_water_index-1)-&
+            state_vars(j)%value(ice_water_index-1)*&
+            _ICE_LAYERS_RESOLUTION_/&
+            layer_thicknesses(ice_water_index-1)
+        end do
+      end if
+    end do
   end subroutine recalculate_ice
 
   subroutine find_set_state_variable(inname,is_solid,&
