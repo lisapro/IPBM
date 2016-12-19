@@ -1,3 +1,15 @@
+!-----------------------------------------------------------------------
+! BROM2 is free software: you can redistribute it and/or modify it under
+! the terms of the GNU General Public License as published by the Free
+! Software Foundation (https://www.gnu.org/licenses/gpl.html).
+! It is distributed in the hope that it will be useful, but WITHOUT ANY
+! WARRANTY; without even the implied warranty of MERCHANTABILITY or
+! FITNESS FOR A PARTICULAR PURPOSE. A copy of the license is provided in
+! the COPYING file at the root of the FABM distribution.
+!-----------------------------------------------------------------------
+! Original author(s): Shamil Yakubov
+!-----------------------------------------------------------------------
+
 #include "../include/parameters.h"
 
 module diff_mod
@@ -59,19 +71,22 @@ contains
     ! The input parameters {\tt Bcup} and {\tt Bcdw} specify the type
     ! of the upper and lower boundary conditions, which can be either
     ! Dirichlet or Neumann-type. {\tt Bcup} and {\tt Bcdw} must have integer
-    ! values corresponding to the parameters {\tt Dirichlet} and {\tt Neumann}
+    ! values corresponding to the parameters {\tt Dirichlet}
+    ! and {\tt Neumann}
     ! defined in the module {\tt util}, see \sect{sec:utils}.
     ! {\tt Yup} and {\tt Ydw} are the values of the boundary conditions at
     ! the surface and the bottom. Depending on the values of {\tt Bcup} and
     ! {\tt Bcdw}, they represent either fluxes or prescribed values.
     ! The integer {\tt posconc} indicates if a quantity is
-    ! non-negative by definition ({\tt posconc}=1, such as for concentrations)
+    ! non-negative by definition ({\tt posconc}=1, such as for
+    ! concentrations)
     ! or not ({\tt posconc}=0). For {\tt posconc}=1 and negative
     ! boundary fluxes, the source term linearisation according to
     ! \cite{Patankar80} is applied.
     !
     ! Note that fluxes \emph{entering} a boundary cell are counted positive
-    ! by convention. The lower and upper position for prescribing these fluxes
+    ! by convention. The lower and upper position for prescribing these
+    ! fluxes
     ! are located at the lowest und uppermost grid faces with index "0" and
     ! index "N", respectively. If values are prescribed, they are located at
     ! the centers with index "1" and index "N", respectively.
