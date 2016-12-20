@@ -166,7 +166,7 @@ contains
 
     day = standard_vars%first_day()
     call initial_date(day,year)
-    !call stabilize(day,year)
+    call stabilize(day,year)
 
     do i = 1,number_of_days
       call date(day,year)
@@ -487,7 +487,6 @@ contains
     days_in_year = 365+merge(1,0,(mod(year,4).eq.0))
     counter = days_in_year*5
     do i = 1,counter
-
       !day from 1 to 365 or 366
       if (mod(i,days_in_year).eq.0) then
         pseudo_day = days_in_year
@@ -496,6 +495,7 @@ contains
                      days_in_year
       end if
       !ice   = standard_vars%get_value(_ICE_THICKNESS_,pseudo_day)
+      porosity = standard_vars%get_column("porosity",pseudo_day)
       depth = standard_vars%get_column("middle_layer_depths",pseudo_day)
       temp  = standard_vars%get_column(_TEMPERATURE_,pseudo_day)
       salt  = standard_vars%get_column(_SALINITY_,pseudo_day)
@@ -503,7 +503,7 @@ contains
       surface_index = air_ice_indexes(pseudo_day)
       call date(day,year)
       call calculate_radiative_flux(&
-        surface_radiative_flux(_LATITUDE_,day),&
+        surface_radiative_flux(_LATITUDE_,pseudo_day),&
         standard_vars%get_value(_SNOW_THICKNESS_,pseudo_day),&
         standard_vars%get_value(_ICE_THICKNESS_ ,pseudo_day))
 
@@ -517,6 +517,7 @@ contains
       !change surface index due to ice depth
       !index for boundaries so for layers it should be -1
       call fabm_model%set_surface_index(surface_index-1)
+      call fabm_link_bulk_data(fabm_model,fabm_porosity,porosity)
       call fabm_link_bulk_data(&
         fabm_model,standard_variables%temperature,temp)
       call fabm_link_bulk_data(&
@@ -676,7 +677,7 @@ contains
   end subroutine
 
   function find_state_variable(inname)
-    character(len=*),                      intent(in):: inname
+    character(len=*),intent(in):: inname
     type(brom_state_variable):: find_state_variable
     integer number_of_vars
     integer i
