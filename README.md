@@ -9,7 +9,7 @@ A coupled benthic-pelagic model for simulation of ice, water and sediment biogeo
 ## How to use
 At first you must download [FABM] and do all prerequisites it needs (you should have compliant compiler, [Git], [CMake], and [NetCDF] Fortran library compiled with the same Fortran compiler as used for compiling BROM2 & FABM. For the VisualStudio solution under Windows pre-compiled NetCDF libraries are provided.)
 
-Check """<FABMDIR>/src/drivers/brom/fabm_driver.h""" (<FABMDIR> is the root of the FABM source tree). It must be tuned like 1d model:
+Check **<FABMDIR>/src/drivers/brom/fabm_driver.h** (<FABMDIR> is the root of the FABM source tree). It must be tuned like 1d model:
 ```
 #define _FABM_DIMENSION_COUNT_ 1
 #define _FABM_DEPTH_DIMENSION_INDEX_ 1
