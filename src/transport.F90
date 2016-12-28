@@ -319,6 +319,8 @@ contains
     real(rk),dimension(number_of_layers+1):: layer_thicknesses
     integer i,j,bbl_sed_index,ice_water_index
     integer number_of_circles
+    !fabm logical parameters
+    logical:: repair=.true.,valid
     !index for boundaries so for layers it should be -1
     real(rk),dimension(surface_index-1,number_of_parameters):: increment
 
@@ -351,6 +353,7 @@ contains
                              layer_thicknesses)
 
       !biogeochemistry
+      call fabm_check_state(fabm_model,1,surface_index-1,repair,valid)
       increment = 0._rk
       call fabm_do(fabm_model,1,surface_index-1,increment)
       increment = _SECONDS_PER_CIRCLE_*increment
