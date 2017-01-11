@@ -85,12 +85,12 @@ Then:
   * Browse the **Where is the source code** to the **path:\to\BROM2\src**
   * Browse the **Where to build the binaries** - e.g. **path:\to\BROM2\build**
   * Click the **Configure** button. Select a build system generator, if you use Intel Visual Fortran with Visual Studio integration and want to use NetCDF libraries that come with BROM2 please select a 32-bit generator.
-  * Now all configuration variables for the build system are listed and you can change them according to your preferences. You need set FABM_BASE variable to the directory where you have downloaded [FABM], also you need specify -DFABM_NIVA_BASE to `path/to/brom_niva_module`.
+  * Now all configuration variables for the build system are listed and you can change them according to your preferences. You need set FABM_BASE variable to the directory where you have downloaded [FABM]. Then click the **Configure** button again. Select **Advanced** option and specify -DFABM_NIVA_BASE to `path/to/brom_niva_module` also.
   * Click the **Configure** button until no new (red-coloured) configuration variables appear, then press **Generate** button.
 
 4. Compile the code
 
-  After generating the build system, you should build the software. You can do either by opening Visual Studio and choosing **Build All**, or typing **make** if using a build system based on makefiles.
+  After generating the build system, you should build the software. You can do either by opening Visual Studio and choosing **Build All** (after opening **path:\to\BROM2\build\brom2.sln**, right click on brom2 in **Solution Explorer** and select **Set as StartUp Project**) or typing **make** if using a build system based on makefiles.
 
 5. Run BROM2
 

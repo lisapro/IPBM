@@ -22,21 +22,21 @@ mark_as_advanced(NetCDF_INCLUDE_DIRS NetCDF_LIBRARIES)
 
 elseif (WIN32)
 
-    set(ICE-HOSTDIR $ENV{ICE-HOSTDIR})
+    set(BROMDIR $ENV{BROMDIR})
 
 # On Windows: use CMake to locate paths; default to NetCDF static library
-# provided with ICE-HOST.
+# provided with BROM.
 find_library(NetCDF_LIBRARIES NAMES netcdfs
-    HINTS ${ICE-HOSTDIR}/extras/netcdf/win32/3.6.3/lib
+    HINTS ${BROMDIR}/extras/netcdf/win32/3.6.3/lib
              DOC "NetCDF library")
 find_path(NetCDF_INCLUDE_DIRS netcdf.mod
-    HINTS ${ICE-HOSTDIR}/extras/netcdf/win32/3.6.3/include ENV NetCDFINC
+    HINTS ${BROMDIR}/extras/netcdf/win32/3.6.3/include ENV NetCDFINC
           DOC "NetCDF include directory")
 
 get_filename_component(NetCDF_LIBRARIES_full ${NetCDF_LIBRARIES} ABSOLUTE)
-get_filename_component(NetCDF_LIBRARIES_default_full "${ICE-HOSTDIR}/extras/netcdf/win32/3.6.3/lib/netcdfs.lib" ABSOLUTE)
+get_filename_component(NetCDF_LIBRARIES_default_full "${BROMDIR}/extras/netcdf/win32/3.6.3/lib/netcdfs.lib" ABSOLUTE)
 if(MSVC AND NetCDF_LIBRARIES_full STREQUAL NetCDF_LIBRARIES_default_full)
-    # Win32 NetCDF library provided with ICE-HOST is statically built against release libraries.
+    # Win32 NetCDF library provided with BROM is statically built against release libraries.
   # Dependent projects need to do the same in release mode to prevent linking conflicts.
   set(NetCDF_STATIC_MSVC_BUILD TRUE)
 endif()
