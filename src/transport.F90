@@ -36,7 +36,7 @@ module transport
   !fabm model
   type(type_model) fabm_model
   !porosity
-  type(type_bulk_standard_variable) fabm_porosity
+  !type(type_bulk_standard_variable) fabm_porosity
   !standard variables for model
   type(brom_standard_variables) standard_vars
   type(brom_state_variable),allocatable,&
@@ -81,8 +81,8 @@ contains
     air_ice_index = air_ice_indexes(1)
     allocate(porosity(number_of_layers))
     porosity=standard_vars%get_column("porosity",1)
-    fabm_porosity = type_bulk_standard_variable(name="porosity",units="1")
-    call fabm_link_bulk_data(fabm_model,fabm_porosity,porosity)
+    !fabm_porosity = type_bulk_standard_variable(name="porosity",units="1")
+    !call fabm_link_bulk_data(fabm_model,fabm_porosity,porosity)
     !ice_water_index = standard_vars%get_value("ice_water_index")
     !forall (i = 1:number_of_parameters)
     !  state_vars(i)%value(ice_water_index:air_ice_indexes(1)-1) = &
@@ -186,7 +186,7 @@ contains
       !change surface index due to ice depth
       !index for boundaries so for layers it should be -1
       call fabm_model%set_surface_index(surface_index-1)
-      call fabm_link_bulk_data(fabm_model,fabm_porosity,porosity)
+      !call fabm_link_bulk_data(fabm_model,fabm_porosity,porosity)
       call fabm_link_bulk_data(&
         fabm_model,standard_variables%temperature,temp)
       call fabm_link_bulk_data(&
@@ -520,7 +520,7 @@ contains
       !change surface index due to ice depth
       !index for boundaries so for layers it should be -1
       call fabm_model%set_surface_index(surface_index-1)
-      call fabm_link_bulk_data(fabm_model,fabm_porosity,porosity)
+      !call fabm_link_bulk_data(fabm_model,fabm_porosity,porosity)
       call fabm_link_bulk_data(&
         fabm_model,standard_variables%temperature,temp)
       call fabm_link_bulk_data(&
