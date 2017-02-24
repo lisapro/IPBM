@@ -57,124 +57,12 @@ instances:
     initialization:
       o: 300.0 # oxygen (mmol O_2/m^3)
   O3:
-    long_name: carbonate
-    model: ersem/carbonate
-    parameters:
-      iswCO2: 1 # carbonate system diagnostics (0: off, 1: on), default = 1
-      iswASFLUX: 1 # air-sea CO2 exchange (0: none, 1: Nightingale and Liss, 2: Wanninkhof 1992 without chemical enhancement, 3: Wanninkhof 1992 with chemical enhancement, 4: Wanninkhof 1999), default = 1
-      iswtalk: 2 # alkalinity formulation (1-4: from salinity and temperature, 5: dynamic alkalinity), default = 5
+    long_name: carbon
+    model: niva/brom/brom_carbon
     initialization:
-      c: 2130.0 # total dissolved inorganic carbon (mmol C/m^3)
-  B_METH:
-    long_name: methane 
-    model: niva/brom/brom_methane
-    parameters:
-      s_omso_o2: 25.0 # threshold of o2 for OM sulfate reduction
-      s_omso_no3: 5.0 # threshold of noX for OM sulfate reduction
-      # Threshold of of SO4 for methane production from OM
-      s_omch_so4: 30.
-      # Specific rate of methane production from DON (Lopes et al., 2011)
-      K_DON_ch4: 0.00014
-      # Specific rate of methane production from PON
-      K_PON_ch4: 0.00014
-      # Specific rate of oxidation of CH4 with O2
-      K_ch4_o2: 0.14
-      # Specific rate of oxidation of CH4 with SO4
-      K_ch4_so4: 0.0000274
-      r_c_n: 8.0   # C[uM]/N[uM]
-    initialization:
+      DIC: 2130.0 # total dissolved inorganic carbon (mmol C/m^3)
+      Alk: 2300.0 # Alkalinity (mmol C/m^3)
       CH4: 0.0001 # Methan (mmol C/m^3)
-    coupling:
-      DIC: O3/c
-      O2: O2/o
-      NO3: N3/n
-      PON: R4/n # small-size pom (mmol N/m^3)
-      DON: R1/n # labile dissolved organic matter (mmol N/m^3)
-      SO4: B_SULF/SO4
-  B_NITR:
-    long_name: nitrogen_cycle
-    model: niva/brom/brom_nitrogen
-    parameters:
-      # Spec.rate of 1st st. of nitrification
-      K_nitrif1: 0.01
-      # Spec.rate of 2d st. of nitrification
-      K_nitrif2: 0.1
-      # Spec.rate of 1 stage of denitrif
-      K_denitr1: 0.3
-      # Spec.rate of 2 stage of denitrif
-      K_denitr2: 0.20
-      K_omno_no3: 0.001 # Half sat. of no3 for OM denitr. (uM N)
-      K_omno_no2: 0.001 # Half sat. of no2 for OM denitr. (uM N)
-      # Spec.rate of Anammox (1/d) (Gregoire, Lacroix, 2001)
-      K_annamox: 0.8
-      # Threshold of O2 saturation for nitrification (uM)
-      O2s_nf: 5.
-      # Threshold of O2 for denitrification, anammox, Mn reduction (uM O2)
-      O2s_dn: 10.0
-      r_n_p: 16.0  # N[uM]/P[uM]
-      r_c_n: 8.0   # C[uM]/N[uM]
-    coupling:
-      NO2: N2/n # nitrite (mmol N/m^3)
-      NO3: N3/n # nitrate (mmol N/m^3)
-      NH4: N4/n # ammonium (mmol N/m^3)
-      DIC: O3/c # carbon dioxide (mmol C/m^3)
-      O2: O2/o # oxygen (mmol O_2/m^3)
-      PON: R4/n # small-size pom (mmol N/m^3)
-      DON: R1/n # labile dissolved organic matter (mmol N/m^3)
-      PO4: N1/n # phosphate (mmol N/m^3)
-  B_SULF:
-    long_name: sulfur_cycle
-    model: niva/brom/brom_sulfur
-    parameters:
-      # Specific rate of oxidation of H2S to S0 with O2 (1/d)
-      K_hs_ox: 0.5
-      K_s0_ox: 0.02   # Specific rate of oxidation of S0 with O2
-      K_s2o3_ox: 0.01 # Specific rate of oxidation of S2O3 with O2
-      # Specific rate of OM sulfate reduction with sulfate
-      K_so4_rd: 0.000005
-      # Specific rate of OM sulfate reduction with thiosulfate
-      K_s2o3_rd: 0.001
-      # Specific rate of S0 dispropotionation
-      K_s0_disp:  0.001
-      # Spec.rate of thiodenitrification (1/d)
-      K_hs_no3: 0.8
-      K_s0_no3:   0.9   # Specific rate of oxidation of S0 with NO3
-      K_s2o3_no3: 0.01  # Specific rate of oxidation of S2O3 with NO3
-      s_omso_o2: 25.0 # threshold of o2 for OM sulfate reduction
-      s_omso_no3: 5.0 # threshold of noX for OM sulfate reduction
-      r_n_p: 16.0  # N[uM]/P[uM]
-      r_c_n: 8.0   # C[uM]/N[uM]
-    initialization:
-      H2S:    0.0
-      S0:     0.0
-      S2O3:   0.0
-      SO4:    25000.
-    coupling:
-      NO3: N3/n # nitrate (mmol N/m^3)
-      NH4: N4/n # ammonium (mmol N/m^3)
-      DIC: O3/c # carbon dioxide (mmol C/m^3)
-      O2: O2/o # oxygen (mmol O_2/m^3)
-      PON: R4/n # small-size pom (mmol N/m^3)
-      DON: R1/n # labile dissolved organic matter (mmol N/m^3)
-      PO4: N1/n # phosphate (mmol N/m^3)
-  B_IRON:
-    long_name: iron_cycle
-    model: niva/brom/brom_iron
-    parameters:
-    initialization:
-    coupling:
-  b_mang:
-    long_name: manganese_cycle
-    model: niva/brom/brom_manganese
-    parameters:
-    initialization:
-    coupling:
-  b_sili:
-    long_name: silicon_cycle
-    model: niva/brom/brom_silicon
-    parameters:
-    initialization:
-    coupling:
   R1:
     long_name: labile dissolved organic matter
     model: ersem/pelagic_base
@@ -210,10 +98,17 @@ instances:
       iopABS: 1.e-05 # specific shortwave absorption (m^2/mg C), default = 0.0
       iopBBS: 1.6e-05 # specific shortwave backscatter (m^2/mg C), default = 0.0
       rm: 1.0 # sinking velocity (m/d), default = 0.0
+      ndeposition: 2 # number of target pools for sedimentation, default = 0
+      qxc2: 0.1 # fraction of carbon sinking into deposition target 2 (-)
+      qxn2: 0.1 # fraction of nitrogen sinking into deposition target 2 (-)
+      qxp2: 0.06 # fraction of phosphorus sinking into deposition target 2 (-)
     initialization:
       c: 7.2 # carbon (mg C/m^3)
       n: 0.1 # nitrogen (mmol N/m^3)
       p: 0.007 # phosphorus (mmol P/m^3)
+    coupling:
+      deposition_target1: Q6
+      deposition_target2: Q7
   R6:
     long_name: medium-size pom
     model: ersem/pelagic_base
@@ -223,11 +118,19 @@ instances:
       iopABS: 1e-05 # specific shortwave absorption (m^2/mg C), default = 0.0
       iopBBS: 1.6e-05 # specific shortwave backscatter (m^2/mg C), default = 0.0
       rm: 5.0 # sinking velocity (m/d), default = 0.0
+      ndeposition: 2 # number of target pools for sedimentation, default = 0
+      qxc2: 0.1 # fraction of carbon sinking into deposition target 2 (-)
+      qxn2: 0.1 # fraction of nitrogen sinking into deposition target 2 (-)
+      qxp2: 0.06 # fraction of phosphorus sinking into deposition target 2 (-)
+      qxs2: 0.0 # fraction of silicate sinking into deposition target 2 (-)
     initialization:
       c: 17.0 # carbon (mg C/m^3)
       n: 0.24 # nitrogen (mmol N/m^3)
       p: 0.02 # phosphorus (mmol P/m^3)
       s: 0.1 # silicate (mmol Si/m^3)
+    coupling:
+      deposition_target1: Q6
+      deposition_target2: Q7
   R8:
     long_name: large-size pom
     model: ersem/pelagic_base
@@ -237,11 +140,75 @@ instances:
       iopABS: 1e-05 # specific shortwave absorption (m^2/mg C), default = 0.0
       iopBBS: 1.6e-05 # specific shortwave backscatter (m^2/mg C), default = 0.0
       rm: 10.0 # sinking velocity (m/d), default = 0.0
+      ndeposition: 2 # number of target pools for sedimentation, default = 0
+      qxc2: 0.1 # fraction of carbon sinking into deposition target 2 (-)
+      qxn2: 0.1 # fraction of nitrogen sinking into deposition target 2 (-)
+      qxp2: 0.06 # fraction of phosphorus sinking into deposition target 2 (-)
+      qxs2: 0.0 # fraction of silicate sinking into deposition target 2 (-)
     initialization:
       c: 0.17 # carbon (mg C/m^3)
       n: 0.0024 # nitrogen (mmol N/m^3)
       p: 0.0002 # phosphorus (mmol P/m^3)
       s: 0.001 # silicate (mmol Si/m^3)
+    coupling:
+      deposition_target1: Q6
+      deposition_target2: Q7
+  Q1:
+    long_name: benthic dissolved organic matter
+    model: ersem/benthic_base
+    parameters:
+      composition: cnp # elemental composition
+      remin: 0.1 # remineralisation rate (1/d), default = 0.0
+      pN3: 0.9 # nitrate fraction of remineralised nitrogen (remainder is ammonium) (-), default = 0.0
+      c0: 0.001 # background carbon concentration (mg C/m^2), default = 0.0
+    initialization:
+      c: 18.9 # carbon (mg C/m^2)
+      n: 0.6 # nitrogen (mmol N/m^2)
+      p: 0.0035 # phosphorus (mmol P/m^2)
+    coupling:
+      O3c: O3/DIC # dissolved inorganic carbon (mmol/m^3)
+      N1p: N1/p # phosphate (mmol P/m^3)
+      N3n: N3/n # nitrate (mmol N/m^3)
+      N4n: N4/n # ammonium (mmol N/m^3)
+  Q6:
+    long_name: benthic particulate organic matter
+    model: ersem/benthic_base
+    parameters:
+      composition: cnpsf # elemental composition
+      remin: 0.05 # remineralisation rate (1/d), default = 0.0
+      pN3: 0.9 # nitrate fraction of remineralised nitrogen (remainder is ammonium) (-), default = 0.0
+      resuspension: true # enable resuspension, default = false
+      vel_crit: 0.02 # critical shear velocity for resuspension (m/s)
+      c0: 0.001 # background carbon concentration (mg C/m^2), default = 0.0
+    initialization:
+      c: 3052.0 # carbon (mg C/m^2)
+      n: 3.5 # nitrogen (mmol N/m^2)
+      p: 0.5 # phosphorus (mmol P/m^2)
+      s: 149.0 # silicate (mmol Si/m^2)
+    coupling:
+      RP: R6
+      O3c: O3/DIC # dissolved inorganic carbon (mmol/m^3)
+      N1p: N1/p # phosphate (mmol P/m^3)
+      N3n: N3/n # nitrate (mmol N/m^3)
+      N4n: N4/n # ammonium (mmol N/m^3)
+      N5s: N5/s # silicate (mmol Si/m^3)
+  Q7:
+    long_name: benthic refractory matter
+    model: ersem/benthic_base
+    parameters:
+      composition: cnp # elemental composition
+      remin: 0.01 # remineralisation rate (1/d), default = 0.0
+      pN3: 0.9 # nitrate fraction of remineralised nitrogen (remainder is ammonium) (-), default = 0.0
+      c0: 0.001 # background carbon concentration (mg C/m^2), default = 0.0
+    initialization:
+      c: 30520.0 # carbon (mg C/m^2)
+      n: 80.0 # nitrogen (mmol N/m^2)
+      p: 8.0 # phosphorus (mmol P/m^2)
+    coupling:
+      O3c: O3/DIC # dissolved inorganic carbon (mmol/m^3)
+      N1p: N1/p # phosphate (mmol P/m^3)
+      N3n: N3/n # nitrate (mmol N/m^3)
+      N4n: N4/n # ammonium (mmol N/m^3)
   B1:
     long_name: bacteria
     model: ersem/bacteria_docdyn
@@ -286,8 +253,20 @@ instances:
       R1n: R1/n # labile dissolved organic nitrogen (mmol N/m^3)
       R2c: R2/c # semi-labile dissolved organic carbon (mg C/m^3)
       R3c: R3/c # semi-refractory DOC (mg C/m^3)
-      O3c: O3/c # carbon dioxide (mmol C/m^3)
+      O3c: O3/DIC # carbon dioxide (mmol C/m^3)
       O2o: O2/o # oxygen (mmol O_2/m^3)
+  nit:
+    long_name: nitrogen_cycle
+    model: niva/brom/brom_nitrogen
+    coupling:
+      NO2: N2/n # nitrite (mmol N/m^3)
+      NO3: N3/n # nitrate (mmol N/m^3)
+      NH4: N4/n # ammonium (mmol N/m^3)
+      DIC: O3/DIC # carbon dioxide (mmol C/m^3)
+      O2: O2/o # oxygen (mmol O_2/m^3)
+      PON: R4/n # small-size pom (mmol N/m^3)
+      DON: R1/n # labile dissolved organic matter (mmol N/m^3)
+      PO4: N1/n # phosphate (mmol N/m^3)
   P1:
     long_name: diatoms
     model: ersem/primary_producer
@@ -324,6 +303,15 @@ instances:
       resm: 5.0 # maximum nutrient-limitation-induced sinking velocity (m/d), default = 0.0
       esni: 0.7 # level of nutrient limitation below which sinking commences (-)
       cenh: false # enable atmospheric CO2 influence on photosynthesis, default = false
+      ndeposition: 3 # number of target pools for sedimentation, default = 1
+      qxc2: 0.2 # fraction of carbon sinking into deposition target 2 (-)
+      qxc3: 0.005 # fraction of carbon sinking into deposition target 3 (-)
+      qxn2: 0.2 # fraction of nitrogen sinking into deposition target 2 (-)
+      qxn3: 0.005 # fraction of nitrogen sinking into deposition target 3 (-)
+      qxp2: 0.24 # fraction of phosphorus sinking into deposition target 2 (-)
+      qxp3: 0.003 # fraction of phosphorus sinking into deposition target 3 (-)
+      qxs2: 0.0 # fraction of silicate sinking into deposition target 2 (-)
+      qxs3: 0.0 # fraction of silicate sinking into deposition target 3 (-)
     initialization:
       c: 8.0 # carbon (mg C/m^3)
       n: 0.1114 # nitrogen (mmol N/m^3)
@@ -332,6 +320,9 @@ instances:
       Chl: 0.4 # chlorophyll a (mg/m^3)
     coupling:
       RP: R6
+      deposition_target1: Q6
+      deposition_target2: Q1
+      deposition_target3: Q7
       N1p: N1/p # phosphate (mmol P/m^3)
       N3n: N3/n # nitrate (mmol N/m^3)
       N4n: N4/n # ammonium (mmol N/m^3)
@@ -341,7 +332,7 @@ instances:
       R1n: R1/n # dissolved organic nitrogen (mmol N/m^3)
       R2c: R2/c # semi-labile dissolved organic carbon (mg C/m^3)
       O2o: O2/o # oxygen (mmol O_2/m^3)
-      O3c: O3/c # carbon dioxide (mmol C/m^3)
+      O3c: O3/DIC # carbon dioxide (mmol C/m^3)
   P2:
     long_name: nanophytoplankton
     model: ersem/primary_producer
@@ -377,6 +368,13 @@ instances:
       resm: 0.0 # maximum nutrient-limitation-induced sinking velocity (m/d), default = 0.0
       esni: 0.7 # level of nutrient limitation below which sinking commences (-)
       cenh: false # enable atmospheric CO2 influence on photosynthesis, default = false
+      ndeposition: 3 # number of target pools for sedimentation, default = 1
+      qxc2: 0.5 # fraction of carbon sinking into deposition target 2 (-)
+      qxc3: 0.05 # fraction of carbon sinking into deposition target 3 (-)
+      qxn2: 0.5 # fraction of nitrogen sinking into deposition target 2 (-)
+      qxn3: 0.05 # fraction of nitrogen sinking into deposition target 3 (-)
+      qxp2: 0.6 # fraction of phosphorus sinking into deposition target 2 (-)
+      qxp3: 0.03 # fraction of phosphorus sinking into deposition target 3 (-)
     initialization:
       c: 5.9 # carbon (mg C/m^3)
       n: 0.0926 # nitrogen (mmol N/m^3)
@@ -384,6 +382,9 @@ instances:
       Chl: 0.3 # chlorophyll a (mg/m^3)
     coupling:
       RP: R4
+      deposition_target1: Q6
+      deposition_target2: Q1
+      deposition_target3: Q7
       N1p: N1/p # phosphate (mmol P/m^3)
       N3n: N3/n # nitrate (mmol N/m^3)
       N4n: N4/n # ammonium (mmol N/m^3)
@@ -392,7 +393,7 @@ instances:
       R1n: R1/n # dissolved organic nitrogen (mmol N/m^3)
       R2c: R2/c # semi-labile dissolved organic carbon (mg C/m^3)
       O2o: O2/o # oxygen (mmol O_2/m^3)
-      O3c: O3/c # carbon dioxide (mmol C/m^3)
+      O3c: O3/DIC # carbon dioxide (mmol C/m^3)
       RainR: L2/RainR # rain ratio (PIC : POC) (-)
       L2c: L2/c # free calcite (mg C/m^3)
   P3:
@@ -429,6 +430,13 @@ instances:
       resm: 0.0 # maximum nutrient-limitation-induced sinking velocity (m/d), default = 0.0
       esni: 0.7 # level of nutrient limitation below which sinking commences (-)
       cenh: false # enable atmospheric CO2 influence on photosynthesis, default = false
+      ndeposition: 3 # number of target pools for sedimentation, default = 1
+      qxc2: 0.5 # fraction of carbon sinking into deposition target 2 (-)
+      qxc3: 0.05 # fraction of carbon sinking into deposition target 3 (-)
+      qxn2: 0.5 # fraction of nitrogen sinking into deposition target 2 (-)
+      qxn3: 0.05 # fraction of nitrogen sinking into deposition target 3 (-)
+      qxp2: 0.6 # fraction of phosphorus sinking into deposition target 2 (-)
+      qxp3: 0.03 # fraction of phosphorus sinking into deposition target 3 (-)
     initialization:
       c: 5.9 # carbon (mg C/m^3)
       n: 0.0926 # nitrogen (mmol N/m^3)
@@ -436,6 +444,9 @@ instances:
       Chl: 0.3 # chlorophyll a (mg/m^3)
     coupling:
       RP: R4
+      deposition_target1: Q6
+      deposition_target2: Q1
+      deposition_target3: Q7
       N1p: N1/p # phosphate (mmol P/m^3)
       N3n: N3/n # nitrate (mmol N/m^3)
       N4n: N4/n # ammonium (mmol N/m^3)
@@ -444,7 +455,7 @@ instances:
       R1n: R1/n # dissolved organic nitrogen (mmol N/m^3)
       R2c: R2/c # semi-labile dissolved organic carbon (mg C/m^3)
       O2o: O2/o # oxygen (mmol O_2/m^3)
-      O3c: O3/c # carbon dioxide (mmol C/m^3)
+      O3c: O3/DIC # carbon dioxide (mmol C/m^3)
   P4:
     long_name: microphytoplankton
     model: ersem/primary_producer
@@ -479,6 +490,13 @@ instances:
       resm: 5.0 # maximum nutrient-limitation-induced sinking velocity (m/d), default = 0.0
       esni: 0.7 # level of nutrient limitation below which sinking commences (-)
       cenh: false # enable atmospheric CO2 influence on photosynthesis, default = false
+      ndeposition: 3 # number of target pools for sedimentation, default = 1
+      qxc2: 0.5 # fraction of carbon sinking into deposition target 2 (-)
+      qxc3: 0.05 # fraction of carbon sinking into deposition target 3 (-)
+      qxn2: 0.5 # fraction of nitrogen sinking into deposition target 2 (-)
+      qxn3: 0.05 # fraction of nitrogen sinking into deposition target 3 (-)
+      qxp2: 0.6 # fraction of phosphorus sinking into deposition target 2 (-)
+      qxp3: 0.03 # fraction of phosphorus sinking into deposition target 3 (-)
     initialization:
       c: 5.9 # carbon (mg C/m^3)
       n: 0.0926 # nitrogen (mmol N/m^3)
@@ -486,6 +504,9 @@ instances:
       Chl: 0.3 # chlorophyll a (mg/m^3)
     coupling:
       RP: R6
+      deposition_target1: Q6
+      deposition_target2: Q1
+      deposition_target3: Q7
       N1p: N1/p # phosphate (mmol P/m^3)
       N3n: N3/n # nitrate (mmol N/m^3)
       N4n: N4/n # ammonium (mmol N/m^3)
@@ -494,7 +515,7 @@ instances:
       R1n: R1/n # dissolved organic nitrogen (mmol N/m^3)
       R2c: R2/c # semi-labile dissolved organic carbon (mg C/m^3)
       O2o: O2/o # oxygen (mmol O_2/m^3)
-      O3c: O3/c # carbon dioxide (mmol C/m^3)
+      O3c: O3/DIC # carbon dioxide (mmol C/m^3)
   Z4:
     long_name: mesozooplankton
     model: ersem/mesozooplankton
@@ -553,7 +574,7 @@ instances:
       R1n: R1/n # dissolved organic nitrogen (mmol N/m^3)
       R2c: R2/c # semi-labile dissolved organic carbon (mg C/m^3)
       O2o: O2/o # oxygen source (mmol O_2/m^3)
-      O3c: O3/c # carbon dioxide sink (mmol C/m^3)
+      O3c: O3/DIC # carbon dioxide sink (mmol C/m^3)
       L2c: L2/c # calcite (mg C/m^3)
   Z5:
     long_name: microzooplankton
@@ -608,7 +629,7 @@ instances:
       R1n: R1/n # dissolved organic nitrogen (mmol N/m^3)
       R2c: R2/c # semi-labile dissolved organic carbon (mg C/m^3)
       O2o: O2/o # oxygen source (mmol O_2/m^3)
-      O3c: O3/c # carbon dioxide sink (mmol C/m^3)
+      O3c: O3/DIC # carbon dioxide sink (mmol C/m^3)
       L2c: L2/c # calcite (mg C/m^3)
   Z6:
     long_name: nanoflagellates
@@ -658,7 +679,7 @@ instances:
       R2c: R2/c # semi-labile dissolved organic carbon (mg C/m^3)
       RPs: R6/s # particulate organic silicate (mmol Si/m^3)
       O2o: O2/o # oxygen source (mmol O_2/m^3)
-      O3c: O3/c # carbon dioxide sink (mmol C/m^3)
+      O3c: O3/DIC # carbon dioxide sink (mmol C/m^3)
       L2c: L2/c # calcite (mg C/m^3)
   L2:
     long_name: calcite
@@ -671,8 +692,21 @@ instances:
       sedL2: 10.0 # sinking velocity (m/d)
       sL2O3: 0.03 # maximum specific dissolution rate (1/d), default = 1.0
       c0: 1.e-05 # background concentration (mg C/m^3), default = 0.0
+      ndeposition: 1 # number of target pools for sedimentation, default = 1
     initialization:
       c: 0.05 # carbon (mg C/m^3)
     coupling:
-      om_cal: O3/Om_Cal # calcite saturation (-)
-      O3c: O3/c # total dissolved inorganic carbon (mmol C/m^3)
+      deposition_target1: bL2
+      om_cal: O3/Om_cal # calcite saturation (-)
+      O3c: O3/DIC # total dissolved inorganic carbon (mmol C/m^3)
+  bL2:
+    long_name: benthic calcite
+    model: ersem/benthic_base
+    parameters:
+      composition: c # elemental composition
+      remin: 0.05 # remineralisation rate (1/d), default = 0.0
+      c0: 1.e-05 # background carbon concentration (mg C/m^2), default = 0.0
+    initialization:
+      c: 0.05 # carbon (mg C/m^2)
+    coupling:
+      O3c: O3/c # dissolved inorganic carbon (mmol/m^3)

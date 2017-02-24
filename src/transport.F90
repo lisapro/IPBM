@@ -31,7 +31,7 @@ module transport
   real(rk),allocatable,dimension(:):: porosity
   real(rk),allocatable,dimension(:),target:: temp
   real(rk),allocatable,dimension(:),target:: salt
-  real(rk),allocatable,dimension(:),target:: radiative_flux
+  !real(rk),allocatable,dimension(:),target:: radiative_flux
   real(rk),allocatable,dimension(:),target:: pressure
   !fabm model
   type(type_model) fabm_model
@@ -103,11 +103,11 @@ contains
     allocate(salt(number_of_layers))
     call fabm_link_bulk_data(&
       fabm_model,standard_variables%practical_salinity,salt)
-    allocate(radiative_flux(number_of_layers))
-    call fabm_link_bulk_data(&
-      fabm_model,&
-      standard_variables%downwelling_photosynthetic_radiative_flux,&
-      radiative_flux)
+    !allocate(radiative_flux(number_of_layers))
+    !call fabm_link_bulk_data(&
+    !  fabm_model,&
+    !  standard_variables%downwelling_photosynthetic_radiative_flux,&
+    !  radiative_flux)
     allocate(depth(number_of_layers))
     depth = standard_vars%get_column("middle_layer_depths",1)
     !convert depth to pressure
@@ -130,7 +130,9 @@ contains
 
   subroutine sarafan()
     use output_mod
-
+    !like on fabm.net
+    type (type_scalar_variable_id):: id_yearday
+    
     type(type_output):: netcdf_ice
     type(type_output):: netcdf_water
     type(type_output):: netcdf_sediments
@@ -138,6 +140,8 @@ contains
     integer ice_water_index,water_bbl_index,number_of_days
     integer surface_index
     integer day,i
+    !for link scalar subroutine
+    real(rk) realday
     !ice thickness
     !real(rk) ice
     !cpu time
@@ -163,7 +167,10 @@ contains
     netcdf_sediments = type_output(fabm_model,_FILE_NAME_SEDIMENTS_,&
                          1,water_bbl_index-1,&
                          number_of_layers)
-
+    !like on fabm.net, relink all variables as here
+    id_yearday = fabm_model%get_scalar_variable_id(&
+      standard_variables%number_of_days_since_start_of_the_year)
+    
     day = standard_vars%first_day()
     call initial_date(day,year)
     call stabilize(day,year)
@@ -172,29 +179,34 @@ contains
       call date(day,year)
 
       !ice   = standard_vars%get_value(_ICE_THICKNESS_,i)
-      porosity = standard_vars%get_column("porosity",i)
+      !porosity = standard_vars%get_column("porosity",i)
       depth = standard_vars%get_column("middle_layer_depths",i)
       temp  = standard_vars%get_column(_TEMPERATURE_,i)
       salt  = standard_vars%get_column(_SALINITY_,i)
 
       surface_index = air_ice_indexes(i)
-      call calculate_radiative_flux(&
-        surface_radiative_flux(_LATITUDE_,day),&
-        standard_vars%get_value(_SNOW_THICKNESS_,i),&
-        standard_vars%get_value(_ICE_THICKNESS_ ,i))
+      !call calculate_radiative_flux(&
+      !  surface_radiative_flux(_LATITUDE_,day),&
+      !  standard_vars%get_value(_SNOW_THICKNESS_,i),&
+      !  standard_vars%get_value(_ICE_THICKNESS_ ,i))
 
       !change surface index due to ice depth
       !index for boundaries so for layers it should be -1
       call fabm_model%set_surface_index(surface_index-1)
       !call fabm_link_bulk_data(fabm_model,fabm_porosity,porosity)
+      realday = day
+      call fabm_model%link_scalar(id_yearday,realday)
+      call fabm_link_bulk_data(&
+        fabm_model,standard_variables%cell_thickness,&
+        standard_vars%get_column("layer_thicknesses",i))
       call fabm_link_bulk_data(&
         fabm_model,standard_variables%temperature,temp)
       call fabm_link_bulk_data(&
         fabm_model,standard_variables%practical_salinity,salt)
-      call fabm_link_bulk_data(&
-        fabm_model,&
-        standard_variables%downwelling_photosynthetic_radiative_flux,&
-        radiative_flux)
+      !call fabm_link_bulk_data(&
+      !  fabm_model,&
+      !  standard_variables%downwelling_photosynthetic_radiative_flux,&
+      !  radiative_flux)
 
       !
       !have to change to flux on ice_water_index layer
@@ -209,13 +221,13 @@ contains
       call cpu_time(t1)
       call day_circle(i,surface_index)
       call netcdf_ice%save(fabm_model,state_vars,indices,i,&
-                           temp,salt,depth,radiative_flux,&
+                           temp,salt,depth,&!radiative_flux,&
                            int(air_ice_indexes(i)))
       call netcdf_water%save(fabm_model,state_vars,depth,i,&
-                             temp,salt,depth,radiative_flux,&
+                             temp,salt,depth,&!radiative_flux,&
                              int(air_ice_indexes(i)))
       call netcdf_sediments%save(fabm_model,state_vars,depth,i,&
-                                 temp,salt,depth,radiative_flux,&
+                                 temp,salt,depth,&!radiative_flux,&
                                  int(air_ice_indexes(i)))
       call cpu_time(t2)
 
@@ -263,38 +275,38 @@ contains
     if (surface_radiative_flux<0._rk) surface_radiative_flux = 0._rk
   end function
 
-  subroutine calculate_radiative_flux(surface_flux,snow_thick,ice_thick)
-    real(rk),intent(in):: surface_flux
-    real(rk),intent(in):: snow_thick
-    real(rk),intent(in):: ice_thick
-    integer  ice_water_index
-    real(rk) par_alb,par_scat
-    real(rk),allocatable:: ice_depths(:)
-
-    ice_water_index = standard_vars%get_value("ice_water_index")
-    !ice_column
-    !surface_flux in Watts, to calculate it in micromoles photons per m2*s =>
-    !=> [w] = 4.6*[micromole photons]
-    !Grenfell and Maykutt 1977 indicate that the magnitude and shape
-    !of the albedo curves depend strongly on the amount of liquid
-    !water present in the upper part of the ice, so it fluctuates
-    !throught year (true also for extinction coefficient)
-    par_alb = surface_flux*(1._rk-_ICE_ALBEDO_)
-    !after scattered surface of ice
-    par_scat = par_alb*_ICE_SCATTERED_
-    allocate(ice_depths,source=ice_thick-depth(ice_water_index:))
-    radiative_flux(ice_water_index:) = &
-      par_scat*exp(-_ICE_EXTINCTION_*ice_depths)
-    !water column calculations
-    if (ice_thick==0._rk) then
-      radiative_flux(:ice_water_index-1) = &
-        surface_flux*exp(-_ERLOV_*depth(:ice_water_index-1))
-    else
-      radiative_flux(:ice_water_index-1) = &
-        radiative_flux(ice_water_index)*&
-        exp(-_ERLOV_*depth(:ice_water_index-1))
-    end if
-  end subroutine
+  !subroutine calculate_radiative_flux(surface_flux,snow_thick,ice_thick)
+  !  real(rk),intent(in):: surface_flux
+  !  real(rk),intent(in):: snow_thick
+  !  real(rk),intent(in):: ice_thick
+  !  integer  ice_water_index
+  !  real(rk) par_alb,par_scat
+  !  real(rk),allocatable:: ice_depths(:)
+  !
+  !  ice_water_index = standard_vars%get_value("ice_water_index")
+  !  !ice_column
+  !  !surface_flux in Watts, to calculate it in micromoles photons per m2*s =>
+  !  !=> [w] = 4.6*[micromole photons]
+  !  !Grenfell and Maykutt 1977 indicate that the magnitude and shape
+  !  !of the albedo curves depend strongly on the amount of liquid
+  !  !water present in the upper part of the ice, so it fluctuates
+  !  !throught year (true also for extinction coefficient)
+  !  par_alb = surface_flux*(1._rk-_ICE_ALBEDO_)
+  !  !after scattered surface of ice
+  !  par_scat = par_alb*_ICE_SCATTERED_
+  !  allocate(ice_depths,source=ice_thick-depth(ice_water_index:))
+  !  radiative_flux(ice_water_index:) = &
+  !    par_scat*exp(-_ICE_EXTINCTION_*ice_depths)
+  !  !water column calculations
+  !  if (ice_thick==0._rk) then
+  !    radiative_flux(:ice_water_index-1) = &
+  !      surface_flux*exp(-_ERLOV_*depth(:ice_water_index-1))
+  !  else
+  !    radiative_flux(:ice_water_index-1) = &
+  !      radiative_flux(ice_water_index)*&
+  !      exp(-_ERLOV_*depth(:ice_water_index-1))
+  !  end if
+  !end subroutine
 
   pure function sinusoidal(julian_day,multiplier)
     integer, intent(in):: julian_day
@@ -498,17 +510,17 @@ contains
                      days_in_year
       end if
       !ice   = standard_vars%get_value(_ICE_THICKNESS_,pseudo_day)
-      porosity = standard_vars%get_column("porosity",pseudo_day)
+      !porosity = standard_vars%get_column("porosity",pseudo_day)
       depth = standard_vars%get_column("middle_layer_depths",pseudo_day)
       temp  = standard_vars%get_column(_TEMPERATURE_,pseudo_day)
       salt  = standard_vars%get_column(_SALINITY_,pseudo_day)
 
       surface_index = air_ice_indexes(pseudo_day)
       call date(day,year)
-      call calculate_radiative_flux(&
-        surface_radiative_flux(_LATITUDE_,pseudo_day),&
-        standard_vars%get_value(_SNOW_THICKNESS_,pseudo_day),&
-        standard_vars%get_value(_ICE_THICKNESS_ ,pseudo_day))
+      !call calculate_radiative_flux(&
+      !  surface_radiative_flux(_LATITUDE_,pseudo_day),&
+      !  standard_vars%get_value(_SNOW_THICKNESS_,pseudo_day),&
+      !  standard_vars%get_value(_ICE_THICKNESS_ ,pseudo_day))
 
       !call find_set_state_variable("niva_brom_bio_PO4",&
       !  use_bound_up = _DIRICHLET_,bound_up = sinusoidal(day,0.45_rk))
@@ -525,10 +537,10 @@ contains
         fabm_model,standard_variables%temperature,temp)
       call fabm_link_bulk_data(&
         fabm_model,standard_variables%practical_salinity,salt)
-      call fabm_link_bulk_data(&
-        fabm_model,&
-        standard_variables%downwelling_photosynthetic_radiative_flux,&
-        radiative_flux)
+      !call fabm_link_bulk_data(&
+      !  fabm_model,&
+      !  standard_variables%downwelling_photosynthetic_radiative_flux,&
+      !  radiative_flux)
       call day_circle(pseudo_day,surface_index)
       write(*,*) "Stabilizing initial array of values, in progress ..."
       write(*,*) "number / ","julianday / ","pseudo day",&
