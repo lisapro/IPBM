@@ -18,7 +18,8 @@ module transport
   use fabm_config
   use fabm_driver
   use fabm_types
-  use variables_mod
+  use variables_mod,only: brom_standard_variables,&
+                          brom_state_variable
 
   implicit none
   private
@@ -29,19 +30,28 @@ module transport
   integer number_of_layers
   real(rk),allocatable,dimension(:):: depth
   real(rk),allocatable,dimension(:):: porosity
+  !for coupling with fabm
   real(rk),allocatable,dimension(:),target:: temp
   real(rk),allocatable,dimension(:),target:: salt
-  !real(rk),allocatable,dimension(:),target:: radiative_flux
   real(rk),allocatable,dimension(:),target:: pressure
-  !fabm model
-  type(type_model) fabm_model
-  !porosity
-  !type(type_bulk_standard_variable) fabm_porosity
-  !standard variables for model
+  real(rk),allocatable,             target:: radiative_flux
+  !bcc and scc - arrays for bottom and surface fabm variables
+  real(rk),allocatable,dimension(:),target:: bcc,scc
+  !variables for model
   type(brom_standard_variables) standard_vars
   type(brom_state_variable),allocatable,&
                        dimension(:),target:: state_vars
+  !fabm model
+  type(type_model) fabm_model
+  !ids for fabm
+  type(type_bulk_variable_id),save:: temp_id,salt_id,h_id
+  type(type_bulk_variable_id),save:: pres_id,rho_id
+  type (type_horizontal_variable_id),save:: lon_id,lat_id,ws_id
+  type (type_horizontal_variable_id),save:: ssf_id,taub_id
 contains
+  !
+  !initialize brom
+  !
   subroutine initialize_brom()
     real(rk),allocatable,dimension(:):: air_ice_indexes
     !NaN value
@@ -49,19 +59,20 @@ contains
               TRANSFER((/ Z'00000000', Z'7FF80000' /),1.0_rk)
     integer water_sediments_index
     integer i
-    integer air_ice_index
 
-    !initializing fabm
+    !initializing fabm from fabm.yaml file
     _LINE_
     call fabm_create_model_from_yaml_file(fabm_model)
     _LINE_
-    !initializing standard_variables
+    !initializing brom standard_variables
     standard_vars = brom_standard_variables()
     number_of_layers = standard_vars%get_value(&
                            "number_of_layers")
+    !fabm grid
     call fabm_set_domain(fabm_model,number_of_layers)
     call fabm_model%set_surface_index(number_of_layers)
     call fabm_model%set_bottom_index(1)
+    !linking state variables to fabm
     number_of_parameters = size(fabm_model%state_variables)
     allocate(state_vars(number_of_parameters))
     do i = 1,number_of_parameters
@@ -73,58 +84,83 @@ contains
         _NEUMANN_,_NEUMANN_,0._rk,0._rk,0._rk,0._rk)
       call state_vars(i)%print_name()
     end do
+    !in case of existing bottom and surface variables
+    do i = 1,size(fabm_model%bottom_state_variables)
+      call fabm_link_bottom_state_data(&
+        fabm_model,i,bcc(i))
+    end do
+    do i = 1,size(fabm_model%surface_state_variables)
+      call fabm_link_surface_state_data(&
+        fabm_model,i,scc(i))
+    end do
     _LINE_
     !initializing values
     call fabm_initialize_state(fabm_model,1,number_of_layers)
     allocate(air_ice_indexes,source=&
              standard_vars%get_column("air_ice_indexes"))
-    air_ice_index = air_ice_indexes(1)
     allocate(porosity(number_of_layers))
     porosity=standard_vars%get_column("porosity",1)
-    !fabm_porosity = type_bulk_standard_variable(name="porosity",units="1")
-    !call fabm_link_bulk_data(fabm_model,fabm_porosity,porosity)
-    !ice_water_index = standard_vars%get_value("ice_water_index")
-    !forall (i = 1:number_of_parameters)
-    !  state_vars(i)%value(ice_water_index:air_ice_indexes(1)-1) = &
-    !  state_vars(i)%value(ice_water_index:air_ice_indexes(1)-1)*&
-    !  pF2(ice_water_index+1:air_ice_indexes(1))
-    !end forall
+    !recalculating concentrations in the sediments
+    !concentrations are per total volume of sediment
     water_sediments_index = standard_vars%get_value("bbl_sediments_index")
     forall (i = 1:number_of_parameters)
       state_vars(i)%value(:water_sediments_index)&
         = state_vars(i)%value(:water_sediments_index)*&
           porosity(:water_sediments_index)
-      state_vars(i)%value(air_ice_index:) = D_QNAN
+      state_vars(i)%value(air_ice_indexes(1):) = D_QNAN
     end forall
     !linking bulk variables
+    !temperature
+    temp_id = fabm_model%get_bulk_variable_id(&
+              standard_variables%temperature)
     allocate(temp(number_of_layers))
-    call fabm_link_bulk_data(&
-      fabm_model,standard_variables%temperature,temp)
+    call fabm_link_bulk_data(fabm_model,temp_id,temp)
+    !salinity
+    salt_id = fabm_model%get_bulk_variable_id(&
+              standard_variables%practical_salinity)
     allocate(salt(number_of_layers))
-    call fabm_link_bulk_data(&
-      fabm_model,standard_variables%practical_salinity,salt)
-    !allocate(radiative_flux(number_of_layers))
-    !call fabm_link_bulk_data(&
-    !  fabm_model,&
-    !  standard_variables%downwelling_photosynthetic_radiative_flux,&
-    !  radiative_flux)
+    call fabm_link_bulk_data(fabm_model,salt_id,salt)
+    !pressure
+    pres_id = fabm_model%get_bulk_variable_id(&
+              standard_variables%pressure)
     allocate(depth(number_of_layers))
+    allocate(pressure(number_of_layers))
     depth = standard_vars%get_column("middle_layer_depths",1)
     !convert depth to pressure
     !total=water+atmosphere [dbar]
-    allocate(pressure(number_of_layers))
     pressure = depth+10._rk
     pressure(int(standard_vars%get_value("ice_water_index")):) = 10._rk
-    call fabm_link_bulk_data(&
-      fabm_model,standard_variables%pressure,pressure)
-    !linking horizontal variables
-    call fabm_link_horizontal_data(&
-      fabm_model,standard_variables%wind_speed,5._rk)
-    call fabm_link_horizontal_data(&
-      fabm_model,standard_variables%mole_fraction_of_carbon_dioxide_in_air,&
-      380._rk)
+    call fabm_link_bulk_data(fabm_model,pres_id,pressure)
+    !cell thickness
+    h_id    = fabm_model%get_bulk_variable_id(&
+              standard_variables%cell_thickness)
+    call fabm_link_bulk_data(fabm_model,h_id,&
+         standard_vars%get_column("layer_thicknesses",1))
+    !surface shortwave flux
+    ssf_id  = fabm_model%get_horizontal_variable_id(&
+              standard_variables%surface_downwelling_shortwave_flux)
+    allocate(radiative_flux)
+    call fabm_link_horizontal_data(fabm_model,ssf_id,radiative_flux)
+    !longtitude
+    lon_id  = fabm_model%get_horizontal_variable_id(&
+              standard_variables%longitude)
+    call fabm_link_horizontal_data(fabm_model,lon_id,_LONGITUDE_)
+    !latitude
+    lat_id  = fabm_model%get_horizontal_variable_id(&
+              standard_variables%latitude)
+    call fabm_link_horizontal_data(fabm_model,lat_id,_LATITUDE_)
+    !wind speed
+    ws_id   = fabm_model%get_horizontal_variable_id(&
+              standard_variables%wind_speed)
+    call fabm_link_horizontal_data(fabm_model,ws_id,5._rk)
+    !bottom stress
+    taub_id = fabm_model%get_horizontal_variable_id(&
+              standard_variables%bottom_stress)
+    !check all needed by fabm model variables
     call fabm_check_ready(fabm_model)
+    !brom needs to know is variable a solid or gas
     call configurate_state_variables()
+
     previous_ice_index=0
   end subroutine
 
@@ -132,7 +168,7 @@ contains
     use output_mod
     !like on fabm.net
     type (type_scalar_variable_id):: id_yearday
-    
+
     type(type_output):: netcdf_ice
     type(type_output):: netcdf_water
     type(type_output):: netcdf_sediments
@@ -170,7 +206,7 @@ contains
     !like on fabm.net, relink all variables as here
     id_yearday = fabm_model%get_scalar_variable_id(&
       standard_variables%number_of_days_since_start_of_the_year)
-    
+
     day = standard_vars%first_day()
     call initial_date(day,year)
     call stabilize(day,year)
@@ -184,29 +220,26 @@ contains
       temp  = standard_vars%get_column(_TEMPERATURE_,i)
       salt  = standard_vars%get_column(_SALINITY_,i)
 
-      surface_index = air_ice_indexes(i)
-      !call calculate_radiative_flux(&
-      !  surface_radiative_flux(_LATITUDE_,day),&
-      !  standard_vars%get_value(_SNOW_THICKNESS_,i),&
-      !  standard_vars%get_value(_ICE_THICKNESS_ ,i))
-
       !change surface index due to ice depth
       !index for boundaries so for layers it should be -1
+      surface_index = air_ice_indexes(i)
       call fabm_model%set_surface_index(surface_index-1)
       !call fabm_link_bulk_data(fabm_model,fabm_porosity,porosity)
+
+      !to convert integer to real
       realday = day
       call fabm_model%link_scalar(id_yearday,realday)
-      call fabm_link_bulk_data(&
-        fabm_model,standard_variables%cell_thickness,&
+
+      call fabm_link_bulk_data(fabm_model,h_id,&
         standard_vars%get_column("layer_thicknesses",i))
+
       call fabm_link_bulk_data(&
         fabm_model,standard_variables%temperature,temp)
       call fabm_link_bulk_data(&
         fabm_model,standard_variables%practical_salinity,salt)
-      !call fabm_link_bulk_data(&
-      !  fabm_model,&
-      !  standard_variables%downwelling_photosynthetic_radiative_flux,&
-      !  radiative_flux)
+
+      radiative_flux = surface_radiative_flux(_LATITUDE_,day)
+      call fabm_link_horizontal_data(fabm_model,ssf_id,radiative_flux)
 
       !
       !have to change to flux on ice_water_index layer
