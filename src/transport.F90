@@ -31,6 +31,8 @@ module transport
   real(rk),allocatable,dimension(:):: depth
   real(rk),allocatable,dimension(:):: porosity
   !for coupling with fabm
+    !for link scalar subroutine
+  real(rk),                         target:: realday
   real(rk),allocatable,dimension(:),target:: temp
   real(rk),allocatable,dimension(:),target:: salt
   real(rk),allocatable,dimension(:),target:: pressure
@@ -44,10 +46,11 @@ module transport
   !fabm model
   type(type_model) fabm_model
   !ids for fabm
-  type(type_bulk_variable_id),save:: temp_id,salt_id,h_id
-  type(type_bulk_variable_id),save:: pres_id,rho_id
-  type (type_horizontal_variable_id),save:: lon_id,lat_id,ws_id
-  type (type_horizontal_variable_id),save:: ssf_id,taub_id
+  type(type_scalar_variable_id),save:: id_yearday
+  type(type_bulk_variable_id),  save:: temp_id,salt_id,h_id
+  type(type_bulk_variable_id),  save:: pres_id,rho_id
+  type(type_horizontal_variable_id),save:: lon_id,lat_id,ws_id
+  type(type_horizontal_variable_id),save:: ssf_id,taub_id
 contains
   !
   !initialize brom
@@ -76,22 +79,28 @@ contains
     number_of_parameters = size(fabm_model%state_variables)
     allocate(state_vars(number_of_parameters))
     do i = 1,number_of_parameters
-      allocate(state_vars(i)%value(number_of_layers))
-      call fabm_link_bulk_state_data(&
-        fabm_model,i,state_vars(i)%value)
-      state_vars(i)%name = fabm_model%state_variables(i)%name
       call state_vars(i)%set_brom_state_variable(.false.,.false.,&
         _NEUMANN_,_NEUMANN_,0._rk,0._rk,0._rk,0._rk)
+      state_vars(i)%name = fabm_model%state_variables(i)%name
+      allocate(state_vars(i)%value(number_of_layers))
+      state_vars(i)%value = fabm_model%state_variables(i)%initial_value
+      !vertical movement rates (m/s, positive for upwards),
+      !and set these to the values provided by the model.
+      state_vars(i)%sinking_velocity = &
+                    fabm_model%state_variables(i)%vertical_movement
+      call fabm_link_bulk_state_data(fabm_model,i,state_vars(i)%value)
       call state_vars(i)%print_name()
     end do
     !in case of existing bottom and surface variables
+    allocate(bcc(size(fabm_model%bottom_state_variables)))
     do i = 1,size(fabm_model%bottom_state_variables)
-      call fabm_link_bottom_state_data(&
-        fabm_model,i,bcc(i))
+      bcc(i) = fabm_model%bottom_state_variables(i)%initial_value
+      call fabm_link_bottom_state_data(fabm_model,i,bcc(i))
     end do
+    allocate(scc(size(fabm_model%surface_state_variables)))
     do i = 1,size(fabm_model%surface_state_variables)
-      call fabm_link_surface_state_data(&
-        fabm_model,i,scc(i))
+      scc(i) = fabm_model%surface_state_variables(i)%initial_value
+      call fabm_link_surface_state_data(fabm_model,i,scc(i))
     end do
     _LINE_
     !initializing values
@@ -120,6 +129,10 @@ contains
               standard_variables%practical_salinity)
     allocate(salt(number_of_layers))
     call fabm_link_bulk_data(fabm_model,salt_id,salt)
+    !density anomaly
+    rho_id  = fabm_model%get_bulk_variable_id(standard_variables%density)
+    call fabm_link_bulk_data(fabm_model,rho_id,&
+         standard_vars%get_column(_RHO_,1))
     !pressure
     pres_id = fabm_model%get_bulk_variable_id(&
               standard_variables%pressure)
@@ -156,6 +169,14 @@ contains
     !bottom stress
     taub_id = fabm_model%get_horizontal_variable_id(&
               standard_variables%bottom_stress)
+    !carbon dioxide in air
+    call fabm_link_horizontal_data(fabm_model,&
+         standard_variables%mole_fraction_of_carbon_dioxide_in_air,&
+         380._rk)
+    !yearday
+    id_yearday = fabm_model%get_scalar_variable_id(&
+      standard_variables%number_of_days_since_start_of_the_year)
+    call fabm_model%link_scalar(id_yearday,realday)
     !check all needed by fabm model variables
     call fabm_check_ready(fabm_model)
     !brom needs to know is variable a solid or gas
@@ -166,8 +187,6 @@ contains
 
   subroutine sarafan()
     use output_mod
-    !like on fabm.net
-    type (type_scalar_variable_id):: id_yearday
 
     type(type_output):: netcdf_ice
     type(type_output):: netcdf_water
@@ -176,8 +195,6 @@ contains
     integer ice_water_index,water_bbl_index,number_of_days
     integer surface_index
     integer day,i
-    !for link scalar subroutine
-    real(rk) realday
     !ice thickness
     !real(rk) ice
     !cpu time
@@ -203,9 +220,6 @@ contains
     netcdf_sediments = type_output(fabm_model,_FILE_NAME_SEDIMENTS_,&
                          1,water_bbl_index-1,&
                          number_of_layers)
-    !like on fabm.net, relink all variables as here
-    id_yearday = fabm_model%get_scalar_variable_id(&
-      standard_variables%number_of_days_since_start_of_the_year)
 
     day = standard_vars%first_day()
     call initial_date(day,year)

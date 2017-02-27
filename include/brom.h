@@ -4,6 +4,7 @@
 #define _OCEAN_TIME_                'ocean_time'
 #define _TEMPERATURE_               'temp'
 #define _SALINITY_                  'salt'
+#define _RHO_                       'rho'
 #define _TURBULENCE_                'AKs'
 #define _ICE_THICKNESS_             'hice'
 #define _SNOW_THICKNESS_			      'snow_thick'

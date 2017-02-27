@@ -94,6 +94,8 @@ contains
     !Add variables which are constants in sediments
     call self%add_constant_in_sed(kara_input,_TEMPERATURE_)
     call self%add_constant_in_sed(kara_input,_SALINITY_)
+    call self%add_constant_in_sed(kara_input,_RHO_)
+    !other variables
     call self%add_porosity("porosity","porosity_on_interfaces",&
       "porosity_factor_solutes_1","porosity_factor_solutes_2",&
       "porosity_factor_solids_1","porosity_factor_solids_2",&
@@ -362,8 +364,9 @@ contains
         value_2d(ice_water_index:,:time) = self%type_ice%do_ice_brine_salinity(&
           value_2d(ice_water_index-1,:time))
       case default
-        call fatal_error("Adding temp/salt in ice",&
-                         "variables_mod.F90")
+        forall (i = 1:time)&
+          value_2d(ice_water_index:,i) = &
+          value_2d(ice_water_index-1,i)
       end select
       forall (i = 1:time)&
         value_2d(:water_bbl_index-1,i) =&
