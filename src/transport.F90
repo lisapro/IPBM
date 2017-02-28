@@ -30,13 +30,14 @@ module transport
   integer number_of_layers
   real(rk),allocatable,dimension(:):: depth
   real(rk),allocatable,dimension(:):: porosity
+  real(rk),allocatable,dimension(:):: aos_value
   !for coupling with fabm
-    !for link scalar subroutine
-  real(rk),                         target:: realday
+  !for link scalar subroutine
+  real(rk),                         target:: realday,bdepth
   real(rk),allocatable,dimension(:),target:: temp
   real(rk),allocatable,dimension(:),target:: salt
   real(rk),allocatable,dimension(:),target:: pressure
-  real(rk),allocatable,             target:: radiative_flux
+  real(rk),allocatable,             target:: radiative_flux,taub
   !bcc and scc - arrays for bottom and surface fabm variables
   real(rk),allocatable,dimension(:),target:: bcc,scc
   !variables for model
@@ -45,12 +46,14 @@ module transport
                        dimension(:),target:: state_vars
   !fabm model
   type(type_model) fabm_model
+  !absorption_of_silt
+  type(type_bulk_standard_variable) aos
   !ids for fabm
   type(type_scalar_variable_id),save:: id_yearday
   type(type_bulk_variable_id),  save:: temp_id,salt_id,h_id
   type(type_bulk_variable_id),  save:: pres_id,rho_id
   type(type_horizontal_variable_id),save:: lon_id,lat_id,ws_id
-  type(type_horizontal_variable_id),save:: ssf_id,taub_id
+  type(type_horizontal_variable_id),save:: ssf_id,taub_id,bdepth_id
 contains
   !
   !initialize brom
@@ -169,6 +172,12 @@ contains
     !bottom stress
     taub_id = fabm_model%get_horizontal_variable_id(&
               standard_variables%bottom_stress)
+    allocate(taub)
+    call fabm_link_horizontal_data(fabm_model,taub_id,taub)
+    !bottom depth
+    bdepth_id = fabm_model%get_horizontal_variable_id(&
+                standard_variables%bottom_depth_below_geoid)
+    call fabm_link_horizontal_data(fabm_model,bdepth_id,bdepth)
     !carbon dioxide in air
     call fabm_link_horizontal_data(fabm_model,&
          standard_variables%mole_fraction_of_carbon_dioxide_in_air,&
@@ -177,10 +186,15 @@ contains
     id_yearday = fabm_model%get_scalar_variable_id(&
       standard_variables%number_of_days_since_start_of_the_year)
     call fabm_model%link_scalar(id_yearday,realday)
+    !absorption of silt
+    aos = type_bulk_standard_variable(name="absorption_of_silt",units="1")
+    allocate(aos_value(number_of_layers))
+    aos_value = 4.e-5_rk
+    call fabm_link_bulk_data(fabm_model,aos,aos_value)
     !check all needed by fabm model variables
     call fabm_check_ready(fabm_model)
     !brom needs to know is variable a solid or gas
-    call configurate_state_variables()
+    !call configurate_state_variables()
 
     previous_ice_index=0
   end subroutine
