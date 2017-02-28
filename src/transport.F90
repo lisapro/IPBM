@@ -30,13 +30,15 @@ module transport
   integer number_of_layers
   real(rk),allocatable,dimension(:):: depth
   real(rk),allocatable,dimension(:):: porosity
+  !absorption_of_silt value
   real(rk),allocatable,dimension(:):: aos_value
   !for coupling with fabm
-  !for link scalar subroutine
+  !realday for link scalar subroutine, bdepth - bottom depth
   real(rk),                         target:: realday,bdepth
   real(rk),allocatable,dimension(:),target:: temp
   real(rk),allocatable,dimension(:),target:: salt
   real(rk),allocatable,dimension(:),target:: pressure
+  !taub - bottom stress
   real(rk),allocatable,             target:: radiative_flux,taub
   !bcc and scc - arrays for bottom and surface fabm variables
   real(rk),allocatable,dimension(:),target:: bcc,scc
@@ -71,6 +73,7 @@ contains
     call fabm_create_model_from_yaml_file(fabm_model)
     _LINE_
     !initializing brom standard_variables
+    !makes grid, it starts from bottom (1) to surface (end point)
     standard_vars = brom_standard_variables()
     number_of_layers = standard_vars%get_value(&
                            "number_of_layers")
@@ -121,7 +124,16 @@ contains
           porosity(:water_sediments_index)
       state_vars(i)%value(air_ice_indexes(1):) = D_QNAN
     end forall
-    !linking bulk variables
+    !linking variables
+    !yearday
+    id_yearday = fabm_model%get_scalar_variable_id(&
+      standard_variables%number_of_days_since_start_of_the_year)
+    call fabm_model%link_scalar(id_yearday,realday)
+    !cell thickness
+    h_id    = fabm_model%get_bulk_variable_id(&
+              standard_variables%cell_thickness)
+    call fabm_link_bulk_data(fabm_model,h_id,&
+         standard_vars%get_column("layer_thicknesses",1))
     !temperature
     temp_id = fabm_model%get_bulk_variable_id(&
               standard_variables%temperature)
@@ -136,7 +148,7 @@ contains
     rho_id  = fabm_model%get_bulk_variable_id(standard_variables%density)
     call fabm_link_bulk_data(fabm_model,rho_id,&
          standard_vars%get_column(_RHO_,1))
-    !pressure
+    !pressure - does fabm able to calculate it from density?
     pres_id = fabm_model%get_bulk_variable_id(&
               standard_variables%pressure)
     allocate(depth(number_of_layers))
@@ -147,11 +159,6 @@ contains
     pressure = depth+10._rk
     pressure(int(standard_vars%get_value("ice_water_index")):) = 10._rk
     call fabm_link_bulk_data(fabm_model,pres_id,pressure)
-    !cell thickness
-    h_id    = fabm_model%get_bulk_variable_id(&
-              standard_variables%cell_thickness)
-    call fabm_link_bulk_data(fabm_model,h_id,&
-         standard_vars%get_column("layer_thicknesses",1))
     !surface shortwave flux
     ssf_id  = fabm_model%get_horizontal_variable_id(&
               standard_variables%surface_downwelling_shortwave_flux)
@@ -173,24 +180,23 @@ contains
     taub_id = fabm_model%get_horizontal_variable_id(&
               standard_variables%bottom_stress)
     allocate(taub)
+    taub = 0._rk
     call fabm_link_horizontal_data(fabm_model,taub_id,taub)
-    !bottom depth
+    !bottom depth - fix to depth on boundary
     bdepth_id = fabm_model%get_horizontal_variable_id(&
                 standard_variables%bottom_depth_below_geoid)
+    bdepth = depth(1)
     call fabm_link_horizontal_data(fabm_model,bdepth_id,bdepth)
     !carbon dioxide in air
     call fabm_link_horizontal_data(fabm_model,&
          standard_variables%mole_fraction_of_carbon_dioxide_in_air,&
          380._rk)
-    !yearday
-    id_yearday = fabm_model%get_scalar_variable_id(&
-      standard_variables%number_of_days_since_start_of_the_year)
-    call fabm_model%link_scalar(id_yearday,realday)
     !absorption of silt
     aos = type_bulk_standard_variable(name="absorption_of_silt",units="1")
     allocate(aos_value(number_of_layers))
     aos_value = 4.e-5_rk
     call fabm_link_bulk_data(fabm_model,aos,aos_value)
+
     !check all needed by fabm model variables
     call fabm_check_ready(fabm_model)
     !brom needs to know is variable a solid or gas
@@ -237,7 +243,7 @@ contains
 
     day = standard_vars%first_day()
     call initial_date(day,year)
-    call stabilize(day,year)
+    !call stabilize(day,year)
 
     do i = 1,number_of_days
       call date(day,year)
@@ -254,20 +260,26 @@ contains
       call fabm_model%set_surface_index(surface_index-1)
       !call fabm_link_bulk_data(fabm_model,fabm_porosity,porosity)
 
-      !to convert integer to real
-      realday = day
+      !update links
+      realday = day !to convert integer to real
       call fabm_model%link_scalar(id_yearday,realday)
-
+      !cell thickness
       call fabm_link_bulk_data(fabm_model,h_id,&
-        standard_vars%get_column("layer_thicknesses",i))
-
+           standard_vars%get_column("layer_thicknesses",i))
+      !temperature
       call fabm_link_bulk_data(&
-        fabm_model,standard_variables%temperature,temp)
+           fabm_model,standard_variables%temperature,temp)
+      !salinity
       call fabm_link_bulk_data(&
-        fabm_model,standard_variables%practical_salinity,salt)
-
+           fabm_model,standard_variables%practical_salinity,salt)
+      !density anomaly
+      call fabm_link_bulk_data(fabm_model,rho_id,&
+           standard_vars%get_column(_RHO_,i))
+      !surface shortwave flux
       radiative_flux = surface_radiative_flux(_LATITUDE_,day)
       call fabm_link_horizontal_data(fabm_model,ssf_id,radiative_flux)
+      !bottom stress
+      call fabm_link_horizontal_data(fabm_model,taub_id,taub)
 
       !
       !have to change to flux on ice_water_index layer
@@ -470,7 +482,7 @@ contains
     zeros = 0._rk
     taur_r= 1.e20_rk
 
-    oxygen = find_state_variable("niva_brom_bio_O2")
+    oxygen = find_state_variable("O2_o")
     !oxygen status of sediments
     O2stat = oxygen%value(bbl_sed_index)/&
       (oxygen%value(bbl_sed_index)+_KO2_)

@@ -101,7 +101,7 @@ contains
     do ip = 1,size(model%state_variables)
       ilast = index(model%state_variables(ip)%path,'/',.true.)
       call check(nf90_def_var(self%nc_id,&
-                 model%state_variables(ip)%path(ilast+1:),&
+                 model%state_variables(ip)%name,&
                  NF90_REAL,dim_ids,self%parameter_id(ip)))
       call check(set_attributes(ncid=self%nc_id,id=self%parameter_id(ip),&
                  units=model%state_variables(ip)%units,&
@@ -114,7 +114,7 @@ contains
         ilast = index(model%diagnostic_variables(ip)%path,'/',.true.)
         call check(nf90_def_var(&
                    self%nc_id,model%diagnostic_variables(ip)%&
-                   path(ilast+1:),&
+                   name,&
                    NF90_REAL,dim_ids,self%parameter_id_diag(ip)))
         call check(set_attributes(ncid=self%nc_id,&
                    id=self%parameter_id_diag(ip),&
