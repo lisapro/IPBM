@@ -47,14 +47,14 @@ instances:
     parameters:
       composition: f
     initialization:
-      f: 0.
+      f: 0.5
   N7:
     long_name: inorganic iron
     model: ersem/pelagic_base
     parameters:
       composition: f
     initialization:
-      f: 0.
+      f: 0.5
   O2:
     long_name: oxygen
     model: ersem/oxygen
