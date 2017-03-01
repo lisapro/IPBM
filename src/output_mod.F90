@@ -76,7 +76,7 @@ contains
     integer dim_ids(2)
 
     integer z_dim_id, time_dim_id
-    integer ip,ilast
+    integer ip
 
     self%first = .true.
     self%first_layer = first_layer
@@ -99,7 +99,6 @@ contains
     dim_ids(2) = time_dim_id
     allocate(self%parameter_id(size(model%state_variables)))
     do ip = 1,size(model%state_variables)
-      ilast = index(model%state_variables(ip)%path,'/',.true.)
       call check(nf90_def_var(self%nc_id,&
                  model%state_variables(ip)%name,&
                  NF90_REAL,dim_ids,self%parameter_id(ip)))
@@ -111,7 +110,6 @@ contains
     allocate(self%parameter_id_diag(size(model%diagnostic_variables)))
     do ip = 1,size(model%diagnostic_variables)
       if (model%diagnostic_variables(ip)%save) then
-        ilast = index(model%diagnostic_variables(ip)%path,'/',.true.)
         call check(nf90_def_var(&
                    self%nc_id,model%diagnostic_variables(ip)%&
                    name,&
@@ -128,14 +126,14 @@ contains
     call check(nf90_def_var(self%nc_id,"salt",NF90_REAL,dim_ids,self%s_id))
     call check(nf90_def_var(self%nc_id,"depth",NF90_REAL,dim_ids,&
                             self%depth_id))
-    !call check(nf90_def_var(self%nc_id,"radiative_flux",&
-    !                        NF90_REAL,dim_ids,self%iz_id))
+    call check(nf90_def_var(self%nc_id,"radiative_flux",&
+                            NF90_REAL,dim_ids,self%iz_id))
     !end define
     call check(nf90_enddef(self%nc_id))
   end subroutine initialize
 
   subroutine save(self,model,state_vars,z,day,&
-                  temp,salt,depth,&!radiative_flux,&
+                  temp,salt,depth,radiative_flux,&
                   air_ice_index)
     class(type_output),intent(inout):: self
     type (type_model)                    ,intent(in):: model
@@ -145,7 +143,7 @@ contains
     real(rk),allocatable,dimension(:)    ,intent(in):: temp
     real(rk),allocatable,dimension(:)    ,intent(in):: salt
     real(rk),allocatable,dimension(:)    ,intent(in):: depth
-    !real(rk),allocatable,dimension(:)    ,intent(in):: radiative_flux
+    real(rk),allocatable,dimension(:)    ,intent(in):: radiative_flux
     integer                              ,intent(in):: air_ice_index
 
     !NaN value
@@ -199,10 +197,10 @@ contains
       call check(nf90_put_var(self%nc_id,self%depth_id,&
                               depth(self%first_layer:self%last_layer),&
                               start,edges))
-      !call check(nf90_put_var(self%nc_id,self%iz_id,&
-      !                        radiative_flux(&
-      !                        self%first_layer:self%last_layer),&
-      !                        start,edges))
+      call check(nf90_put_var(self%nc_id,self%iz_id,&
+                              radiative_flux(&
+                              self%first_layer:self%last_layer),&
+                              start,edges))
       call check(nf90_sync(self%nc_id))
     end if
   end subroutine save

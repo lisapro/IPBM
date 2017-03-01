@@ -30,16 +30,19 @@ module transport
   integer number_of_layers
   real(rk),allocatable,dimension(:):: depth
   real(rk),allocatable,dimension(:):: porosity
-  !absorption_of_silt value
-  real(rk),allocatable,dimension(:):: aos_value
+  !absorption_of_silt value - ersem light
+  !real(rk),allocatable,dimension(:):: aos_value
   !for coupling with fabm
   !realday for link scalar subroutine, bdepth - bottom depth
-  real(rk),                         target:: realday,bdepth
+  real(rk),                         target:: bdepth!,realday
+  real(rk),allocatable,dimension(:),target:: cell! - dz
   real(rk),allocatable,dimension(:),target:: temp
   real(rk),allocatable,dimension(:),target:: salt
+  real(rk),allocatable,dimension(:),target:: density
   real(rk),allocatable,dimension(:),target:: pressure
+  real(rk),allocatable,dimension(:),target:: radiative_flux
   !taub - bottom stress
-  real(rk),allocatable,             target:: radiative_flux,taub
+  real(rk),allocatable,             target:: taub
   !bcc and scc - arrays for bottom and surface fabm variables
   real(rk),allocatable,dimension(:),target:: bcc,scc
   !variables for model
@@ -48,14 +51,15 @@ module transport
                        dimension(:),target:: state_vars
   !fabm model
   type(type_model) fabm_model
-  !absorption_of_silt
-  type(type_bulk_standard_variable) aos
+  !absorption_of_silt - ersem light
+  !type(type_bulk_standard_variable) aos
   !ids for fabm
-  type(type_scalar_variable_id),save:: id_yearday
+  !type(type_scalar_variable_id),save:: id_yearday !- ersem zenith
   type(type_bulk_variable_id),  save:: temp_id,salt_id,h_id
-  type(type_bulk_variable_id),  save:: pres_id,rho_id
+  type(type_bulk_variable_id),  save:: pres_id,rho_id,par_id
   type(type_horizontal_variable_id),save:: lon_id,lat_id,ws_id
-  type(type_horizontal_variable_id),save:: ssf_id,taub_id,bdepth_id
+  type(type_horizontal_variable_id),save:: taub_id,bdepth_id
+  !type(type_horizontal_variable_id),save:: ssf_id !- ersem light
 contains
   !
   !initialize brom
@@ -125,15 +129,16 @@ contains
       state_vars(i)%value(air_ice_indexes(1):) = D_QNAN
     end forall
     !linking variables
-    !yearday
-    id_yearday = fabm_model%get_scalar_variable_id(&
-      standard_variables%number_of_days_since_start_of_the_year)
-    call fabm_model%link_scalar(id_yearday,realday)
-    !cell thickness
+    !yearday - ersem zenith_angle
+    !id_yearday = fabm_model%get_scalar_variable_id(&
+    !  standard_variables%number_of_days_since_start_of_the_year)
+    !call fabm_model%link_scalar(id_yearday,realday)
+    !cell thickness - ersem
     h_id    = fabm_model%get_bulk_variable_id(&
               standard_variables%cell_thickness)
-    call fabm_link_bulk_data(fabm_model,h_id,&
-         standard_vars%get_column("layer_thicknesses",1))
+    allocate(cell(number_of_layers))
+    !cell = standard_vars%get_column("layer_thicknesses",1)
+    call fabm_link_bulk_data(fabm_model,h_id,cell)
     !temperature
     temp_id = fabm_model%get_bulk_variable_id(&
               standard_variables%temperature)
@@ -146,8 +151,9 @@ contains
     call fabm_link_bulk_data(fabm_model,salt_id,salt)
     !density anomaly
     rho_id  = fabm_model%get_bulk_variable_id(standard_variables%density)
-    call fabm_link_bulk_data(fabm_model,rho_id,&
-         standard_vars%get_column(_RHO_,1))
+    allocate(density(number_of_layers))
+    !density = standard_vars%get_column(_RHO_,1)
+    call fabm_link_bulk_data(fabm_model,rho_id,density)
     !pressure - does fabm able to calculate it from density?
     pres_id = fabm_model%get_bulk_variable_id(&
               standard_variables%pressure)
@@ -159,11 +165,16 @@ contains
     pressure = depth+10._rk
     pressure(int(standard_vars%get_value("ice_water_index")):) = 10._rk
     call fabm_link_bulk_data(fabm_model,pres_id,pressure)
-    !surface shortwave flux
-    ssf_id  = fabm_model%get_horizontal_variable_id(&
-              standard_variables%surface_downwelling_shortwave_flux)
-    allocate(radiative_flux)
-    call fabm_link_horizontal_data(fabm_model,ssf_id,radiative_flux)
+    !surface shortwave flux - ersem light
+    !ssf_id  = fabm_model%get_horizontal_variable_id(&
+    !          standard_variables%surface_downwelling_shortwave_flux)
+    !allocate(radiative_flux)
+    !call fabm_link_horizontal_data(fabm_model,ssf_id,radiative_flux)
+    !photosynthetic_radiative_flux
+    par_id  = fabm_model%get_bulk_variable_id(&
+              standard_variables%downwelling_photosynthetic_radiative_flux)
+    allocate(radiative_flux(number_of_layers))
+    call fabm_link_bulk_data(fabm_model,par_id,radiative_flux)
     !longtitude
     lon_id  = fabm_model%get_horizontal_variable_id(&
               standard_variables%longitude)
@@ -176,13 +187,13 @@ contains
     ws_id   = fabm_model%get_horizontal_variable_id(&
               standard_variables%wind_speed)
     call fabm_link_horizontal_data(fabm_model,ws_id,5._rk)
-    !bottom stress
+    !bottom stress - ersem
     taub_id = fabm_model%get_horizontal_variable_id(&
               standard_variables%bottom_stress)
     allocate(taub)
     taub = 0._rk
     call fabm_link_horizontal_data(fabm_model,taub_id,taub)
-    !bottom depth - fix to depth on boundary
+    !bottom depth - fix to depth on boundary - ersem
     bdepth_id = fabm_model%get_horizontal_variable_id(&
                 standard_variables%bottom_depth_below_geoid)
     bdepth = depth(1)
@@ -191,11 +202,11 @@ contains
     call fabm_link_horizontal_data(fabm_model,&
          standard_variables%mole_fraction_of_carbon_dioxide_in_air,&
          380._rk)
-    !absorption of silt
-    aos = type_bulk_standard_variable(name="absorption_of_silt",units="1")
-    allocate(aos_value(number_of_layers))
-    aos_value = 4.e-5_rk
-    call fabm_link_bulk_data(fabm_model,aos,aos_value)
+    !absorption of silt - ersem light
+    !aos = type_bulk_standard_variable(name="absorption_of_silt",units="1")
+    !allocate(aos_value(number_of_layers))
+    !aos_value = 4.e-5_rk
+    !call fabm_link_bulk_data(fabm_model,aos,aos_value)
 
     !check all needed by fabm model variables
     call fabm_check_ready(fabm_model)
@@ -258,28 +269,30 @@ contains
       !index for boundaries so for layers it should be -1
       surface_index = air_ice_indexes(i)
       call fabm_model%set_surface_index(surface_index-1)
-      !call fabm_link_bulk_data(fabm_model,fabm_porosity,porosity)
 
       !update links
-      realday = day !to convert integer to real
-      call fabm_model%link_scalar(id_yearday,realday)
-      !cell thickness
-      call fabm_link_bulk_data(fabm_model,h_id,&
-           standard_vars%get_column("layer_thicknesses",i))
+      !realday = day !to convert integer to real - ersem zenith_angle
+      !call fabm_model%link_scalar(id_yearday,realday)
+      !cell thickness - ersem
+      cell = standard_vars%get_column("layer_thicknesses",i)
+      call fabm_link_bulk_data(fabm_model,h_id,cell)
       !temperature
       call fabm_link_bulk_data(&
            fabm_model,standard_variables%temperature,temp)
       !salinity
       call fabm_link_bulk_data(&
            fabm_model,standard_variables%practical_salinity,salt)
-      !density anomaly
-      call fabm_link_bulk_data(fabm_model,rho_id,&
-           standard_vars%get_column(_RHO_,i))
-      !surface shortwave flux
-      radiative_flux = surface_radiative_flux(_LATITUDE_,day)
-      call fabm_link_horizontal_data(fabm_model,ssf_id,radiative_flux)
-      !bottom stress
-      call fabm_link_horizontal_data(fabm_model,taub_id,taub)
+      !density
+      density = (standard_vars%get_column(_RHO_,i)+1000._rk)/1000._rk
+      call fabm_link_bulk_data(fabm_model,rho_id,density)
+      !par
+      call calculate_radiative_flux(&
+        surface_radiative_flux(_LATITUDE_,day),&
+        standard_vars%get_value(_SNOW_THICKNESS_,i),&
+        standard_vars%get_value(_ICE_THICKNESS_ ,i))
+      call fabm_link_bulk_data(fabm_model,par_id,radiative_flux)
+      !bottom stress - ersem
+      !call fabm_link_horizontal_data(fabm_model,taub_id,taub)
 
       !
       !have to change to flux on ice_water_index layer
@@ -294,13 +307,13 @@ contains
       call cpu_time(t1)
       call day_circle(i,surface_index)
       call netcdf_ice%save(fabm_model,state_vars,indices,i,&
-                           temp,salt,depth,&!radiative_flux,&
+                           temp,salt,depth,radiative_flux,&
                            int(air_ice_indexes(i)))
       call netcdf_water%save(fabm_model,state_vars,depth,i,&
-                             temp,salt,depth,&!radiative_flux,&
+                             temp,salt,depth,radiative_flux,&
                              int(air_ice_indexes(i)))
       call netcdf_sediments%save(fabm_model,state_vars,depth,i,&
-                                 temp,salt,depth,&!radiative_flux,&
+                                 temp,salt,depth,radiative_flux,&
                                  int(air_ice_indexes(i)))
       call cpu_time(t2)
 
@@ -348,38 +361,39 @@ contains
     if (surface_radiative_flux<0._rk) surface_radiative_flux = 0._rk
   end function
 
-  !subroutine calculate_radiative_flux(surface_flux,snow_thick,ice_thick)
-  !  real(rk),intent(in):: surface_flux
-  !  real(rk),intent(in):: snow_thick
-  !  real(rk),intent(in):: ice_thick
-  !  integer  ice_water_index
-  !  real(rk) par_alb,par_scat
-  !  real(rk),allocatable:: ice_depths(:)
-  !
-  !  ice_water_index = standard_vars%get_value("ice_water_index")
-  !  !ice_column
-  !  !surface_flux in Watts, to calculate it in micromoles photons per m2*s =>
-  !  !=> [w] = 4.6*[micromole photons]
-  !  !Grenfell and Maykutt 1977 indicate that the magnitude and shape
-  !  !of the albedo curves depend strongly on the amount of liquid
-  !  !water present in the upper part of the ice, so it fluctuates
-  !  !throught year (true also for extinction coefficient)
-  !  par_alb = surface_flux*(1._rk-_ICE_ALBEDO_)
-  !  !after scattered surface of ice
-  !  par_scat = par_alb*_ICE_SCATTERED_
-  !  allocate(ice_depths,source=ice_thick-depth(ice_water_index:))
-  !  radiative_flux(ice_water_index:) = &
-  !    par_scat*exp(-_ICE_EXTINCTION_*ice_depths)
-  !  !water column calculations
-  !  if (ice_thick==0._rk) then
-  !    radiative_flux(:ice_water_index-1) = &
-  !      surface_flux*exp(-_ERLOV_*depth(:ice_water_index-1))
-  !  else
-  !    radiative_flux(:ice_water_index-1) = &
-  !      radiative_flux(ice_water_index)*&
-  !      exp(-_ERLOV_*depth(:ice_water_index-1))
-  !  end if
-  !end subroutine
+  subroutine calculate_radiative_flux(surface_flux,snow_thick,ice_thick)
+    real(rk),intent(in):: surface_flux
+    real(rk),intent(in):: snow_thick
+    real(rk),intent(in):: ice_thick
+    integer  ice_water_index
+    real(rk) par_alb,par_scat
+    real(rk),allocatable:: ice_depths(:)
+
+    ice_water_index = standard_vars%get_value("ice_water_index")
+    !ice_column
+    !surface_flux in Watts,
+    !to calculate it in micromoles photons per m2*s =>
+    !=> [w] = 4.6*[micromole photons]
+    !Grenfell and Maykutt 1977 indicate that the magnitude and shape
+    !of the albedo curves depend strongly on the amount of liquid
+    !water present in the upper part of the ice, so it fluctuates
+    !throught year (true also for extinction coefficient)
+    par_alb = surface_flux*(1._rk-_ICE_ALBEDO_)
+    !after scattered surface of ice
+    par_scat = par_alb*_ICE_SCATTERED_
+    allocate(ice_depths,source=ice_thick-depth(ice_water_index:))
+    radiative_flux(ice_water_index:) = &
+      par_scat*exp(-_ICE_EXTINCTION_*ice_depths)
+    !water column calculations
+    if (ice_thick==0._rk) then
+      radiative_flux(:ice_water_index-1) = &
+        surface_flux*exp(-_ERLOV_*depth(:ice_water_index-1))
+    else
+      radiative_flux(:ice_water_index-1) = &
+        radiative_flux(ice_water_index)*&
+        exp(-_ERLOV_*depth(:ice_water_index-1))
+    end if
+  end subroutine
 
   pure function sinusoidal(julian_day,multiplier)
     integer, intent(in):: julian_day
