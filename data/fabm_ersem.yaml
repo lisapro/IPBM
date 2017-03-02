@@ -1,14 +1,6 @@
 check_conservation: false
 require_initialization: true
 instances:
-  zenithAngle:
-    model: ersem/zenith_angle
-  light:
-    model: ersem/light_iop
-    parameters:
-      a0w: 0.03 # absorption coefficient of clear water (1/m), default = 0.036
-      b0w: 0.0015 # backscatter coefficient of clear water (1/m), default = 0.0016
-      pEIR_eow: 0.5 # photosynthetically active fraction of shortwave radiation (-), default = 0.5
   N1:
     long_name: phosphate
     model: ersem/pelagic_base
@@ -55,7 +47,14 @@ instances:
     parameters:
       composition: f
     initialization:
-      f: 0.
+      f: 0.5
+  N7:
+    long_name: inorganic iron
+    model: ersem/pelagic_base
+    parameters:
+      composition: f
+    initialization:
+      f: 0.5
   O2:
     long_name: oxygen
     model: ersem/oxygen
@@ -72,241 +71,6 @@ instances:
       iswtalk: 2 # alkalinity formulation (1-4: from salinity and temperature, 5: dynamic alkalinity), default = 5
     initialization:
       c: 2130.0 # total dissolved inorganic carbon (mmol C/m^3)
-  B_METH:
-    long_name: methane 
-    model: niva/brom_methane
-    parameters:
-      s_omso_o2: 25.0 # threshold of o2 for OM sulfate reduction
-      s_omso_no3: 5.0 # threshold of noX for OM sulfate reduction
-      # Threshold of of SO4 for methane production from OM
-      s_omch_so4: 30.
-      # Specific rate of methane production from DON (Lopes et al., 2011)
-      K_DON_ch4: 0.00014
-      # Specific rate of methane production from PON
-      K_PON_ch4: 0.00014
-      # Specific rate of oxidation of CH4 with O2
-      K_ch4_o2: 0.14
-      # Specific rate of oxidation of CH4 with SO4
-      K_ch4_so4: 0.0000274
-      r_c_n: 8.0   # C[uM]/N[uM]
-    initialization:
-      CH4: 0.0001 # Methan (mmol C/m^3)
-    coupling:
-      DIC: O3/c
-      O2: O2/o
-      NO3: N3/n
-      PON: R4/n # small-size pom (mmol N/m^3)
-      DON: R1/n # labile dissolved organic matter (mmol N/m^3)
-      SO4: B_SULF/SO4
-  B_NITR:
-    long_name: nitrogen_cycle
-    model: niva/brom_nitrogen
-    parameters:
-      # Spec.rate of 1st st. of nitrification
-      K_nitrif1: 0.01
-      # Spec.rate of 2d st. of nitrification
-      K_nitrif2: 0.1
-      # Spec.rate of 1 stage of denitrif
-      K_denitr1: 0.3
-      # Spec.rate of 2 stage of denitrif
-      K_denitr2: 0.20
-      K_omno_no3: 0.001 # Half sat. of no3 for OM denitr. (uM N)
-      K_omno_no2: 0.001 # Half sat. of no2 for OM denitr. (uM N)
-      # Spec.rate of Anammox (1/d) (Gregoire, Lacroix, 2001)
-      K_annamox: 0.8
-      # Threshold of O2 saturation for nitrification (uM)
-      O2s_nf: 5.
-      # Threshold of O2 for denitrification, anammox, Mn reduction (uM O2)
-      O2s_dn: 10.0
-      r_n_p: 16.0  # N[uM]/P[uM]
-      r_c_n: 8.0   # C[uM]/N[uM]
-    coupling:
-      NO2: N2/n # nitrite (mmol N/m^3)
-      NO3: N3/n # nitrate (mmol N/m^3)
-      NH4: N4/n # ammonium (mmol N/m^3)
-      DIC: O3/c # carbon dioxide (mmol C/m^3)
-      O2: O2/o # oxygen (mmol O_2/m^3)
-      PON: R4/n # small-size pom (mmol N/m^3)
-      DON: R1/n # labile dissolved organic matter (mmol N/m^3)
-      PO4: N1/p # phosphate (mmol N/m^3)
-  B_SULF:
-    long_name: sulfur_cycle
-    model: niva/brom_sulfur
-    parameters:
-      # Specific rate of oxidation of H2S to S0 with O2 (1/d)
-      K_hs_ox: 0.5
-      K_s0_ox: 0.02   # Specific rate of oxidation of S0 with O2
-      K_s2o3_ox: 0.01 # Specific rate of oxidation of S2O3 with O2
-      # Specific rate of OM sulfate reduction with sulfate
-      K_so4_rd: 0.000005
-      # Specific rate of OM sulfate reduction with thiosulfate
-      K_s2o3_rd: 0.001
-      # Specific rate of S0 dispropotionation
-      K_s0_disp:  0.001
-      # Spec.rate of thiodenitrification (1/d)
-      K_hs_no3: 0.8
-      K_s0_no3:   0.9   # Specific rate of oxidation of S0 with NO3
-      K_s2o3_no3: 0.01  # Specific rate of oxidation of S2O3 with NO3
-      s_omso_o2: 25.0 # threshold of o2 for OM sulfate reduction
-      s_omso_no3: 5.0 # threshold of noX for OM sulfate reduction
-      r_n_p: 16.0  # N[uM]/P[uM]
-      r_c_n: 8.0   # C[uM]/N[uM]
-    initialization:
-      H2S:    0.0
-      S0:     0.0
-      S2O3:   0.0
-      SO4:    25000.
-    coupling:
-      NO3: N3/n # nitrate (mmol N/m^3)
-      NH4: N4/n # ammonium (mmol N/m^3)
-      DIC: O3/c # carbon dioxide (mmol C/m^3)
-      O2: O2/o # oxygen (mmol O_2/m^3)
-      PON: R4/n # small-size pom (mmol N/m^3)
-      DON: R1/n # labile dissolved organic matter (mmol N/m^3)
-      PO4: N1/p # phosphate (mmol N/m^3)
-  B_IRON:
-    long_name: iron
-    model: niva/brom_iron
-    parameters:
-      # Rate of accel. sink. of part. with settled metal hydroxides (1/d)
-      Wm: 10.0
-      # Specific rate of oxidation of Fe2 to Fe3  with O2 (1/d)
-      K_fe_ox1: 0.5
-      # Specific rate of oxidation of Fe2 to Fe3  with MnO2 (1/d)
-      K_fe_ox2: 0.001
-      # Specific rate of reduction of Fe3 to Fe2  with H2S (1/day)
-      K_fe_rd: 0.5
-      # FeS equilibrium constant
-      K_fes: 2510.0
-      # Specific rate of precipitation of FeS from Fe2 with H2S (1/day)
-      K_fes_form: 5.e-4
-      # Specific rate of dissollution of FeS to Fe2 and H2S  (1/day)
-      K_fes_diss: 1.e-6
-      # Specific rate of oxidation of FeS with O2 (1/day)
-      K_fes_ox: 0.001
-      # Specific rate of oxidation of DON with Fe3 (1/day)
-      K_DON_fe: 0.00005
-      # Specific rate of oxidation of PON with Fe3 (1/day)
-      K_PON_fe: 0.00001
-      # Specific rate of FeS2 formation by FeS oxidation by H2S (1/day)
-      K_fes2_form: 0.000001
-      # Specific rate of pyrite oxidation by O2 (1/uM/d)
-      K_fes2_ox: 0.00044
-      # Threshold of Fe2 reduciton
-      s_feox_fe2: 0.001
-      # Threshold of Fe3 reduciton (uM Fe)
-      s_ferd_fe3: 0.01
-      # Conditional equilibrium constant (uM2)
-      # for Mn2+CO3->FeCO3 (Meysman,2003)
-      K_feco3: 15.
-      # Specific rate of dissolution of FeCO3 (1/day)
-      K_feco3_diss: 7.e-4
-      # Specific rate of formation of FeCO3 (1/day)
-      K_feco3_form: 3.e-4
-      # Specific rate of oxidation of FeCO3 with O2 (1/day)
-      K_feco3_ox: 0.0027
-      K_ferd_hs:  1.0   # half sat. of Fe reduction (uM S)
-      K_omno_no3: 0.001 # Half sat. of no3 for OM denitr. (uM N)
-      # Threshold of O2 for denitrification, anammox, Mn reduction (uM O2)
-      O2s_dn: 10.0
-      # Fe[uM]/N[uM] (Boudrau, 1996)
-      r_fe_n: 26.5
-      # Fe[uM]/P[uM] partitioning coeff. for Fe oxide (Yakushev, 2007)
-      r_fe3_p: 2.7
-      #! Fe[uM]/Si[uM] partitioning coeff. for Fe oxide
-      r_fe3_si: 3.
-    initialization:
-      Fe2:    0.0
-      Fe3:    0.0
-      FeS:    0.0
-      FeCO3:  0.0
-      FeS2:   0.0
-    coupling:
-      Mn2: B_MANG/Mn2
-      Mn4: B_MANG/Mn4
-      H2S: B_SULF/H2S
-      S0: B_SULF/S0
-      SO4: B_SULF/SO4
-      Si: N5/s
-      DIC: O3/c # carbon dioxide (mmol C/m^3)
-      PO4: N1/p
-      O2: O2/o
-      PON: R4/n # small-size pom (mmol N/m^3)
-      DON: R1/n # labile dissolved organic matter (mmol N/m^3)
-  B_MANG:
-    long_name: manganese
-    model: niva/brom_manganese
-    parameters:
-      # Rate of accel. sink. of part. with settled metal hydroxides (1/d)
-      Wm: 10.0
-      K_mn_ox1: 0.1 # Specific rate of oxidation of Mn2 to Mn3 with O2 (1/d)
-      K_mn_ox2: 0.2 # Specific rate of oxidation of Mn3 to Mn4 with O2 (1/d)
-      # Specific rate of reduction of Mn4 to Mn3 with H2S (1/d)
-      K_mn_rd1: 0.5
-      # Specific rate of reduction of Mn3 to Mn2 with H2S (1/d)
-      K_mn_rd2: 1.0
-      # Conditional equilibrium constant for MnS from Mn2 with H2S (M)
-      K_mns:    1500.
-      # Specific rate of dissolution of MnS to Mn2 and H2S (1/d)
-      K_mns_diss: 0.0005
-      # Spec. rate of form. of MnS from Mn2 with H2S (1/d)
-      K_mns_form: 0.00001
-      # Conditional equilibrium constant (uM2)
-      # for Mn2+CO3->MnCO3 (Meysman,2003)
-      K_mnco3: 1.
-      # Specific rate of dissolution of MnCO3 (1/d)
-      K_mnco3_diss: 7.e-4
-      # Specific rate of formation of MnCO3 (1/d)
-      K_mnco3_form: 3.e-4
-      # Specific rate of oxidation of MnCO3 with O2 (1/d)
-      K_mnco3_ox: 0.0027
-      # Specific rate of oxidation of DON with Mn4 (1/d)
-      K_DON_mn: 0.001
-      # Specific rate of oxidation of PON with Mn4 (1/d)
-      K_PON_mn: 0.001
-      # threshold of Mn2 oxidation (uM Mn)
-      s_mnox_mn2: 0.01
-      # threshold of Mn3 oxidation (uM Mn)
-      s_mnox_mn3: 0.01
-      # threshold of Mn4 reduciton (uM Mn)
-      s_mnrd_mn4: 0.01
-      # threshold of Mn3 reduciton  (uM Mn)
-      s_mnrd_mn3: 0.01
-      # Threshold of O2 for denitrification, anammox, Mn reduction (uM O2)
-      O2s_dn: 10.0
-      K_mnrd_hs:  1.0   # half sat. of Mn reduction (uM S)
-      # Half sat. of Mn oxidation (uM O2)
-      K_mnox_o2: 2.0
-      # Mn[uM]/N[uM] (Boudrau, 1996)
-      r_mn_n: 13.25
-      # Mn[uM]/P[uM] complex stoichiometric coeff. for Mn(III)
-      r_mn3_p: 0.67
-    initialization:
-      Mn2:    0.0
-      Mn3:    0.0
-      Mn4:    0.0
-      MnS:    0.0
-      MnCO3:  0.0
-    coupling:
-      S0: B_SULF/S0
-      H2S: B_SULF/H2S
-      DIC: O3/c # carbon dioxide (mmol C/m^3)
-      PO4: N1/p
-      O2: O2/o
-      PON: R4/n # small-size pom (mmol N/m^3)
-      DON: R1/n # labile dissolved organic matter (mmol N/m^3)
-  B_SILI:
-    long_name: silicon
-    model: niva/brom_silicon
-    parameters:
-      # Sinking (Gregoire, Lacroix, 2001)
-      Wsed: 5.0 # Rate of sinking of detritus (m/d)
-      # Si dissollution rate constant (Popova,04)
-      K_sipart_diss: 0.008
-    initialization:
-      Sipart: 0.0
-    coupling:
-      Si: N5/s
   R1:
     long_name: labile dissolved organic matter
     model: ersem/pelagic_base
@@ -413,7 +177,7 @@ instances:
       N3n: N3/n # nitrate (mmol N/m^3)
       N4n: N4/n # ammonium (mmol N/m^3)
       N5s: N5/s # silicate (mmol Si/m^3)
-      N7f: B_IRON/Fe2
+      N7f: N7/f
   Q7:
     long_name: benthic refractory matter
     model: ersem/benthic_base
@@ -477,7 +241,7 @@ instances:
       R3c: R3/c # semi-refractory DOC (mg C/m^3)
       O3c: O3/c # carbon dioxide (mmol C/m^3)
       O2o: O2/o # oxygen (mmol O_2/m^3)
-      N7f: B_IRON/Fe2
+      N7f: N7/f
   P1:
     long_name: diatoms
     model: ersem/primary_producer
@@ -549,7 +313,7 @@ instances:
       R2c: R2/c # semi-labile dissolved organic carbon (mg C/m^3)
       O2o: O2/o # oxygen (mmol O_2/m^3)
       O3c: O3/c # carbon dioxide (mmol C/m^3)
-      N7f: B_IRON/Fe2
+      N7f: N7/f
       RPf: N6/f
   P2:
     long_name: nanophytoplankton
@@ -619,7 +383,7 @@ instances:
       O3c: O3/c # carbon dioxide (mmol C/m^3)
       RainR: L2/RainR # rain ratio (PIC : POC) (-)
       L2c: L2/c # free calcite (mg C/m^3)
-      N7f: B_IRON/Fe2
+      N7f: N7/f
       RPf: N6/f
   P3:
     long_name: picophytoplankton
@@ -686,7 +450,7 @@ instances:
       R2c: R2/c # semi-labile dissolved organic carbon (mg C/m^3)
       O2o: O2/o # oxygen (mmol O_2/m^3)
       O3c: O3/c # carbon dioxide (mmol C/m^3)
-      N7f: B_IRON/Fe2
+      N7f: N7/f
       RPf: N6/f
   P4:
     long_name: microphytoplankton
@@ -753,7 +517,7 @@ instances:
       R2c: R2/c # semi-labile dissolved organic carbon (mg C/m^3)
       O2o: O2/o # oxygen (mmol O_2/m^3)
       O3c: O3/c # carbon dioxide (mmol C/m^3)
-      N7f: B_IRON/Fe2
+      N7f: N7/f
       RPf: N6/f
   Z4:
     long_name: mesozooplankton

@@ -283,7 +283,7 @@ contains
       call fabm_link_bulk_data(&
            fabm_model,standard_variables%practical_salinity,salt)
       !density
-      density = (standard_vars%get_column(_RHO_,i)+1000._rk)/1000._rk
+      density = standard_vars%get_column(_RHO_,i)+1000._rk
       call fabm_link_bulk_data(fabm_model,rho_id,density)
       !par
       call calculate_radiative_flux(&
@@ -502,14 +502,18 @@ contains
       (oxygen%value(bbl_sed_index)+_KO2_)
     kz_tot = kz_turb+kz_mol+kz_bio*O2stat
 
+    !calculate surface fluxes only for ice free periods
     surface_flux = 0._rk
-    call fabm_do_surface(fabm_model,surface_flux)
+    if (surface_index == ice_water_index) then
+      call fabm_do_surface(fabm_model,surface_flux)
+    end if
     do i = 1,number_of_parameters
       if (surface_flux(i)/=0._rk) then
         call state_vars(i)%set_brom_state_variable(&
           use_bound_up = _NEUMANN_,bound_up = surface_flux(i))
       end if
     end do
+
     !
     !adopted from Phil Wallhead (PW):
     !solutes:
