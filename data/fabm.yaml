@@ -66,22 +66,38 @@ instances:
       Kc1:   B_EQ/Kc1
       Kc2:   B_EQ/Kc2
       Hplus: B_pH/Hplus
-  B_CALC:
-    long_name: calcium
-    model: niva/brom_calcium
+  B_CA_SAT:
+    long_name: calcium saturation
+    model: niva/brom_ca_sat
+  L2:
+    long_name: calcite
+    model: ersem/calcification
     parameters:
-      Wsed: 5.0
-      #! CaCO3 dissollution rate constant (1/d)
-      #(wide ranges are given in (Luff et al., 2001))
-      K_caco3_diss: 3.0            
-      #! CaCO3 precipitation rate constant (1/d) 
-      #(wide ranges are given in (Luff et al., 2001))
-      K_caco3_form: 0.0002   
+      iswcal: 1 # calcification/dissolution dependence on calcite saturation (1: power law, 2: hyperbolic)
+      ncalc: 0.81 # power of the calcification law (Ridgwell et al. 2007, mineral calcite) (-)
+      ndiss: 2.22 # power of the dissolution law (Keir 1980) (-)
+      Rain0: 0.6 # maximum rain ratio from PISCES (-)
+      sedL2: 10.0 # sinking velocity (m/d)
+      sL2O3: 0.03 # maximum specific dissolution rate (1/d), default = 1.0
+      c0: 1.e-05 # background concentration (mg C/m^3), default = 0.0
+      ndeposition: 1 # number of target pools for sedimentation, default = 1
     initialization:
-      CaCO3: 5.0
+      c: 0.05 # carbon (mg C/m^3)
     coupling:
-      DIC: B_CARB/DIC
-      CO3: B_CARB/CO3 
+      deposition_target1: bL2
+      om_cal: B_CA_SAT/Om_Ca # calcite saturation (-)
+      O3c: B_CARB/DIC # total dissolved inorganic carbon (mmol C/m^3)
+  bL2:
+    long_name: benthic calcite
+    model: ersem/benthic_base
+    parameters:
+      composition: c # elemental composition
+      remin: 0.05 # remineralisation rate (1/d), default = 0.0
+      c0: 1.e-05 # background carbon concentration (mg C/m^2), default = 0.0
+    initialization:
+      c: 0.05 # carbon (mg C/m^2)
+    coupling:
+      O3c: B_CARB/DIC # dissolved inorganic carbon (mmol/m^3)
   B_EQ:
     long_name: equilibrium_constrants
     model: niva/brom_eq_constants
@@ -107,7 +123,7 @@ instances:
       Si:       N5/s
       NH4:      N4/n
       H2S:      B_SULF/H2S
-      SO4:      B_SO4/SO4
+      SO4:      B_SULF/SO4
   B_METH:
     long_name: methane 
     model: niva/brom_methane
@@ -269,6 +285,7 @@ instances:
       O2: O2/o
       PON: R4/n # small-size pom (mmol N/m^3)
       DON: R1/n # labile dissolved organic matter (mmol N/m^3)
+      Hplus: B_pH/Hplus
   B_MANG:
     long_name: manganese
     model: niva/brom_manganese
@@ -331,6 +348,7 @@ instances:
       O2: O2/o
       PON: R4/n # small-size pom (mmol N/m^3)
       DON: R1/n # labile dissolved organic matter (mmol N/m^3)
+      Hplus: B_pH/Hplus
   B_SILI:
     long_name: silicon
     model: niva/brom_silicon
@@ -654,7 +672,7 @@ instances:
       O2o: O2/o # oxygen (mmol O_2/m^3)
       O3c: B_CARB/DIC # carbon dioxide (mmol C/m^3)
       RainR: L2/RainR # rain ratio (PIC : POC) (-)
-      L2c: B_CALC/CaCO3 # free calcite (mg C/m^3)
+      L2c: L2/c # free calcite (mg C/m^3)
       N7f: B_IRON/Fe2
       RPf: N6/f
   P3:
@@ -850,7 +868,7 @@ instances:
       R2c: R2/c # semi-labile dissolved organic carbon (mg C/m^3)
       O2o: O2/o # oxygen source (mmol O_2/m^3)
       O3c: B_CARB/DIC # carbon dioxide sink (mmol C/m^3)
-      L2c: B_CALC/CaCO3 # calcite (mg C/m^3)
+      L2c: L2/c # calcite (mg C/m^3)
   Z5:
     long_name: microzooplankton
     model: ersem/microzooplankton
@@ -905,7 +923,7 @@ instances:
       R2c: R2/c # semi-labile dissolved organic carbon (mg C/m^3)
       O2o: O2/o # oxygen source (mmol O_2/m^3)
       O3c: B_CARB/DIC # carbon dioxide sink (mmol C/m^3)
-      L2c: B_CALC/CaCO3 # calcite (mg C/m^3)
+      L2c: L2/c # calcite (mg C/m^3)
   Z6:
     long_name: nanoflagellates
     model: ersem/microzooplankton
@@ -955,4 +973,4 @@ instances:
       RPs: R6/s # particulate organic silicate (mmol Si/m^3)
       O2o: O2/o # oxygen source (mmol O_2/m^3)
       O3c: B_CARB/DIC # carbon dioxide sink (mmol C/m^3)
-      L2c: B_CALC/CaCO3 # calcite (mg C/m^3)
+      L2c: L2/c # calcite (mg C/m^3)
