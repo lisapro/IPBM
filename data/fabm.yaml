@@ -268,7 +268,7 @@ instances:
       #! Fe[uM]/Si[uM] partitioning coeff. for Fe oxide
       r_fe3_si: 3.
     initialization:
-      Fe2:    0.0
+      Fe2:    0.5
       Fe3:    0.0
       FeS:    0.0
       FeCO3:  0.0
@@ -335,7 +335,7 @@ instances:
       # Mn[uM]/P[uM] complex stoichiometric coeff. for Mn(III)
       r_mn3_p: 0.67
     initialization:
-      Mn2:    0.0
+      Mn2:    0.5
       Mn3:    0.0
       Mn4:    0.0
       MnS:    0.0

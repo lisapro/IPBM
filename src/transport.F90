@@ -55,8 +55,8 @@ module transport
   !type(type_bulk_standard_variable) aos
   !ids for fabm
   !type(type_scalar_variable_id),save:: id_yearday !- ersem zenith
-  type(type_bulk_variable_id),  save:: temp_id,salt_id,h_id
-  type(type_bulk_variable_id),  save:: pres_id,rho_id,par_id
+  type(type_bulk_variable_id),      save:: temp_id,salt_id,h_id
+  type(type_bulk_variable_id),      save:: pres_id,rho_id,par_id
   type(type_horizontal_variable_id),save:: lon_id,lat_id,ws_id
   type(type_horizontal_variable_id),save:: taub_id,bdepth_id
   !type(type_horizontal_variable_id),save:: ssf_id !- ersem light
@@ -187,7 +187,7 @@ contains
     ws_id   = fabm_model%get_horizontal_variable_id(&
               standard_variables%wind_speed)
     call fabm_link_horizontal_data(fabm_model,ws_id,5._rk)
-    !bottom stress - ersem
+    !bottom stress - ersem - is needed by do_bottom
     taub_id = fabm_model%get_horizontal_variable_id(&
               standard_variables%bottom_stress)
     allocate(taub)
