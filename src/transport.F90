@@ -425,15 +425,26 @@ contains
 
     bbl_sed_index = standard_vars%get_value("bbl_sediments_index")
     ice_water_index = standard_vars%get_value("ice_water_index")
+    !Factor to convert [mass per unit total volume]
+    !to [mass per unit volume pore water] for solutes in sediments
+    !first zero for gotm diff solver
     pF1_solutes = &
     (/ 0._rk,standard_vars%get_column("porosity_factor_solutes_1",id) /)
+    !Porosity-related area restriction factor for fluxes
+    !across layer interfaces
     pF2_solutes = standard_vars%get_column("porosity_factor_solutes_2",id)
+    !Factor to convert [mass per unit total volume]
+    !to [mass per unit volume solids] for solids in sediments
+    !first zero for gotm diff solver
     pF1_solids = &
     (/ 0._rk,standard_vars%get_column("porosity_factor_solids_1",id) /)
+    !Porosity-related area restriction factor for fluxes
+    !across layer interfaces
     pF2_solids = standard_vars%get_column("porosity_factor_solids_2",id)
     kz_mol = standard_vars%get_column("molecular_diffusivity",id)
     kz_bio = standard_vars%get_column("bioturbation_diffusivity",id)
     kz_turb = standard_vars%get_column(_TURBULENCE_,id)
+    !first zero for gotm diff solver
     layer_thicknesses = &
     (/ 0._rk,standard_vars%get_column("layer_thicknesses",id) /)
 
@@ -541,7 +552,7 @@ contains
     !       p_1  = 1 / (1 - phi_0)
     !and subscripts refer to SWI (0), below (1), and above (-1)
     !
-    pFSWIup_solids = 1.0_rk/(1.0_rk-pF2_solutes(bbl_sed_index))
+    pFSWIup_solids = 1.0_rk/(1.0_rk-pF2_solids(bbl_sed_index))
     pFSWIdw_solids = pFSWIup_solids
 
     forall (i = 1:number_of_parameters)
