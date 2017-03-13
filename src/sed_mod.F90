@@ -24,90 +24,132 @@ contains
   !Calculates vertical advection (sedimentation)
   !in the water column and sediments
   !
-  subroutine calculate_sed(i,k_max,par_max,model,cc,wti,sink,dcc,&
-                           dcc_R,bctype_top,bctype_bottom,bc_top,&
-                           bc_bottom,hz,dz,k_bbl_sed,wbio,w_b,u_b,&
-                           julianday,dt,freq_sed,dynamic_w_sed,is_solid,&
-                           rho,phi1,fick,k_sed1,K_O2s,kz_bio,id_O2,&
-                           dphidz_SWI,cc0,bott_flux,bott_source)
-    !Input variables
-    integer,               intent(in):: k_max,par_max,id_O2
-    integer,               intent(in):: julianday,freq_sed,k_bbl_sed
-    integer,               intent(in):: dynamic_w_sed
-    integer,dimension(:,:),intent(in):: bctype_top,bctype_bottom
-    integer,dimension(:),  intent(in):: is_solid,k_sed1
-    real(rk),dimension(:,:,:), intent(in):: dcc_R,fick
-    real(rk),dimension(:,:),   intent(in):: bc_top,bc_bottom,phi1
-    real(rk),dimension(:,:),   intent(in):: w_b,u_b,kz_bio
-    real(rk),dimension(:),     intent(in):: hz, dz, rho
-    real(rk),                  intent(in):: dt, K_O2s, dphidz_SWI, cc0
-
-    !Output variables
-    real(rk), dimension(:,:,:), intent(out)     :: wbio, wti
-    real(rk), dimension(:,:,:), intent(out)     :: sink, dcc
-    real(rk), dimension(:,:), intent(out)       :: bott_flux, bott_source
+  subroutine calculate_sed(model,cc,&
+                           i,kmax,par_max,id_O2,julianday,&
+                           k_bbl_sed,dynamic_w_sed,&
+                           bctype_top,bctype_bottom,&
+                           is_solid,k_sed1,&
+                           dcc_R,fick,bc_top,bc_bottom,phi1,&
+                           w_b,u_b,kz_bio,hz,dz,rho,dt,K_O2s,&
+                           dphidz_SWI,cc0,&
+                           wbio,wti,sink,dcc,bott_flux,bott_source)
+    !REVISION HISTORY:
+    !Original author(s): Phil Wallhead
 
     !Input/output variables
-    type (type_model), intent(inout)            :: model
-    real(rk), dimension(:,:,:), intent(inout)   :: cc
+    type (type_model), intent(inout)         :: model
+    real(rk), dimension(:,:,:), intent(inout):: cc
+
+    !Input variables
+    integer,               intent(in):: i
+    integer,               intent(in):: k_max
+    integer,               intent(in):: par_max
+    integer,               intent(in):: id_O2
+    integer,               intent(in):: julianday
+    integer,               intent(in):: k_bbl_sed
+    integer,               intent(in):: dynamic_w_sed
+    integer,dimension(:,:),intent(in):: bctype_top
+    integer,dimension(:,:),intent(in):: bctype_bottom
+    integer,dimension(:),  intent(in):: is_solid
+    integer,dimension(:),  intent(in):: k_sed1
+
+    real(rk),dimension(:,:,:),intent(in):: dcc_R
+    real(rk),dimension(:,:,:),intent(in):: fick
+    real(rk),dimension(:,:),  intent(in):: bc_top
+    real(rk),dimension(:,:),  intent(in):: bc_bottom
+    real(rk),dimension(:,:),  intent(in):: phi1
+    real(rk),dimension(:,:),  intent(in):: w_b
+    real(rk),dimension(:,:),  intent(in):: u_b
+    real(rk),dimension(:,:),  intent(in):: kz_bio
+    real(rk),dimension(:),    intent(in):: hz
+    real(rk),dimension(:),    intent(in):: dz
+    real(rk),dimension(:),    intent(in):: rho
+    !Sedimentation model time step [seconds]
+    real(rk),                 intent(in):: dt
+    real(rk),                 intent(in):: K_O2s
+    real(rk),                 intent(in):: dphidz_SWI
+    real(rk),                 intent(in):: cc0
+
+    !Output variables
+    real(rk), dimension(:,:,:),intent(out):: wbio
+    real(rk), dimension(:,:,:),intent(out):: wti
+    real(rk), dimension(:,:,:),intent(out):: sink
+    real(rk), dimension(:,:,:),intent(out):: dcc
+    real(rk), dimension(:,:),  intent(out):: bott_flux
+    real(rk), dimension(:,:),  intent(out):: bott_source
 
     !Local variables
-    real(rk) :: dtt, O2stat
-    real(rk) :: w_1m(k_max+1,par_max), w_1(k_max+1), u_1(k_max+1), w_1c(k_max+1), u_1c(k_max+1)
-    integer  :: i, k, ip, idf
+    real(rk):: O2stat
+    real(rk):: w_1m(k_max+1,par_max)
+    real(rk):: w_1(k_max+1)
+    real(rk):: u_1(k_max+1)
+    real(rk):: w_1c(k_max+1)
+    real(rk):: u_1c(k_max+1)
 
+    integer k, ip, idf
 
-    dtt = 86400.0_rk*dt/freq_sed !Sedimentation model time step [seconds]
     dcc = 0.0_rk
-!    sink = 0.0_rk
     w_1 = 0.0_rk
     u_1 = 0.0_rk
     w_1c = 0.0_rk
     u_1c = 0.0_rk
     sink(i,:,:) = 0.0_rk
 
-    !Compute vertical velocity in water column (sinking/floating) using the FABM.
+    !Compute vertical velocity in water column (sinking/floating)
+    !using the FABM.
     wbio = 0.0_rk
     do k=1,k_max
-!        i = real(i)
-        call fabm_get_vertical_movement(model, i, i, k, wbio(i:i,k,:))  !Note: wbio is on layer midpoints
+      !Note: wbio is on layer midpoints
+      call fabm_get_vertical_movement(model,i,i,k,wbio(i:i,k,:))
     end do
-    wbio = -1.0_rk * wbio !FABM returns NEGATIVE wbio for sinking; sign change here means that wbio is POSITIVE for sinking
 
-
-    !Compute vertical velocity components due to modelled (reactive) particles, if required
+    !Compute vertical velocity components due to modelled (reactive)
+    !particles, if required
     !
-    !Assuming no externally impressed porewater flow, the equations for liquid and solid volume fractions are:
+    !Assuming no externally impressed porewater flow, the equations
+    !for liquid and solid volume fractions are:
     !
-    !dphi/dt = -d/dz(phi*u - Dbip*dphi/dz) - sum_i Rp_i/rhop_i                (1)
-    !d(1-phi)/dt = -d/dz((1-phi)*w - Dbip*d/dz(1-phi)) + sum_i Rp_i/rhop_i    (2)
+    !dphi/dt = -d/dz(phi*u - Dbip*dphi/dz) - sum_i Rp_i/rhop_i (1)
+    !d(1-phi)/dt =
+    ! -d/dz((1-phi)*w - Dbip*d/dz(1-phi)) + sum_i Rp_i/rhop_i  (2)
     !
-    !where u is the solute advective velocity, w is the particulate advective velocity,
-    !Dbip is the interphase component of bioturbation diffusivity ( = Db at SWI, 0 elsewhere)
-    !Rp_i is the net reaction term for the i^th particulate substance [mmol/m3/s]
-    !rhop_i is the molar density of the i^th particulate substance [mmol/m3]
+    !where u is the solute advective velocity,
+    !      w is the particulate advective velocity,
+    !Dbip is the interphase component of bioturbation diffusivity
+    !      ( = Db at SWI, 0 elsewhere)
+    !Rp_i is the net reaction term for the i^th
+    !      particulate substance [mmol/m3/s]
+    !rhop_i is the molar density of the i^th
+    !      particulate substance [mmol/m3]
     !
-    !(1)+(2) => phi*u + (1-phi)*w = const                                     (3)
+    !(1)+(2) => phi*u + (1-phi)*w = const      (3)
     !
-    !Given u = w at some (possibly infinite) depth where compaction ceases and phi = phi_inf, w = w_inf:
+    !Given u = w at some (possibly infinite) depth where compaction
+    !      ceases and phi = phi_inf, w = w_inf:
     !phi*u + (1-phi)*w = phi_inf*w_inf + (1-phi_inf)*w_inf
-    !        => phi*u = w_inf - (1-phi)*w                                     (4)
+    !        => phi*u = w_inf - (1-phi)*w      (4)
     !
     !We calculate w(z) by assuming steady state compaction (dphi/dt = 0)
-    !and matching the solid volume flux across the SWI with the (approximated) sinking flux of suspended particles in the fluff layer:
+    !and matching the solid volume flux across the SWI with the
+    !(approximated) sinking flux of suspended particles in the fluff layer:
     !
-    !(2) -> (1-phi)*w + Dbip*dphi/dz = (1-phi_0)*w_0 + Dbip*dphi/dz_0 + sum_i (1/rhop_i)*int_z0^z Rp_i(z') dz'      (5)
+    !(2) -> (1-phi)*w + Dbip*dphi/dz =
+    !       (1-phi_0)*w_0 + Dbip*dphi/dz_0 +
+    !       sum_i (1/rhop_i)*int_z0^z Rp_i(z') dz' (5)
     !
     !Matching the volume flux across the SWI gives:
-    !       (1-phi_0)*w_0 + Dbip*dphi/dz_0 = F_b0 + sum_i (1/rhop_i)*wbio_f(i)*Cp_sf(i)
+    !       (1-phi_0)*w_0 + Dbip*dphi/dz_0 =
+    !       F_b0 + sum_i (1/rhop_i)*wbio_f(i)*Cp_sf(i)
     !
     !where F_b0 is the background volume flux [m/s]
     !      wbio_f(i) is the sinking speed in the fluff layer [m/s]
-    !      Cp_sf(i) is the suspended particle concentration in the fluff layer [mmol/m3]
-    !      (approximated by the minimum of the particle concentration in the fluff layer and layer above)
+    !      Cp_sf(i) is the suspended particle concentration
+    !      in the fluff layer [mmol/m3]
+    !      (approximated by the minimum of the particle concentration in
+    !       the fluff layer and layer above)
     !
-    !
-    !For dynamic_w_sed = 0, we set the reactions and modelled volume fluxes in (5) to zero:
+    !For dynamic_w_sed = 0, we set the reactions and modelled volume
+    !      fluxes in (5) to zero:
     !
     !(1-phi)*w + Dbip*dphi/dz = F_b0 = (1-phi_inf)*w_binf
     !
@@ -122,10 +164,10 @@ contains
     !
     !where (1-phi)*w_b = (1-phi_inf)*w_binf and phi*u_b = phi_inf*w_binf
     !
-    !
     !For dynamic_w_sed = 1, we have further corrections (w,u)_1c, where:
     !
-    !(1-phi)*w_1c = sum_i [ (1/rhop_i)*(wbio_f(i)*Cp_sf(i) + int_zTF^z Rp_i(z') dz') ]
+    !(1-phi)*w_1c =
+    !   sum_i [ (1/rhop_i)*(wbio_f(i)*Cp_sf(i) + int_zTF^z Rp_i(z') dz') ]
     !
     !and using (4):
     !
@@ -133,6 +175,7 @@ contains
     !
     !where w_1cinf can be approximated by the deepest value of w_1c
     !
+
     if(k_bbl_sed.ne.k_max) then
         O2stat = cc(i,k_bbl_sed,id_O2) / (cc(i,k_bbl_sed,id_O2) + K_O2s)   !Oxygen status of sediments set by O2 level just above sediment surface
     else
@@ -202,12 +245,12 @@ contains
             if (bctype_top(i,ip).gt.0) then
                 cc(i,1,ip) = bc_top(i,ip)
             else
-                cc(i,1,ip) = cc(i,1,ip) + dtt*dcc(i,1,ip) !Simple Euler time step of size dtt = 86400.*dt/freq_sed [s]
+                cc(i,1,ip) = cc(i,1,ip) + dt*dcc(i,1,ip) !Simple Euler time step of size dt = 86400.*dt/freq_sed [s]
             end if
         end do
         !cc intermediate layers
         do k=2,(k_max-1)
-            cc(i,k,:) = cc(i,k,:) + dtt*dcc(i,k,:)
+            cc(i,k,:) = cc(i,k,:) + dt*dcc(i,k,:)
         end do
         !cc bottom layer
         bott_flux = 0.0_rk
@@ -219,12 +262,12 @@ contains
                 sink(i,k_max+1,:) = bott_flux(i,:)
             endif
         end do
-!            cc(i,k_max,ip) = cc(i,k_max,ip) + dtt*dcc(i,k_max,ip)
+!            cc(i,k_max,ip) = cc(i,k_max,ip) + dt*dcc(i,k_max,ip)
         do ip=1,par_max
             if (bctype_bottom(i,ip).gt.0) then
                 cc(i,k_max,ip) = bc_bottom(i,ip)
             else
-                cc(i,k_max,ip) = cc(i,k_max,ip) + dtt*dcc(i,k_max,ip)
+                cc(i,k_max,ip) = cc(i,k_max,ip) + dt*dcc(i,k_max,ip)
             end if
         end do
         cc(i,:,:) = max(cc0, cc(i,:,:)) !Impose resilient concentration
