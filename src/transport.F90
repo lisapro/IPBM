@@ -526,7 +526,7 @@ contains
     end do
 
     !
-    !adopted from Phil Wallhead (PW):
+    !adapted from Phil Wallhead (PW):
     !solutes:
     !fick_SWI = -phi_0*Km/dz*(C_1/phi_1 - C_-1) - Kb/dz*(C_1 - C_-1)
     !         = -phi_0*(Km+Kb)/dz * (p_1*C_1 - p_-1*C_-1)
@@ -587,6 +587,230 @@ contains
       state_vars(i)%value(1:surface_index-1) = temporary(1:surface_index-1,i)
     end forall
   end subroutine
+  !
+  !adapted from Phil Wallhead code
+  !Calculates vertical advection (sedimentation)
+  !in the water column and sediments
+  !
+  subroutine brom_do_sedimentation()
+    !REVISION HISTORY:
+    !Original author(s): Phil Wallhead
+
+    !Local variables
+    real(rk):: dcc(number_of_layers,number_of_parameters)
+    real(rk):: w_1m(number_of_layers+1,number_of_parameters)
+    real(rk):: w_1(number_of_layers+1)
+    real(rk):: u_1(number_of_layers+1)
+    real(rk):: w_1c(number_of_layers+1)
+    real(rk):: u_1c(number_of_layers+1)
+
+    real(rk):: O2stat
+
+    integer k, ip, idf
+
+    dcc = 0.0_rk
+    w_1 = 0.0_rk
+    u_1 = 0.0_rk
+    w_1c = 0.0_rk
+    u_1c = 0.0_rk
+    sink(i,:,:) = 0.0_rk
+
+    !Compute vertical velocity in water column (sinking/floating)
+    !using the FABM.
+    wbio = 0.0_rk
+    do k=1,number_of_layers
+      !Note: wbio is on layer midpoints
+      call fabm_get_vertical_movement(model,i,i,k,wbio(i:i,k,:))
+    end do
+
+    !Compute vertical velocity components due to modelled (reactive)
+    !particles, if required
+    !
+    !Assuming no externally impressed porewater flow, the equations
+    !for liquid and solid volume fractions are:
+    !
+    !dphi/dt = -d/dz(phi*u - Dbip*dphi/dz) - sum_i Rp_i/rhop_i (1)
+    !d(1-phi)/dt =
+    ! -d/dz((1-phi)*w - Dbip*d/dz(1-phi)) + sum_i Rp_i/rhop_i  (2)
+    !
+    !where u is the solute advective velocity,
+    !      w is the particulate advective velocity,
+    !Dbip is the interphase component of bioturbation diffusivity
+    !      ( = Db at SWI, 0 elsewhere)
+    !Rp_i is the net reaction term for the i^th
+    !      particulate substance [mmol/m3/s]
+    !rhop_i is the molar density of the i^th
+    !      particulate substance [mmol/m3]
+    !
+    !(1)+(2) => phi*u + (1-phi)*w = const      (3)
+    !
+    !Given u = w at some (possibly infinite) depth where compaction
+    !      ceases and phi = phi_inf, w = w_inf:
+    !phi*u + (1-phi)*w = phi_inf*w_inf + (1-phi_inf)*w_inf
+    !        => phi*u = w_inf - (1-phi)*w      (4)
+    !
+    !We calculate w(z) by assuming steady state compaction (dphi/dt = 0)
+    !and matching the solid volume flux across the SWI with the
+    !(approximated) sinking flux of suspended particles in the fluff layer:
+    !
+    !(2) -> (1-phi)*w + Dbip*dphi/dz =
+    !       (1-phi_0)*w_0 + Dbip*dphi/dz_0 +
+    !       sum_i (1/rhop_i)*int_z0^z Rp_i(z') dz' (5)
+    !
+    !Matching the volume flux across the SWI gives:
+    !       (1-phi_0)*w_0 + Dbip*dphi/dz_0 =
+    !       F_b0 + sum_i (1/rhop_i)*wbio_f(i)*Cp_sf(i)
+    !
+    !where F_b0 is the background volume flux [m/s]
+    !      wbio_f(i) is the sinking speed in the fluff layer [m/s]
+    !      Cp_sf(i) is the suspended particle concentration
+    !      in the fluff layer [mmol/m3]
+    !      (approximated by the minimum of the particle concentration in
+    !       the fluff layer and layer above)
+    !
+    !For dynamic_w_sed = 0, we set the reactions and modelled volume
+    !      fluxes in (5) to zero:
+    !
+    !(1-phi)*w + Dbip*dphi/dz = F_b0 = (1-phi_inf)*w_binf
+    !
+    !Then using (4):
+    !
+    !phi*u = w_inf - (1-phi)*w = phi_inf*w_binf + Dbip*dphi/dz
+    !
+    !Decomposing the velocities as (w,u) = (w,u)_b + (w,u)_1, we get:
+    !
+    !(1-phi)*w_1 = -Dbip*dphi/dz
+    !phi*u_1     = Dbip*dphi/dz
+    !
+    !where (1-phi)*w_b = (1-phi_inf)*w_binf and phi*u_b = phi_inf*w_binf
+    !
+    !For dynamic_w_sed = 1, we have further corrections (w,u)_1c, where:
+    !
+    !(1-phi)*w_1c =
+    !   sum_i [ (1/rhop_i)*(wbio_f(i)*Cp_sf(i) + int_zTF^z Rp_i(z') dz') ]
+    !
+    !and using (4):
+    !
+    !phi*u_1c     = w_1cinf - (1-phi)*w_1c
+    !
+    !where w_1cinf can be approximated by the deepest value of w_1c
+    !
+
+    if(k_bbl_sed.ne.number_of_layers) then
+        !Oxygen status of sediments set by O2 level
+        !  just above sediment surface
+        O2stat = cc(i,k_bbl_sed,id_O2)/(cc(i,k_bbl_sed,id_O2)+K_O2s)
+    else
+        O2stat = 0.0_rk
+    endif
+    w_1(k_bbl_sed+1) = -1.0_rk*O2stat*kz_bio(i,k_bbl_sed+1)*&
+                       dphidz_SWI/(1.0_rk-phi1(i,k_bbl_sed+1))
+    u_1(k_bbl_sed+1) = O2stat*kz_bio(i,k_bbl_sed+1)*dphidz_SWI/&
+                       phi1(i,k_bbl_sed+1)
+    if (dynamic_w_sed.eq.1) then
+      w_1m = 0.0_rk
+      !Sum over contributions from each particulate variable
+      do ip=1,number_of_parameters
+        if (is_solid(ip).eq.1) then
+          !First set rhop_i*(1-phi)*w_1i at the SWI
+          w_1m(k_bbl_sed+1,ip) = &
+            wbio(i,k_bbl_sed,ip)*&
+            min(cc(i,k_bbl_sed,ip),cc(i,k_bbl_sed-1,ip))
+            !Now set rhop_i*(1-phi)*w_1i in the sediments
+            !  by integrating the reaction terms
+          do k=k_bbl_sed+2,number_of_layers+1
+            w_1m(k,ip) = w_1m(k-1,ip) + dcc_R(i,k-1,ip)*hz(k-1)
+          end do
+          !Divide by rhop_i*(1-phi) to get w_1c(i)
+          w_1m(k_sed1,ip) = w_1m(k_sed1,ip)/&
+                            (rho(ip)*(1.0_rk-phi1(i,k_sed1)))
+          !Add to total w_1c
+          w_1c(k_sed1) = w_1c(k_sed1) + w_1m(k_sed1,ip)
+        end if
+      end do
+      !Now calculate u from w using (4) above
+      u_1c(k_sed1) = (w_1c(number_of_layers+1)-(1.0_rk-phi1(i,k_sed1))*&
+                     w_1(k_sed1))/phi1(i,k_sed1)
+    end if
+
+    !Interpolate wbio from FABM (defined on layer midpoints, as for
+    !  concentrations) to wti on the layer interfaces
+    wti(i,1,:) = 0.0_rk
+    do ip=1,number_of_parameters
+      !Air-sea interface (unused)
+      wti(i,1,ip) = wbio(i,1,ip)
+      !Water column layer interfaces, not including SWI
+      wti(i,2:k_bbl_sed,ip) = &
+        wbio(i,1:k_bbl_sed-1,ip)+0.5_rk*hz(1:k_bbl_sed-1)*&
+        (wbio(i,2:k_bbl_sed,ip)-wbio(i,1:k_bbl_sed-1,ip))/&
+        dz(1:k_bbl_sed-1)
+      !Sediment layer interfaces, including SWI
+      if (is_solid(ip).eq.0) then
+        wti(i,k_sed1,ip) = u_b(i,k_sed1)+u_1(k_sed1)+u_1c(k_sed1)
+      else
+        wti(i,k_sed1,ip) = w_b(i,k_sed1)+w_1(k_sed1)+w_1c(k_sed1)
+      end if
+      wti(i,number_of_layers+1,ip) = wti(i,number_of_layers,ip)
+    end do
+
+    !Perform advective flux calculation and cc update
+    !This uses a simple first order upwind differencing scheme (FUDM)
+    !It uses the fluxes sink in a consistent manner and therefore
+    !conserves mass
+    !Calculate sinking fluxes at layer interfaces
+    !(sink, units strictly [mass/unit total area/second])
+    !Air-sea interface
+    sink(i,1,:) = 0.0_rk
+    !Water column and sediment layer interfaces
+    do k=2,number_of_layers+1
+      sink(i,k,:) = wti(i,k,:)*cc(i,k-1,:)
+      !This is an upwind differencing approx., hence the use of cc(k-1)
+      !Note: factors phi, (1-phi) are not needed in the sediments
+      !because cc is in units [mass per unit total volume]
+    end do
+
+    !Calculate tendencies dcc = dcc/dt = -dF/dz on layer midpoints
+    !(top/bottom not used where Dirichlet bc imposed)
+    do k=1,number_of_layers
+      dcc(i,k,:) = -1.0_rk * (sink(i,k+1,:)-sink(i,k,:)) / hz(k)
+    end do
+
+    !Time integration
+    !cc surface layer
+    do ip=1,number_of_parameters
+      if (bctype_top(i,ip).gt.0) then
+        cc(i,1,ip) = bc_top(i,ip)
+      else
+        !Simple Euler time step of size dt = 86400.*dt/freq_sed [s]
+        cc(i,1,ip) = cc(i,1,ip)+dt*dcc(i,1,ip)
+      end if
+    end do
+    !cc intermediate layers
+    do k=2,(number_of_layers-1)
+        cc(i,k,:) = cc(i,k,:)+dt*dcc(i,k,:)
+    end do
+    !cc bottom layer
+    bott_flux = 0.0_rk
+    bott_source = 0.0_rk
+    call fabm_do_bottom(model, i, i, bott_flux(i:i,:),bott_source(i:i,:))
+    do ip=1,number_of_parameters
+      if (is_solid(ip).eq.1) then
+        dcc(i,number_of_layers,ip) = dcc(i,number_of_layers,ip)+&
+          bott_flux(i,ip)/hz(number_of_layers)
+        sink(i,number_of_layers+1,:) = bott_flux(i,:)
+      endif
+    end do
+    !
+    do ip=1,number_of_parameters
+      if (bctype_bottom(i,ip).gt.0) then
+        cc(i,number_of_layers,ip) = bc_bottom(i,ip)
+      else
+        cc(i,number_of_layers,ip) = cc(i,number_of_layers,ip)+&
+          dt*dcc(i,number_of_layers,ip)
+      end if
+    end do
+    cc(i,:,:) = max(cc0, cc(i,:,:)) !Impose resilient concentration
+  end subroutine brom_do_sedimentation
 
   subroutine stabilize(inday,inyear)
     integer,intent(in):: inday,inyear
