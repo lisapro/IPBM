@@ -87,7 +87,7 @@ contains
       _DEPTH_ON_BOUNDARY_,self%type_ice%get_number_of_layers(),&
       "ice_water_index","water_bbl_index","bbl_sediments_index",&
       "number_of_boundaries")
-    call self%add_grid_on_centers("middle_layer_depths",&
+    call self%add_grid_on_centers("middle_layer_depths","dz",&
                                   "number_of_layers","air_ice_indexes")
     call self%add_layer_thicknesses("layer_thicknesses")
     !2d variables
@@ -222,17 +222,24 @@ contains
     end select
   end subroutine
 
-  subroutine add_grid_on_centers(self,inname,number_of_layers,&
-                                 air_ice_indexes)
+  subroutine add_grid_on_centers(self,inname,inname_increments,&
+                                 number_of_layers,air_ice_indexes)
     class(brom_standard_variables),intent(inout):: self
+
     character(len=*),intent(in):: inname
+    character(len=*),intent(in):: inname_increments
     character(len=*),intent(in):: number_of_layers
     character(len=*),intent(in):: air_ice_indexes
+
     class(variable)        ,allocatable:: var
-    real(rk),dimension(:,:),allocatable:: value_2d
+    real(rk),dimension(:,:),allocatable:: mid_depths
+    !increments between layer midpoints
+    real(rk),dimension(:,:),allocatable:: dz
+
     type(alone_variable):: new_var
     type(variable_1d):: new_var_1d
     type(variable_2d):: new_var_2d
+
     integer i,j,length,time
     integer ice_water_i
     integer,dimension(:),allocatable:: active_layers
@@ -251,15 +258,26 @@ contains
     call self%get_var(_DEPTH_ON_BOUNDARY_,var)
     select type(var)
     class is(variable_2d)
-      allocate(value_2d(length,time))
-      value_2d = D_QNAN
+      allocate(mid_depths(length,time))
+      mid_depths = D_QNAN
       do j = 1,time
         do i = 1,(active_layers(j)-1)
-          value_2d(i,j) = abs((var%value(i+1,j)+&
+          mid_depths(i,j) = abs((var%value(i+1,j)+&
                           var%value(i,j))/2._rk)
         end do
       end do
-      new_var_2d = variable_2d(inname,'',value_2d)
+      new_var_2d = variable_2d(inname,'',mid_depths)
+      call self%add_item(new_var_2d)
+      !for example: for 4 boundaries exists 3 layers
+      !and 3 midpoints of these layers and 2 dz
+      allocate(dz(length-1,time))
+      dz = D_QNAN
+      do j = 1,time
+        do i = 2,(active_layers(j)-1)
+          dz(i,j) = abs(mid_depths(i,j)-mid_depths(i-1,j))
+        end do
+      end do
+      new_var_2d = variable_2d(inname_increments,'',dz)
       call self%add_item(new_var_2d)
     class default
       call fatal_error("Add grid on centers",&
@@ -405,13 +423,17 @@ contains
     character(len=*),intent(in):: name_pf_solids_1
     character(len=*),intent(in):: name_pf_solids_2
     character(len=*),intent(in):: name_tortuosity
+
+    real(rk),dimension(:)  ,allocatable:: w_b,u_b
     real(rk),dimension(:,:),allocatable:: porosity
     real(rk),dimension(:,:),allocatable:: tortuosity
     real(rk),dimension(:,:),allocatable:: porosity_factor
+    type(alone_variable):: dphidz_SWI
     type(variable_2d):: new_var
 
     integer ice_water_index,swi_index,length,time,i
     real(rk) max_porosity,min_porosity,porosity_decay
+
     real(rk),dimension(:)  ,allocatable:: air_ice_indexes
     real(rk),dimension(:)  ,allocatable:: swi_depth
     real(rk),dimension(:,:),allocatable:: depth_center
@@ -430,6 +452,17 @@ contains
     allocate(depth_center,source=self%get_array("middle_layer_depths"))
     allocate(depth_boundary,source=self%get_array(_DEPTH_ON_BOUNDARY_))
     allocate(swi_depth,source = depth_boundary(swi_index,:))
+
+    !Indices of layer interfaces in the sediments
+    call self%add_item(variable_1d("k_sed","",(/(i,i=1,swi_index-1)/)))
+    !Indices of layer interfaces in the sediments including the SWI
+    call self%add_item(variable_1d("k_sed1","",(/(i,i=1,swi_index)/)))
+
+    !alone variable
+    !dphi/dz on SWI for sedimentation velocity caclulations
+    dphidz_SWI = alone_variable("dphidz_SWI","",&
+      -1.0_rk*(max_porosity-min_porosity)/porosity_decay)
+    call self%add_item(dphidz_SWI)
 
     !for layers
     allocate(porosity(length,time))
@@ -472,6 +505,13 @@ contains
 
     !for boundaries
     allocate(porosity(length+1,time))
+    !background vertical advective velocities of particulates and
+
+    !solutes on layer interfaces in the sediments (w_b, u_b)
+    !these assume steady state compaction and neglect reaction terms
+    allocate(w_b(length+1))
+    allocate(u_b(length+1))
+
     porosity = 1._rk
     forall (i = 1:self%get_1st_dim_length("day_number"))
       porosity(1:swi_index,i) = min_porosity+(&
@@ -480,10 +520,19 @@ contains
         porosity_decay)
     end forall
     porosity(ice_water_index,:) = 1._rk
-    porosity(ice_water_index+1:,:) = self%type_ice%do_brine_relative_volume(&
+    porosity(ice_water_index+1:,:) = &
+          self%type_ice%do_brine_relative_volume(&
           .false.,self%get_column(_ICE_THICKNESS_))
     new_var = variable_2d(name_porosity_faces,'',porosity)
     call self%add_item(new_var)
+    w_b = 0._rk
+    u_b = 0._rk
+    w_b(1:swi_index) = ((1._rk-min_porosity)/&
+                       (1._rk-porosity(1:swi_index,1)))*_BURIAL_VELOCITY_
+    u_b(1:swi_index) = (min_porosity)/&
+                       (porosity(1:swi_index,1))*_BURIAL_VELOCITY_
+    call self%add_item(variable_1d("w_b","",w_b))
+    call self%add_item(variable_1d("u_b","",u_b))
 
     !porosity factor 2 for solutes
     allocate(porosity_factor(length+1,time))
@@ -619,7 +668,8 @@ contains
     real(rk),optional         ,intent(in)   :: bound_up
     real(rk),optional         ,intent(in)   :: bound_low
     real(rk),optional         ,intent(in)   :: density
-    real(rk),optional         ,intent(in)   :: sinking_velocity
+    real(rk),allocatable,dimension(:),optional,intent(in)&
+                                            :: sinking_velocity
 
     if(present(is_solid)) self%is_solid = is_solid
     if(present(is_gas)) self%is_gas = is_gas
