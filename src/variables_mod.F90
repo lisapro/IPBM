@@ -274,7 +274,7 @@ contains
       dz = D_QNAN
       do j = 1,time
         do i = 2,(active_layers(j)-1)
-          dz(i,j) = abs(mid_depths(i,j)-mid_depths(i-1,j))
+          dz(i-1,j) = abs(mid_depths(i,j)-mid_depths(i-1,j))
         end do
       end do
       new_var_2d = variable_2d(inname_increments,'',dz)
@@ -354,6 +354,7 @@ contains
     character(len=*)              ,intent(in)   :: inname
     class(variable),allocatable        :: var
     real(rk),dimension(:,:),allocatable:: value_2d
+    real(rk),dimension(:,:),allocatable:: salinity
     real(rk),dimension(:)  ,allocatable:: air_temp,ice_thickness
     type(variable_2d):: new_var
     integer i,length,time
@@ -381,6 +382,11 @@ contains
       case(_SALINITY_)
         value_2d(ice_water_index:,:time) = self%type_ice%do_ice_brine_salinity(&
           value_2d(ice_water_index-1,:time))
+      case(_RHO_)
+        allocate(salinity(length,time))
+        salinity = self%get_array(_SALINITY_)
+        value_2d(ice_water_index:,:time) = self%type_ice%do_ice_brine_density(&
+          salinity(ice_water_index:,:time))/1000._rk
       case default
         forall (i = 1:time)&
           value_2d(ice_water_index:,i) = &
@@ -429,6 +435,7 @@ contains
     real(rk),dimension(:,:),allocatable:: tortuosity
     real(rk),dimension(:,:),allocatable:: porosity_factor
     type(alone_variable):: dphidz_SWI
+    type(variable_1d):: var_1d
     type(variable_2d):: new_var
 
     integer ice_water_index,swi_index,length,time,i
@@ -454,14 +461,16 @@ contains
     allocate(swi_depth,source = depth_boundary(swi_index,:))
 
     !Indices of layer interfaces in the sediments
-    call self%add_item(variable_1d("k_sed","",(/(i,i=1,swi_index-1)/)))
+    var_1d = variable_1d("k_sed","",(/(i,i=1,swi_index-1)/))
+    call self%add_item(var_1d)
     !Indices of layer interfaces in the sediments including the SWI
-    call self%add_item(variable_1d("k_sed1","",(/(i,i=1,swi_index)/)))
+    var_1d = variable_1d("k_sed1","",(/(i,i=1,swi_index)/))
+    call self%add_item(var_1d)
 
     !alone variable
     !dphi/dz on SWI for sedimentation velocity caclulations
     dphidz_SWI = alone_variable("dphidz_SWI","",&
-      -1.0_rk*(max_porosity-min_porosity)/porosity_decay)
+      1.0_rk*(max_porosity-min_porosity)/porosity_decay)
     call self%add_item(dphidz_SWI)
 
     !for layers
@@ -505,12 +514,12 @@ contains
 
     !for boundaries
     allocate(porosity(length+1,time))
-    !background vertical advective velocities of particulates and
 
+    !background vertical advective velocities of particulates and
     !solutes on layer interfaces in the sediments (w_b, u_b)
     !these assume steady state compaction and neglect reaction terms
-    allocate(w_b(length+1))
-    allocate(u_b(length+1))
+    allocate(w_b(swi_index))
+    allocate(u_b(swi_index))
 
     porosity = 1._rk
     forall (i = 1:self%get_1st_dim_length("day_number"))
@@ -527,12 +536,14 @@ contains
     call self%add_item(new_var)
     w_b = 0._rk
     u_b = 0._rk
-    w_b(1:swi_index) = ((1._rk-min_porosity)/&
+    w_b(1:swi_index) = -((1._rk-min_porosity)/&
                        (1._rk-porosity(1:swi_index,1)))*_BURIAL_VELOCITY_
-    u_b(1:swi_index) = (min_porosity)/&
+    u_b(1:swi_index) = -(min_porosity)/&
                        (porosity(1:swi_index,1))*_BURIAL_VELOCITY_
-    call self%add_item(variable_1d("w_b","",w_b))
-    call self%add_item(variable_1d("u_b","",u_b))
+    var_1d = variable_1d("w_b","",w_b)
+    call self%add_item(var_1d)
+    var_1d = variable_1d("u_b","",u_b)
+    call self%add_item(var_1d)
 
     !porosity factor 2 for solutes
     allocate(porosity_factor(length+1,time))

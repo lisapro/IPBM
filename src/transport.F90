@@ -76,15 +76,18 @@ contains
     _LINE_
     call fabm_create_model_from_yaml_file(fabm_model)
     _LINE_
+    !
     !initializing brom standard_variables
     !makes grid, it starts from bottom (1) to surface (end point)
     standard_vars = brom_standard_variables()
     number_of_layers = standard_vars%get_value(&
                            "number_of_layers")
+    !
     !fabm grid
     call fabm_set_domain(fabm_model,number_of_layers)
     call fabm_model%set_surface_index(number_of_layers)
     call fabm_model%set_bottom_index(1)
+    !
     !linking state variables to fabm
     number_of_parameters = size(fabm_model%state_variables)
     allocate(state_vars(number_of_parameters))
@@ -99,11 +102,14 @@ contains
       !and set these to the values provided by the model.
       state_vars(i)%sinking_velocity = &
                     fabm_model%state_variables(i)%vertical_movement
-      !if (state_vars(i)%sinking_velocity/=0._rk) &
-      !  state_vars(i)%is_solid=.true.
+      if (fabm_model%state_variables(i)%vertical_movement/=0._rk) then
+        state_vars(i)%is_solid=.true.
+        state_vars(i)%density=1.5E7_rk
+      end if
       call fabm_link_bulk_state_data(fabm_model,i,state_vars(i)%value)
       call state_vars(i)%print_name()
     end do
+    !
     !in case of existing bottom and surface variables
     allocate(bcc(size(fabm_model%bottom_state_variables)))
     do i = 1,size(fabm_model%bottom_state_variables)
@@ -116,6 +122,7 @@ contains
       call fabm_link_surface_state_data(fabm_model,i,scc(i))
     end do
     _LINE_
+    !
     !initializing values
     call fabm_initialize_state(fabm_model,1,number_of_layers)
     allocate(air_ice_indexes,source=&
@@ -131,6 +138,7 @@ contains
           porosity(:water_sediments_index)
       state_vars(i)%value(air_ice_indexes(1):) = D_QNAN
     end forall
+    !
     !linking variables
     !yearday - ersem zenith_angle
     !id_yearday = fabm_model%get_scalar_variable_id(&
@@ -140,7 +148,6 @@ contains
     h_id    = fabm_model%get_bulk_variable_id(&
               standard_variables%cell_thickness)
     allocate(cell(number_of_layers))
-    !cell = standard_vars%get_column("layer_thicknesses",1)
     call fabm_link_bulk_data(fabm_model,h_id,cell)
     !temperature
     temp_id = fabm_model%get_bulk_variable_id(&
@@ -155,7 +162,6 @@ contains
     !density anomaly
     rho_id  = fabm_model%get_bulk_variable_id(standard_variables%density)
     allocate(density(number_of_layers))
-    !density = standard_vars%get_column(_RHO_,1)
     call fabm_link_bulk_data(fabm_model,rho_id,density)
     !pressure - does fabm able to calculate it from density?
     pres_id = fabm_model%get_bulk_variable_id(&
@@ -261,12 +267,11 @@ contains
 
     do i = 1,number_of_days
       call date(day,year)
-
       !ice   = standard_vars%get_value(_ICE_THICKNESS_,i)
       !porosity = standard_vars%get_column("porosity",i)
+      
+      !for netcdf output
       depth = standard_vars%get_column("middle_layer_depths",i)
-      temp  = standard_vars%get_column(_TEMPERATURE_,i)
-      salt  = standard_vars%get_column(_SALINITY_,i)
 
       !change surface index due to ice depth
       !index for boundaries so for layers it should be -1
@@ -280,11 +285,11 @@ contains
       cell = standard_vars%get_column("layer_thicknesses",i)
       call fabm_link_bulk_data(fabm_model,h_id,cell)
       !temperature
-      call fabm_link_bulk_data(&
-           fabm_model,standard_variables%temperature,temp)
+      temp  = standard_vars%get_column(_TEMPERATURE_,i)
+      call fabm_link_bulk_data(fabm_model,temp_id,temp)
       !salinity
-      call fabm_link_bulk_data(&
-           fabm_model,standard_variables%practical_salinity,salt)
+      call fabm_link_bulk_data(fabm_model,salt_id,salt)
+      salt  = standard_vars%get_column(_SALINITY_,i)
       !density
       density = standard_vars%get_column(_RHO_,i)+1000._rk
       call fabm_link_bulk_data(fabm_model,rho_id,density)
@@ -420,30 +425,24 @@ contains
     real(rk),dimension(number_of_layers+1):: kz_bio
     real(rk),dimension(number_of_layers+1):: kz_turb
     real(rk),dimension(number_of_layers+1):: layer_thicknesses
-    real(rk),dimension(number_of_layers+1):: w_b
-    real(rk),dimension(number_of_layers+1):: u_b
     real(rk),dimension(number_of_layers-1):: dz
     !indices of layer interfaces in the sediments including the SWI
     real(rk),dimension(:),allocatable:: k_sed1
-    real    dphidz_SWI
+    real(rk),dimension(:),allocatable:: w_b
+    real(rk),dimension(:),allocatable:: u_b
+    real(rk) dphidz_SWI
     integer i,j,bbl_sed_index,ice_water_index
     integer number_of_circles
     !fabm logical parameters
     logical:: repair=.true.,valid
     !index for boundaries so for layers it should be -1
+    !increment for fabm do
     real(rk),dimension(surface_index-1,number_of_parameters):: increment
+    !increment for diffusion
+    real(rk),dimension(surface_index-1,number_of_parameters):: dcc
 
-    bbl_sed_index = standard_vars%get_value("bbl_sediments_index")
-
-    allocate(k_sed1(bbl_sed_index))
-    k_sed1 = standard_vars%get_column("k_sed1")
-
+    bbl_sed_index   = standard_vars%get_value("bbl_sediments_index")
     ice_water_index = standard_vars%get_value("ice_water_index")
-    !is needed by brom_do_sedimentation
-    dphidz_SWI    = standard_vars%get_value("dphidz_SWI")
-    !is needed by brom_do_sedimentation
-    face_porosity = &
-    standard_vars%get_column("porosity_on_interfaces",id)
     !Factor to convert [mass per unit total volume]
     !to [mass per unit volume pore water] for solutes in sediments
     !first zero for gotm diff solver
@@ -467,7 +466,18 @@ contains
     layer_thicknesses = &
     (/ 0._rk,standard_vars%get_column("layer_thicknesses",id) /)
     !
+    !is needed by brom_do_sedimentation
+    dphidz_SWI    = standard_vars%get_value("dphidz_SWI")
+    !is needed by brom_do_sedimentation
+    face_porosity = &
+    standard_vars%get_column("porosity_on_interfaces",id)
+    !indices of sediments
+    allocate(k_sed1(bbl_sed_index))
+    k_sed1 = standard_vars%get_column("k_sed1")
+    !vertical velocities in the sediments, depends on porosity, constant
+    allocate(w_b(bbl_sed_index))
     w_b = standard_vars%get_column("w_b")
+    allocate(u_b(bbl_sed_index))
     u_b = standard_vars%get_column("u_b")
     !distance between centers of the layers
     dz = standard_vars%get_column("dz",id)
@@ -481,13 +491,19 @@ contains
     call recalculate_ice(id)
     do i = 1,number_of_circles
       !diffusion
-      increment = 0._rk
       call brom_do_diffusion(surface_index,bbl_sed_index,ice_water_index,&
                              pF1_solutes,pF2_solutes,pF1_solids,&
                              pF2_solids,kz_mol,kz_bio,kz_turb,&
-                             layer_thicknesses,increment)
+                             layer_thicknesses,dcc)
       !sedimentation
-
+      call brom_do_sedimentation(surface_index,bbl_sed_index,&
+                                 k_sed1,w_b,u_b,&
+                                 dphidz_SWI,&
+                                 dcc,&
+                                 face_porosity(:surface_index),&
+                                 kz_bio(:surface_index),&
+                                 layer_thicknesses(2:surface_index),&
+                                 dz(:surface_index-2))
       !biogeochemistry
       call fabm_check_state(fabm_model,1,surface_index-1,repair,valid)
       increment = 0._rk
@@ -518,8 +534,8 @@ contains
     real(rk),dimension(number_of_layers+1),intent(in):: kz_turb
     real(rk),dimension(number_of_layers+1),intent(in):: layer_thicknesses
 
-    real(rk),dimension(number_of_layers+1,number_of_parameters),&
-                                           intent(inout):: increment
+    real(rk),dimension(surface_index-1,number_of_parameters),&
+                                           intent(out):: increment
 
     type(brom_state_variable):: oxygen
     real(rk),dimension(number_of_layers+1):: ones
@@ -585,7 +601,8 @@ contains
     pFSWIup_solids = 1.0_rk/(1.0_rk-pF2_solids(bbl_sed_index))
     pFSWIdw_solids = pFSWIup_solids
 
-    forall (i = 1:number_of_parameters)
+    !forall (i = 1:number_of_parameters)
+    do i = 1,number_of_parameters
       temporary(:surface_index-1,i) = do_diffusive(&
           N       = surface_index-1,&
           dt      = _SECONDS_PER_CIRCLE_,&
@@ -614,11 +631,12 @@ contains
           pFSWIdw_solutes = pFSWIdw_solutes,&
           pFSWIup_solids = pFSWIup_solids,&
           pFSWIdw_solids = pFSWIdw_solids)
-      increment(:surface_index-1,i) = state_vars(i)%value(:surface_index-1)-&
-                  temporary(1:surface_index-1,i)
+      increment(:surface_index-1,i) = temporary(1:surface_index-1,i)-&
+                                      state_vars(i)%value(:surface_index-1)
       state_vars(i)%value(1:surface_index-1) = &
                           temporary(1:surface_index-1,i)
-    end forall
+    !end forall
+    end do
   end subroutine
   !
   !adapted from Phil Wallhead code
@@ -630,41 +648,45 @@ contains
                                    dphidz_SWI,increment,&
                                    face_porosity,kz_bio,&
                                    hz,dz)
-    !REVISION HISTORY:
-    !Original author(s): Phil Wallhead
-
     integer ,intent(in):: surface_index
     integer ,intent(in):: bbl_sed_index
 
-    real(rk),dimension(:),allocatable     ,intent(in):: k_sed1
-    real(rk),dimension(number_of_layers+1),intent(in):: w_b,u_b
+    real(rk),dimension(bbl_sed_index),intent(in):: k_sed1
+    real(rk),dimension(bbl_sed_index),intent(in):: w_b,u_b
 
-    real(rk)                              ,intent(in):: dphidz_SWI
+    real(rk)                         ,intent(in):: dphidz_SWI
     real(rk),dimension(surface_index-1,number_of_parameters),&
-                                           intent(in):: increment
-    real(rk),dimension(number_of_layers+1),intent(in):: face_porosity
-    real(rk),dimension(number_of_layers+1),intent(in):: kz_bio
+                                      intent(in):: increment
+    real(rk),dimension(surface_index),intent(in):: face_porosity
+    real(rk),dimension(surface_index),intent(in):: kz_bio
     ! layer thickness (m)
-    real(rk),intent(in):: hz(0:number_of_layers)
+    real(rk),intent(in):: hz(surface_index-1)
     ! distance between centers of the layers
-    real(rk),intent(in):: dz(number_of_layers-1)
+    real(rk),intent(in):: dz(surface_index-2)
 
     !Local variables
     type(brom_state_variable):: oxygen
 
-    real(rk):: dcc(number_of_layers,number_of_parameters)
-    real(rk):: wti(number_of_layers+1,number_of_parameters)
-    real(rk):: sink(number_of_layers+1,number_of_parameters)
-    real(rk):: w_1m(number_of_layers+1,number_of_parameters)
-    real(rk):: w_1(number_of_layers+1)
-    real(rk):: u_1(number_of_layers+1)
-    real(rk):: w_1c(number_of_layers+1)
-    real(rk):: u_1c(number_of_layers+1)
+    !NaN value
+    REAL(rk), PARAMETER :: D_QNAN = &
+              TRANSFER((/ Z'00000000', Z'7FF80000' /),1.0_rk)
+    
+    real(rk):: dcc (surface_index-1,number_of_parameters)
+    real(rk):: wbi (surface_index-1,number_of_parameters)
+    real(rk):: wti (surface_index  ,number_of_parameters)
+    real(rk):: sink(surface_index  ,number_of_parameters)
+    real(rk):: w_1m(surface_index  ,number_of_parameters)
+    real(rk):: w_1 (surface_index)
+    real(rk):: u_1 (surface_index)
+    real(rk):: w_1c(surface_index)
+    real(rk):: u_1c(surface_index)
 
     real(rk) O2stat
     integer i,k,ip
 
     dcc  = 0.0_rk
+    wbi  = 0.0_rk
+    wti  = 0.0_rk
     w_1m = 0.0_rk
     w_1  = 0.0_rk
     u_1  = 0.0_rk
@@ -673,13 +695,15 @@ contains
 
     !Compute vertical velocity in water column (sinking/floating)
     !using the FABM.
+    call fabm_get_vertical_movement(&
+         fabm_model,1,surface_index-1,wbi)
     do i=1,number_of_parameters
       !Note: sinking velocity is on layer midpoints
       !call fabm_get_vertical_movement(&
       !     fabm_model,1,number_of_layers,&
       !     state_vars(i)%sinking_velocity(:))
-      state_vars(i)%sinking_velocity = &
-                    fabm_model%state_variables(i)%vertical_movement
+      state_vars(i)%sinking_velocity(:) = D_QNAN
+      state_vars(i)%sinking_velocity(:surface_index-1) = wbi(:,i)
     end do
 
     !Compute vertical velocity components due to modelled (reactive)
@@ -756,24 +780,24 @@ contains
     !
 
     oxygen = find_state_variable("O2_o")
-    !oxygen status of sediments
+    !oxygen status of sediments set by O2 
+    !level just above sediment surface
     O2stat = oxygen%value(bbl_sed_index)/&
       (oxygen%value(bbl_sed_index)+_KO2_)
 
-    w_1(bbl_sed_index+1) = -1.0_rk*O2stat*kz_bio(bbl_sed_index+1)*&
-                       dphidz_SWI/(1.0_rk-face_porosity(bbl_sed_index+1))
-    u_1(bbl_sed_index+1) = O2stat*kz_bio(bbl_sed_index+1)*dphidz_SWI/&
-                       face_porosity(bbl_sed_index+1)
+    w_1(bbl_sed_index) = -1.0_rk*O2stat*kz_bio(bbl_sed_index)*&
+                       dphidz_SWI/(1.0_rk-face_porosity(bbl_sed_index))
+    u_1(bbl_sed_index) = O2stat*kz_bio(bbl_sed_index)*dphidz_SWI/&
+                       face_porosity(bbl_sed_index)
 
-    w_1m = 0.0_rk
     !Sum over contributions from each particulate variable
     do i=1,number_of_parameters
       if (state_vars(i)%is_solid) then
         !First set rhop_i*(1-phi)*w_1i at the SWI
-        w_1m(bbl_sed_index+1,i) = &
-          state_vars(i)%sinking_velocity(bbl_sed_index)*&
+        w_1m(bbl_sed_index,i) = &
+          state_vars(i)%sinking_velocity(bbl_sed_index+1)*&
           min(state_vars(i)%value(bbl_sed_index),&
-          state_vars(i)%value(bbl_sed_index-1))
+          state_vars(i)%value(bbl_sed_index+1))
           !Now set rhop_i*(1-phi)*w_1i in the sediments
           !  by integrating the reaction terms
         do k=bbl_sed_index+2,number_of_layers+1

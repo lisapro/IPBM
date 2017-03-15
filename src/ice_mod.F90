@@ -47,7 +47,7 @@ module ice_mod
     procedure,public:: do_brine_relative_volume
     procedure:: do_depths
     procedure:: do_ice_bulk_salinity
-    procedure:: do_ice_brine_density
+    procedure,public:: do_ice_brine_density
     procedure:: do_ice_bulk_density
   end type ice
 
