@@ -269,7 +269,7 @@ contains
       call date(day,year)
       !ice   = standard_vars%get_value(_ICE_THICKNESS_,i)
       !porosity = standard_vars%get_column("porosity",i)
-      
+
       !for netcdf output
       depth = standard_vars%get_column("middle_layer_depths",i)
 
@@ -288,8 +288,8 @@ contains
       temp  = standard_vars%get_column(_TEMPERATURE_,i)
       call fabm_link_bulk_data(fabm_model,temp_id,temp)
       !salinity
-      call fabm_link_bulk_data(fabm_model,salt_id,salt)
       salt  = standard_vars%get_column(_SALINITY_,i)
+      call fabm_link_bulk_data(fabm_model,salt_id,salt)
       !density
       density = standard_vars%get_column(_RHO_,i)+1000._rk
       call fabm_link_bulk_data(fabm_model,rho_id,density)
@@ -670,7 +670,7 @@ contains
     !NaN value
     REAL(rk), PARAMETER :: D_QNAN = &
               TRANSFER((/ Z'00000000', Z'7FF80000' /),1.0_rk)
-    
+
     real(rk):: dcc (surface_index-1,number_of_parameters)
     real(rk):: wbi (surface_index-1,number_of_parameters)
     real(rk):: wti (surface_index  ,number_of_parameters)
@@ -780,7 +780,7 @@ contains
     !
 
     oxygen = find_state_variable("O2_o")
-    !oxygen status of sediments set by O2 
+    !oxygen status of sediments set by O2
     !level just above sediment surface
     O2stat = oxygen%value(bbl_sed_index)/&
       (oxygen%value(bbl_sed_index)+_KO2_)
