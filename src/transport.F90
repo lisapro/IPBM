@@ -706,6 +706,7 @@ contains
       state_vars(i)%sinking_velocity(:surface_index-1) = wbi(:,i)
     end do
 
+    !Phil Wallhead comments:
     !Compute vertical velocity components due to modelled (reactive)
     !particles, if required
     !
@@ -795,13 +796,13 @@ contains
       if (state_vars(i)%is_solid) then
         !First set rhop_i*(1-phi)*w_1i at the SWI
         w_1m(bbl_sed_index,i) = &
-          state_vars(i)%sinking_velocity(bbl_sed_index+1)*&
+          state_vars(i)%sinking_velocity(bbl_sed_index)*&
           min(state_vars(i)%value(bbl_sed_index),&
           state_vars(i)%value(bbl_sed_index+1))
           !Now set rhop_i*(1-phi)*w_1i in the sediments
           !  by integrating the reaction terms
-        do k=bbl_sed_index+2,number_of_layers+1
-          w_1m(k,i) = w_1m(k-1,i)+increment(k-1,i)*hz(k-1)
+        do k=bbl_sed_index-1,1,-1
+          w_1m(k,i) = w_1m(k+1,i)+increment(k,i)*hz(k)
         end do
         !Divide by rhop_i*(1-phi) to get w_1c(i)
         w_1m(k_sed1,i) = w_1m(k_sed1,i)/&
@@ -811,23 +812,23 @@ contains
       end if
     end do
     !Now calculate u from w using (4) above
-    u_1c(k_sed1) = (w_1c(number_of_layers+1)-&
+    u_1c(k_sed1) = (w_1c(1)-&
                    (1.0_rk-face_porosity(k_sed1))*&
                    w_1(k_sed1))/face_porosity(k_sed1)
 
     !Interpolate velocities from FABM (defined on layer midpoints, as for
     !  concentrations) to wti on the layer interfaces
-    wti(1,:) = 0.0_rk
     do ip=1,number_of_parameters
       !Air-sea interface (unused)
-      wti(1,ip) = state_vars(ip)%sinking_velocity(1)
+      wti(surface_index,ip) = &
+        state_vars(ip)%sinking_velocity(surface_index-1)
       !Water column layer interfaces, not including SWI
-      wti(2:bbl_sed_index,ip) = &
-        state_vars(ip)%sinking_velocity(1:bbl_sed_index-1)+&
-        0.5_rk*hz(1:bbl_sed_index-1)*&
-        (state_vars(ip)%sinking_velocity(2:bbl_sed_index)-&
-        state_vars(ip)%sinking_velocity(1:bbl_sed_index-1))/&
-        dz(1:bbl_sed_index-1)
+      wti(bbl_sed_index+1:surface_index-1,ip) = &
+        state_vars(ip)%sinking_velocity(bbl_sed_index:surface_index-2)+&
+        0.5_rk*hz(bbl_sed_index:surface_index-2)*&
+        (state_vars(ip)%sinking_velocity(bbl_sed_index+1:surface_index-1)-&
+        state_vars(ip)%sinking_velocity(bbl_sed_index:surface_index-2))/&
+        dz(bbl_sed_index:surface_index-2)
       !Sediment layer interfaces, including SWI
       if (state_vars(ip)%is_solid) then
         wti(k_sed1,ip) = u_b(k_sed1)+u_1(k_sed1)+u_1c(k_sed1)
