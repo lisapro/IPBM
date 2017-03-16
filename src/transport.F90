@@ -835,7 +835,7 @@ contains
       else
         wti(k_sed1,ip) = w_b(k_sed1)+w_1(k_sed1)+w_1c(k_sed1)
       end if
-      wti(number_of_layers+1,ip) = wti(number_of_layers,ip)
+      wti(1,ip) = wti(2,ip)
     end do
 
     !Perform advective flux calculation and concentrations update
@@ -845,10 +845,10 @@ contains
     !Calculate sinking fluxes at layer interfaces
     !(sink, units strictly [mass/unit total area/second])
     !Air-sea interface
-    sink(1,:) = 0.0_rk
+    sink = 0.0_rk
     !Water column and sediment layer interfaces
     do i = 1,number_of_parameters
-      do k = 2,number_of_layers+1
+      do k = 2,surface_index
         sink(k,i) = wti(k,i)*state_vars(i)%value(k-1)
         !This is an upwind differencing approx., hence the use of cc(k-1)
         !Note: factors phi, (1-phi) are not needed in the sediments
@@ -857,13 +857,13 @@ contains
     end do
     !Calculate tendencies dcc = dcc/dt = -dF/dz on layer midpoints
     !(top/bottom not used where Dirichlet bc imposed)
-    do k=1,number_of_layers
+    do k=1,surface_index-1
       dcc(k,:) = -1.0_rk * (sink(k+1,:)-sink(k,:)) / hz(k)
     end do
 
     !Time integration
     do i = 1,number_of_parameters
-      do k = 1,number_of_layers
+      do k = 1,surface_index
           state_vars(i)%value(k) = state_vars(i)%value(k)+&
                                    _SECONDS_PER_CIRCLE_*dcc(k,i)
       end do
