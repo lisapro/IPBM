@@ -490,6 +490,7 @@ contains
     end if
     call recalculate_ice(id)
     do i = 1,number_of_circles
+      dcc = 0._rk
       !diffusion
       call brom_do_diffusion(surface_index,bbl_sed_index,ice_water_index,&
                              pF1_solutes,pF2_solutes,pF1_solids,&
@@ -848,8 +849,8 @@ contains
     sink = 0.0_rk
     !Water column and sediment layer interfaces
     do i = 1,number_of_parameters
-      do k = 2,surface_index
-        sink(k,i) = wti(k,i)*state_vars(i)%value(k-1)
+      do k = 1,surface_index-1
+        sink(k,i) = wti(k,i)*state_vars(i)%value(k)
         !This is an upwind differencing approx., hence the use of cc(k-1)
         !Note: factors phi, (1-phi) are not needed in the sediments
         !because cc is in units [mass per unit total volume]
