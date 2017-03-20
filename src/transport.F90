@@ -102,10 +102,10 @@ contains
       !and set these to the values provided by the model.
       state_vars(i)%sinking_velocity = &
                     fabm_model%state_variables(i)%vertical_movement
-      if (fabm_model%state_variables(i)%vertical_movement/=0._rk) then
-        state_vars(i)%is_solid=.true.
-        state_vars(i)%density=1.5E7_rk
-      end if
+      !if (fabm_model%state_variables(i)%vertical_movement/=0._rk) then
+      !  state_vars(i)%is_solid=.true.
+      !  state_vars(i)%density=1.5E7_rk
+      !end if
       call fabm_link_bulk_state_data(fabm_model,i,state_vars(i)%value)
       call state_vars(i)%print_name()
     end do
@@ -220,7 +220,7 @@ contains
     !check all needed by fabm model variables
     call fabm_check_ready(fabm_model)
     !brom needs to know is variable a solid or gas
-    !call configurate_state_variables()
+    call configurate_state_variables()
 
     previous_ice_index=0
   end subroutine
@@ -231,6 +231,7 @@ contains
     type(type_output):: netcdf_ice
     type(type_output):: netcdf_water
     type(type_output):: netcdf_sediments
+    type(brom_state_variable):: state_variable
     integer:: year = _INITIALIZATION_SINCE_YEAR_
     integer ice_water_index,water_bbl_index,number_of_days
     integer surface_index
@@ -302,15 +303,29 @@ contains
       !bottom stress - ersem
       !call fabm_link_horizontal_data(fabm_model,taub_id,taub)
 
-      !
-      !have to change to flux on ice_water_index layer
-      !
-      !call find_set_state_variable("niva_brom_bio_PO4",&
-      !  use_bound_up = _DIRICHLET_,bound_up = sinusoidal(day,0.45_rk))
-      !call find_set_state_variable("niva_brom_bio_NO3",&
-      !  use_bound_up = _DIRICHLET_,bound_up = sinusoidal(day,3.8_rk))
-      !call find_set_state_variable("niva_brom_redox_Si",&
-      !  use_bound_up = _DIRICHLET_,bound_up = sinusoidal(day,2._rk))
+      !setting inflows as constant concentrations
+
+      !state_variable = find_state_variable("B_SULF_SO4")
+      !state_variable%value(ice_water_index) = 25000._rk
+      !state_variable%value(1) = 25000._rk
+
+      state_variable = find_state_variable("B_MANG_Mn4")
+      state_variable%value(ice_water_index-1) = 0.5e-4_rk
+
+      state_variable = find_state_variable("B_IRON_Fe3")
+      state_variable%value(ice_water_index-1) = 0.04_rk!0.4e-4_rk
+
+      state_variable = find_state_variable("B_CARB_Alk")
+      state_variable%value(ice_water_index-1) = 2300._rk
+
+      state_variable = find_state_variable("N1_p")
+      state_variable%value(ice_water_index-1) = sinusoidal(day,0.45_rk)
+
+      state_variable = find_state_variable("N3_n")
+      state_variable%value(ice_water_index-1) = sinusoidal(day,3.8_rk)
+
+      state_variable = find_state_variable("N5_s")
+      state_variable%value(ice_water_index-1) = sinusoidal(day,2._rk)
 
       call cpu_time(t1)
       call day_circle(i,surface_index)
@@ -496,15 +511,6 @@ contains
                              pF1_solutes,pF2_solutes,pF1_solids,&
                              pF2_solids,kz_mol,kz_bio,kz_turb,&
                              layer_thicknesses,dcc)
-      !sedimentation
-      call brom_do_sedimentation(surface_index,bbl_sed_index,&
-                                 k_sed1,w_b,u_b,&
-                                 dphidz_SWI,&
-                                 dcc,&
-                                 face_porosity(:surface_index),&
-                                 kz_bio(:surface_index),&
-                                 layer_thicknesses(2:surface_index),&
-                                 dz(:surface_index-2))
       !biogeochemistry
       call fabm_check_state(fabm_model,1,surface_index-1,repair,valid)
       increment = 0._rk
@@ -513,6 +519,15 @@ contains
       forall(j = 1:number_of_parameters)&
         state_vars(j)%value(:surface_index-1) = &
           state_vars(j)%value(:surface_index-1)+increment(:,j)
+      !sedimentation
+      call brom_do_sedimentation(surface_index,bbl_sed_index,&
+                                 k_sed1,w_b,u_b,&
+                                 dphidz_SWI,&
+                                 increment,&
+                                 face_porosity(:surface_index),&
+                                 kz_bio(:surface_index),&
+                                 layer_thicknesses(2:surface_index),&
+                                 dz(:surface_index-2))
     end do
   end subroutine
 
@@ -1023,58 +1038,114 @@ contains
   end subroutine
 
   subroutine configurate_state_variables()
-    !
-    !have to change to flux on ice_water_index layer
-    !
-    !call find_set_state_variable("niva_brom_redox_SO4",&
-    !  use_bound_up = _DIRICHLET_,use_bound_low = _DIRICHLET_,&
-    !  bound_up = 25000._rk,bound_low = 25000._rk)
-    !call find_set_state_variable(inname = "niva_brom_redox_Mn4",&
-    !  use_bound_up = _DIRICHLET_,bound_up = 0.5e-4_rk)
-    !call find_set_state_variable("niva_brom_redox_Fe3",&
-    !  use_bound_up = _DIRICHLET_,bound_up = 0.4e-4_rk)
-    !call find_set_state_variable("niva_brom_carb_Alk",&
-    !  use_bound_up = _DIRICHLET_,bound_up = 2250._rk)
+    !ammonium NH4+
+    call find_set_state_variable("N4_n",is_gas = .true.)
+    !oxygen O2
+    call find_set_state_variable("O2_o",is_gas = .true.)
+    call find_set_state_variable("B_SULF_H2S",is_gas = .true.)
+    call find_set_state_variable("B_METH_CH4",is_gas = .true.)
 
-    call find_set_state_variable("niva_brom_bio_NH4"  ,is_gas = .true.)
-    call find_set_state_variable("niva_brom_bio_O2"   ,is_gas = .true.)
-    call find_set_state_variable("niva_brom_redox_H2S",is_gas = .true.)
-    call find_set_state_variable("niva_brom_redox_CH4",is_gas = .true.)
-
-    call find_set_state_variable("niva_brom_bio_Phy",&
-      is_solid = .true.,density = 1.5E7_rk)
-    call find_set_state_variable("niva_brom_bio_PON",&
-      is_solid = .true.,density = 1.5E7_rk)
-    call find_set_state_variable("niva_brom_bio_Het",&
-      is_solid = .true.,density = 1.5E7_rk)
-    call find_set_state_variable("niva_brom_redox_Baae",&
-      is_solid = .true.,density = 1.5E7_rk)
-    call find_set_state_variable("niva_brom_redox_Bhae",&
-      is_solid = .true.,density = 1.5E7_rk)
-    call find_set_state_variable("niva_brom_redox_Baan",&
-      is_solid = .true.,density = 1.5E7_rk)
-    call find_set_state_variable("niva_brom_redox_Bhan",&
-      is_solid = .true.,density = 1.5E7_rk)
-    call find_set_state_variable("niva_brom_redox_CaCO3",&
+    !calcite - CaCO3
+    call find_set_state_variable("L2_c",&
       is_solid = .true.,density = 2.80E7_rk)
-    call find_set_state_variable("niva_brom_redox_Fe3",&
-      is_solid = .true.,density = 3.27E7_rk)
-    call find_set_state_variable("niva_brom_redox_FeCO3",&
-      is_solid = .true.,density = 2.93E7_rk)
-    call find_set_state_variable("niva_brom_redox_FeS",&
-      is_solid = .true.,density = 5.90E7_rk)
-    call find_set_state_variable("niva_brom_redox_FeS2",&
-      is_solid = .true.,density = 4.17E7_rk)
-    call find_set_state_variable("niva_brom_redox_Mn4",&
-      is_solid = .true.,density = 5.78E7_rk)
-    call find_set_state_variable("niva_brom_redox_MnCO3",&
-      is_solid = .true.,density = 3.20E7_rk)
-    call find_set_state_variable("niva_brom_redox_MnS",&
-      is_solid = .true.,density = 4.60E7_rk)
-    call find_set_state_variable("niva_brom_redox_S0",&
+    !S0
+    call find_set_state_variable("B_SULF_S0",&
       is_solid = .true.,density = 6.56E7_rk)
-    call find_set_state_variable("niva_brom_redox_Sipart",&
+    !Fe
+    call find_set_state_variable("B_IRON_Fe3",&
+      is_solid = .true.,density = 3.27E7_rk)
+    call find_set_state_variable("B_IRON_FeCO3",&
+      is_solid = .true.,density = 2.93E7_rk)
+    call find_set_state_variable("B_IRON_FeS",&
+      is_solid = .true.,density = 5.90E7_rk)
+    call find_set_state_variable("B_IRON_FeS2",&
+      is_solid = .true.,density = 4.17E7_rk)
+    !Mn
+    call find_set_state_variable("B_MANG_Mn4",&
+      is_solid = .true.,density = 5.78E7_rk)
+    call find_set_state_variable("B_MANG_MnCO3",&
+      is_solid = .true.,density = 3.20E7_rk)
+    call find_set_state_variable("B_MANG_MnS",&
+      is_solid = .true.,density = 4.60E7_rk)
+    !Silicon particulate
+    call find_set_state_variable("B_SILI_Sipart",&
       is_solid = .true.,density = 4.40E7_rk)
+    !organic compounds
+    !small-size POM
+    call find_set_state_variable("R4_c",&
+      is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
+    call find_set_state_variable("R4_n",&
+      is_solid = .true.,density = 1.5E7_rk)
+    call find_set_state_variable("R4_p",&
+      is_solid = .true.,density = 1.5E7_rk*1._rk/16._rk)
+    call find_set_state_variable("R4_f",&
+      is_solid = .true.,density = 1.5E7_rk*5._rk/1260._rk)
+    !medium-size POM
+    call find_set_state_variable("R6_c",&
+      is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
+    call find_set_state_variable("R6_n",&
+      is_solid = .true.,density = 1.5E7_rk)
+    call find_set_state_variable("R6_p",&
+      is_solid = .true.,density = 1.5E7_rk*1._rk/16._rk)
+    call find_set_state_variable("R6_s",&
+      is_solid = .true.,density = 1.5E7_rk*1._rk/1000._rk)
+    call find_set_state_variable("R6_f",&
+      is_solid = .true.,density = 1.5E7_rk*5._rk/1260._rk)
+    !large-size POM
+    call find_set_state_variable("R8_c",&
+      is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
+    call find_set_state_variable("R8_n",&
+      is_solid = .true.,density = 1.5E7_rk)
+    call find_set_state_variable("R8_p",&
+      is_solid = .true.,density = 1.5E7_rk*1._rk/16._rk)
+    call find_set_state_variable("R8_s",&
+      is_solid = .true.,density = 1.5E7_rk*1._rk/1000._rk)
+    !diatoms
+    call find_set_state_variable("P1_c",&
+      is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
+    call find_set_state_variable("P1_n",&
+      is_solid = .true.,density = 1.5E7_rk)
+    call find_set_state_variable("P1_p",&
+      is_solid = .true.,density = 1.5E7_rk*1._rk/16._rk)
+    call find_set_state_variable("P1_f",&
+      is_solid = .true.,density = 1.5E7_rk*5._rk/1260._rk)
+    call find_set_state_variable("P1_s",& !rios 1998
+      is_solid = .true.,density = 1.5E7_rk*6.2_rk/15.7_rk)
+    call find_set_state_variable("P1_Chl",&
+      is_solid = .true.,density = 1.2E7_rk)!1200e6 from wiki
+    !nanophytoplankton
+    call find_set_state_variable("P2_c",&
+      is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
+    call find_set_state_variable("P2_n",&
+      is_solid = .true.,density = 1.5E7_rk)
+    call find_set_state_variable("P2_p",&
+      is_solid = .true.,density = 1.5E7_rk*1._rk/16._rk)
+    call find_set_state_variable("P2_f",&
+      is_solid = .true.,density = 1.5E7_rk*5._rk/1260._rk)
+    call find_set_state_variable("P2_Chl",&
+      is_solid = .true.,density = 1.2E7_rk)!1200e6 from wiki
+    !picophytoplankton
+    call find_set_state_variable("P3_c",&
+      is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
+    call find_set_state_variable("P3_n",&
+      is_solid = .true.,density = 1.5E7_rk)
+    call find_set_state_variable("P3_p",&
+      is_solid = .true.,density = 1.5E7_rk*1._rk/16._rk)
+    call find_set_state_variable("P3_f",&
+      is_solid = .true.,density = 1.5E7_rk*5._rk/1260._rk)
+    call find_set_state_variable("P3_Chl",&
+      is_solid = .true.,density = 1.2E7_rk)!1200e6 from wiki
+    !microphytoplankton
+    call find_set_state_variable("P4_c",&
+      is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
+    call find_set_state_variable("P4_n",&
+      is_solid = .true.,density = 1.5E7_rk)
+    call find_set_state_variable("P4_p",&
+      is_solid = .true.,density = 1.5E7_rk*1._rk/16._rk)
+    call find_set_state_variable("P4_f",&
+      is_solid = .true.,density = 1.5E7_rk*5._rk/1260._rk)
+    call find_set_state_variable("P4_Chl",&
+      is_solid = .true.,density = 1.2E7_rk)!1200e6 from wiki
   end subroutine
 
   function find_state_variable(inname)
