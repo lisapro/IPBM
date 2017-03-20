@@ -670,7 +670,7 @@ contains
 
   pure subroutine set_brom_state_variable(self,is_solid,&
       is_gas,use_bound_up,use_bound_low,bound_up,&
-      bound_low,density,sinking_velocity)
+      bound_low,density,sinking_velocity,value,layer)
     class(brom_state_variable),intent(inout):: self
     logical,optional          ,intent(in)   :: is_solid
     logical,optional          ,intent(in)   :: is_gas
@@ -681,6 +681,8 @@ contains
     real(rk),optional         ,intent(in)   :: density
     real(rk),allocatable,dimension(:),optional,intent(in)&
                                             :: sinking_velocity
+    real(rk),optional         ,intent(in)   :: value
+    integer ,optional         ,intent(in)   :: layer
 
     if(present(is_solid)) self%is_solid = is_solid
     if(present(is_gas)) self%is_gas = is_gas
@@ -690,6 +692,7 @@ contains
     if(present(bound_low)) self%bound_low = bound_low
     if(present(density)) self%density = density
     if(present(sinking_velocity)) self%sinking_velocity = sinking_velocity
+    if(present(value).and.present(layer)) self%value(layer) = value
   end subroutine
 
   subroutine print_state_variable(self)

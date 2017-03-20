@@ -143,37 +143,37 @@ instances:
       PON: R4/n # small-size pom (mmol N/m^3)
       DON: R1/n # labile dissolved organic matter (mmol N/m^3)
       SO4: B_SULF/SO4
-  B_NITR:
-    long_name: nitrogen_cycle
-    model: niva/brom_nitrogen
-    parameters:
-      # Spec.rate of 1st st. of nitrification
-      K_nitrif1: 0.01
-      # Spec.rate of 2d st. of nitrification
-      K_nitrif2: 0.1
-      # Spec.rate of 1 stage of denitrif
-      K_denitr1: 0.3
-      # Spec.rate of 2 stage of denitrif
-      K_denitr2: 0.20
-      K_omno_no3: 0.001 # Half sat. of no3 for OM denitr. (uM N)
-      K_omno_no2: 0.001 # Half sat. of no2 for OM denitr. (uM N)
-      # Spec.rate of Anammox (1/d) (Gregoire, Lacroix, 2001)
-      K_annamox: 0.8
-      # Threshold of O2 saturation for nitrification (uM)
-      O2s_nf: 5.
-      # Threshold of O2 for denitrification, anammox, Mn reduction (uM O2)
-      O2s_dn: 10.0
-      r_n_p: 16.0  # N[uM]/P[uM]
-      r_c_n: 8.0   # C[uM]/N[uM]
-    coupling:
-      NO2: N2/n # nitrite (mmol N/m^3)
-      NO3: N3/n # nitrate (mmol N/m^3)
-      NH4: N4/n # ammonium (mmol N/m^3)
-      DIC: B_CARB/DIC # carbon dioxide (mmol C/m^3)
-      O2: O2/o # oxygen (mmol O_2/m^3)
-      PON: R4/n # small-size pom (mmol N/m^3)
-      DON: R1/n # labile dissolved organic matter (mmol N/m^3)
-      PO4: N1/p # phosphate (mmol N/m^3)
+  #B_NITR:
+  #  long_name: nitrogen_cycle
+  #  model: niva/brom_nitrogen
+  #  parameters:
+  #    # Spec.rate of 1st st. of nitrification
+  #    K_nitrif1: 0.01
+  #    # Spec.rate of 2d st. of nitrification
+  #    K_nitrif2: 0.1
+  #    # Spec.rate of 1 stage of denitrif
+  #    K_denitr1: 0.3
+  #    # Spec.rate of 2 stage of denitrif
+  #    K_denitr2: 0.20
+  #    K_omno_no3: 0.001 # Half sat. of no3 for OM denitr. (uM N)
+  #    K_omno_no2: 0.001 # Half sat. of no2 for OM denitr. (uM N)
+  #    # Spec.rate of Anammox (1/d) (Gregoire, Lacroix, 2001)
+  #    K_annamox: 0.8
+  #    # Threshold of O2 saturation for nitrification (uM)
+  #    O2s_nf: 5.
+  #    # Threshold of O2 for denitrification, anammox, Mn reduction (uM O2)
+  #    O2s_dn: 10.0
+  #    r_n_p: 16.0  # N[uM]/P[uM]
+  #    r_c_n: 8.0   # C[uM]/N[uM]
+  #  coupling:
+  #    NO2: N2/n # nitrite (mmol N/m^3)
+  #    NO3: N3/n # nitrate (mmol N/m^3)
+  #    NH4: N4/n # ammonium (mmol N/m^3)
+  #    DIC: B_CARB/DIC # carbon dioxide (mmol C/m^3)
+  #    O2: O2/o # oxygen (mmol O_2/m^3)
+  #    PON: R4/n # small-size pom (mmol N/m^3)
+  #    DON: R1/n # labile dissolved organic matter (mmol N/m^3)
+  #    PO4: N1/p # phosphate (mmol N/m^3)
   B_SULF:
     long_name: sulfur_cycle
     model: niva/brom_sulfur

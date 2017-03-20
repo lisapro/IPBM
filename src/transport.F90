@@ -231,7 +231,6 @@ contains
     type(type_output):: netcdf_ice
     type(type_output):: netcdf_water
     type(type_output):: netcdf_sediments
-    type(brom_state_variable):: state_variable
     integer:: year = _INITIALIZATION_SINCE_YEAR_
     integer ice_water_index,water_bbl_index,number_of_days
     integer surface_index
@@ -264,7 +263,7 @@ contains
 
     day = standard_vars%first_day()
     call initial_date(day,year)
-    !call stabilize(day,year)
+    call stabilize(day,year,ice_water_index)
 
     do i = 1,number_of_days
       call date(day,year)
@@ -304,28 +303,18 @@ contains
       !call fabm_link_horizontal_data(fabm_model,taub_id,taub)
 
       !setting inflows as constant concentrations
-
-      !state_variable = find_state_variable("B_SULF_SO4")
-      !state_variable%value(ice_water_index) = 25000._rk
-      !state_variable%value(1) = 25000._rk
-
-      state_variable = find_state_variable("B_MANG_Mn4")
-      state_variable%value(ice_water_index-1) = 0.5e-4_rk
-
-      state_variable = find_state_variable("B_IRON_Fe3")
-      state_variable%value(ice_water_index-1) = 0.04_rk!0.4e-4_rk
-
-      state_variable = find_state_variable("B_CARB_Alk")
-      state_variable%value(ice_water_index-1) = 2300._rk
-
-      state_variable = find_state_variable("N1_p")
-      state_variable%value(ice_water_index-1) = sinusoidal(day,0.45_rk)
-
-      state_variable = find_state_variable("N3_n")
-      state_variable%value(ice_water_index-1) = sinusoidal(day,3.8_rk)
-
-      state_variable = find_state_variable("N5_s")
-      state_variable%value(ice_water_index-1) = sinusoidal(day,2._rk)
+      call find_set_state_variable("B_MANG_Mn4",&
+           value=0.5e-4_rk,layer=ice_water_index-1)
+      call find_set_state_variable("B_IRON_Fe3",&
+           value=0.4e-4_rk,layer=ice_water_index-1)
+      call find_set_state_variable("B_CARB_Alk",&
+           value=2300._rk,layer=ice_water_index-1)
+      call find_set_state_variable("N1_p",&
+           value=sinusoidal(day,0.45_rk),layer=ice_water_index-1)
+      call find_set_state_variable("N3_n",&
+           value=sinusoidal(day,3.8_rk),layer=ice_water_index-1)
+      call find_set_state_variable("N5_s",&
+           value=sinusoidal(day,2._rk),layer=ice_water_index-1)
 
       call cpu_time(t1)
       call day_circle(i,surface_index)
@@ -886,10 +875,9 @@ contains
     end do
   end subroutine brom_do_sedimentation
 
-  subroutine stabilize(inday,inyear)
-    integer,intent(in):: inday,inyear
+  subroutine stabilize(inday,inyear,ice_water_index)
+    integer,intent(in):: inday,inyear,ice_water_index
 
-    type(brom_state_variable):: temporary_variable
     integer day,year
     integer pseudo_day,days_in_year,counter
     integer i
@@ -900,7 +888,7 @@ contains
              standard_vars%get_column("air_ice_indexes"))
     day = inday; year = inyear;
     days_in_year = 365+merge(1,0,(mod(year,4).eq.0))
-    counter = days_in_year*5
+    counter = days_in_year*1
     do i = 1,counter
       !day from 1 to 365 or 366
       if (mod(i,days_in_year).eq.0) then
@@ -909,45 +897,56 @@ contains
         pseudo_day = i-int(i/days_in_year)*&
                      days_in_year
       end if
-      !ice   = standard_vars%get_value(_ICE_THICKNESS_,pseudo_day)
-      !porosity = standard_vars%get_column("porosity",pseudo_day)
-      depth = standard_vars%get_column("middle_layer_depths",pseudo_day)
-      temp  = standard_vars%get_column(_TEMPERATURE_,pseudo_day)
-      salt  = standard_vars%get_column(_SALINITY_,pseudo_day)
-
-      surface_index = air_ice_indexes(pseudo_day)
+      
       call date(day,year)
-      !call calculate_radiative_flux(&
-      !  surface_radiative_flux(_LATITUDE_,pseudo_day),&
-      !  standard_vars%get_value(_SNOW_THICKNESS_,pseudo_day),&
-      !  standard_vars%get_value(_ICE_THICKNESS_ ,pseudo_day))
-
-      !call find_set_state_variable("niva_brom_bio_PO4",&
-      !  use_bound_up = _DIRICHLET_,bound_up = sinusoidal(day,0.45_rk))
-      !call find_set_state_variable("niva_brom_bio_NO3",&
-      !  use_bound_up = _DIRICHLET_,bound_up = sinusoidal(day,3.8_rk))
-      !call find_set_state_variable("niva_brom_redox_Si",&
-      !  use_bound_up = _DIRICHLET_,bound_up = sinusoidal(day,2._rk))
-
       !change surface index due to ice depth
       !index for boundaries so for layers it should be -1
+      surface_index = air_ice_indexes(pseudo_day)
       call fabm_model%set_surface_index(surface_index-1)
-      !call fabm_link_bulk_data(fabm_model,fabm_porosity,porosity)
-      call fabm_link_bulk_data(&
-        fabm_model,standard_variables%temperature,temp)
-      call fabm_link_bulk_data(&
-        fabm_model,standard_variables%practical_salinity,salt)
-      !call fabm_link_bulk_data(&
-      !  fabm_model,&
-      !  standard_variables%downwelling_photosynthetic_radiative_flux,&
-      !  radiative_flux)
+
+      !update links
+      !realday = day !to convert integer to real - ersem zenith_angle
+      !call fabm_model%link_scalar(id_yearday,realday)
+      !cell thickness - ersem
+      cell = standard_vars%get_column("layer_thicknesses",pseudo_day)
+      call fabm_link_bulk_data(fabm_model,h_id,cell)
+      !temperature
+      temp  = standard_vars%get_column(_TEMPERATURE_,pseudo_day)
+      call fabm_link_bulk_data(fabm_model,temp_id,temp)
+      !salinity
+      salt  = standard_vars%get_column(_SALINITY_,pseudo_day)
+      call fabm_link_bulk_data(fabm_model,salt_id,salt)
+      !density
+      density = standard_vars%get_column(_RHO_,pseudo_day)+1000._rk
+      call fabm_link_bulk_data(fabm_model,rho_id,density)
+      !par
+      call calculate_radiative_flux(&
+        surface_radiative_flux(_LATITUDE_,day),&
+        standard_vars%get_value(_SNOW_THICKNESS_,pseudo_day),&
+        standard_vars%get_value(_ICE_THICKNESS_ ,pseudo_day))
+      call fabm_link_bulk_data(fabm_model,par_id,radiative_flux)
+      !bottom stress - ersem
+      !call fabm_link_horizontal_data(fabm_model,taub_id,taub)
+
+      !setting inflows as constant concentrations
+      call find_set_state_variable("B_MANG_Mn4",&
+           value=0.5e-4_rk,layer=ice_water_index-1)
+      call find_set_state_variable("B_IRON_Fe3",&
+           value=0.4e-4_rk,layer=ice_water_index-1)
+      call find_set_state_variable("B_CARB_Alk",&
+           value=2300._rk,layer=ice_water_index-1)
+      call find_set_state_variable("N1_p",&
+           value=sinusoidal(day,0.45_rk),layer=ice_water_index-1)
+      call find_set_state_variable("N3_n",&
+           value=sinusoidal(day,3.8_rk),layer=ice_water_index-1)
+      call find_set_state_variable("N5_s",&
+           value=sinusoidal(day,2._rk),layer=ice_water_index-1)
+
       call day_circle(pseudo_day,surface_index)
       write(*,*) "Stabilizing initial array of values, in progress ..."
       write(*,*) "number / ","julianday / ","pseudo day",&
                  i,day,pseudo_day
       day = day+1
-      !temporary_variable = find_state_variable("niva_brom_bio_O2")
-      !call temporary_variable%print_state_variable()
     end do
   end subroutine
 
@@ -1010,7 +1009,7 @@ contains
 
   subroutine find_set_state_variable(inname,is_solid,&
       is_gas,use_bound_up,use_bound_low,bound_up,&
-      bound_low,density,sinking_velocity)
+      bound_low,density,sinking_velocity,value,layer)
     character(len=*),                      intent(in):: inname
     logical,optional,                      intent(in):: is_solid
     logical,optional,                      intent(in):: is_gas
@@ -1021,6 +1020,9 @@ contains
     real(rk),optional,                     intent(in):: density
     real(rk),allocatable,dimension(:),optional,intent(in)&
                                                      :: sinking_velocity
+    real(rk),optional,                         intent(in):: value
+    integer ,optional,                         intent(in):: layer
+    
     integer number_of_vars
     integer i
 
@@ -1029,7 +1031,7 @@ contains
       if (state_vars(i)%name.eq.inname) then
         call state_vars(i)%set_brom_state_variable(is_solid,&
           is_gas,use_bound_up,use_bound_low,bound_up,&
-          bound_low,density,sinking_velocity)
+          bound_low,density,sinking_velocity,value,layer)
         return
       end if
     end do
