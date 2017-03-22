@@ -263,7 +263,7 @@ contains
 
     day = standard_vars%first_day()
     call initial_date(day,year)
-    call stabilize(day,year,ice_water_index)
+    !call stabilize(day,year,ice_water_index)
 
     do i = 1,number_of_days
       call date(day,year)
@@ -309,11 +309,14 @@ contains
            value=0.4e-4_rk,layer=ice_water_index-1)
       call find_set_state_variable("B_CARB_Alk",&
            value=2300._rk,layer=ice_water_index-1)
-      call find_set_state_variable("N1_p",&
+      !call find_set_state_variable("N1_p",&
+      call find_set_state_variable("B_NUTR_PO4",&
            value=sinusoidal(day,0.45_rk),layer=ice_water_index-1)
-      call find_set_state_variable("N3_n",&
+      !call find_set_state_variable("N3_n",&
+      call find_set_state_variable("B_NUTR_NO3",&
            value=sinusoidal(day,3.8_rk),layer=ice_water_index-1)
-      call find_set_state_variable("N5_s",&
+      !call find_set_state_variable("N5_s",&
+      call find_set_state_variable("B_NUTR_Si",&
            value=sinusoidal(day,2._rk),layer=ice_water_index-1)
 
       call cpu_time(t1)
@@ -559,7 +562,8 @@ contains
     zeros = 0._rk
     taur_r= 1.e20_rk
 
-    oxygen = find_state_variable("O2_o")
+    !oxygen = find_state_variable("O2_o")
+    oxygen = find_state_variable("B_BIO_O2")
     !oxygen status of sediments
     O2stat = oxygen%value(bbl_sed_index)/&
       (oxygen%value(bbl_sed_index)+_KO2_)
@@ -785,7 +789,8 @@ contains
     !where w_1cinf can be approximated by the deepest value of w_1c
     !
 
-    oxygen = find_state_variable("O2_o")
+    !oxygen = find_state_variable("O2_o")
+    oxygen = find_state_variable("B_BIO_O2")
     !oxygen status of sediments set by O2
     !level just above sediment surface
     O2stat = oxygen%value(bbl_sed_index)/&
@@ -897,7 +902,7 @@ contains
         pseudo_day = i-int(i/days_in_year)*&
                      days_in_year
       end if
-      
+
       call date(day,year)
       !change surface index due to ice depth
       !index for boundaries so for layers it should be -1
@@ -935,11 +940,14 @@ contains
            value=0.4e-4_rk,layer=ice_water_index-1)
       call find_set_state_variable("B_CARB_Alk",&
            value=2300._rk,layer=ice_water_index-1)
-      call find_set_state_variable("N1_p",&
+      !call find_set_state_variable("N1_p",&
+      call find_set_state_variable("B_NUTR_PO4",&
            value=sinusoidal(day,0.45_rk),layer=ice_water_index-1)
-      call find_set_state_variable("N3_n",&
+      !call find_set_state_variable("N3_n",&
+      call find_set_state_variable("B_NUTR_NO3",&
            value=sinusoidal(day,3.8_rk),layer=ice_water_index-1)
-      call find_set_state_variable("N5_s",&
+      !call find_set_state_variable("N5_s",&
+      call find_set_state_variable("B_NUTR_Si",&
            value=sinusoidal(day,2._rk),layer=ice_water_index-1)
 
       call day_circle(pseudo_day,surface_index)
@@ -1022,7 +1030,7 @@ contains
                                                      :: sinking_velocity
     real(rk),optional,                         intent(in):: value
     integer ,optional,                         intent(in):: layer
-    
+
     integer number_of_vars
     integer i
 
@@ -1041,14 +1049,17 @@ contains
 
   subroutine configurate_state_variables()
     !ammonium NH4+
-    call find_set_state_variable("N4_n",is_gas = .true.)
+    !call find_set_state_variable("N4_n",is_gas = .true.)
+    call find_set_state_variable("B_NUTR_NH4",is_gas = .true.)
     !oxygen O2
-    call find_set_state_variable("O2_o",is_gas = .true.)
+    !call find_set_state_variable("O2_o",is_gas = .true.)
+    call find_set_state_variable("B_BIO_O2",is_gas = .true.)
     call find_set_state_variable("B_SULF_H2S",is_gas = .true.)
     call find_set_state_variable("B_METH_CH4",is_gas = .true.)
 
     !calcite - CaCO3
-    call find_set_state_variable("L2_c",&
+    !call find_set_state_variable("L2_c",&
+    call find_set_state_variable("B_CALC_CaCO3",&
       is_solid = .true.,density = 2.80E7_rk)
     !S0
     call find_set_state_variable("B_SULF_S0",&
@@ -1073,81 +1084,81 @@ contains
     call find_set_state_variable("B_SILI_Sipart",&
       is_solid = .true.,density = 4.40E7_rk)
     !organic compounds
-    !small-size POM
-    call find_set_state_variable("R4_c",&
-      is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
-    call find_set_state_variable("R4_n",&
-      is_solid = .true.,density = 1.5E7_rk)
-    call find_set_state_variable("R4_p",&
-      is_solid = .true.,density = 1.5E7_rk*1._rk/16._rk)
-    call find_set_state_variable("R4_f",&
-      is_solid = .true.,density = 1.5E7_rk*5._rk/1260._rk)
-    !medium-size POM
-    call find_set_state_variable("R6_c",&
-      is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
-    call find_set_state_variable("R6_n",&
-      is_solid = .true.,density = 1.5E7_rk)
-    call find_set_state_variable("R6_p",&
-      is_solid = .true.,density = 1.5E7_rk*1._rk/16._rk)
-    call find_set_state_variable("R6_s",&
-      is_solid = .true.,density = 1.5E7_rk*1._rk/1000._rk)
-    call find_set_state_variable("R6_f",&
-      is_solid = .true.,density = 1.5E7_rk*5._rk/1260._rk)
-    !large-size POM
-    call find_set_state_variable("R8_c",&
-      is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
-    call find_set_state_variable("R8_n",&
-      is_solid = .true.,density = 1.5E7_rk)
-    call find_set_state_variable("R8_p",&
-      is_solid = .true.,density = 1.5E7_rk*1._rk/16._rk)
-    call find_set_state_variable("R8_s",&
-      is_solid = .true.,density = 1.5E7_rk*1._rk/1000._rk)
-    !diatoms
-    call find_set_state_variable("P1_c",&
-      is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
-    call find_set_state_variable("P1_n",&
-      is_solid = .true.,density = 1.5E7_rk)
-    call find_set_state_variable("P1_p",&
-      is_solid = .true.,density = 1.5E7_rk*1._rk/16._rk)
-    call find_set_state_variable("P1_f",&
-      is_solid = .true.,density = 1.5E7_rk*5._rk/1260._rk)
-    call find_set_state_variable("P1_s",& !rios 1998
-      is_solid = .true.,density = 1.5E7_rk*6.2_rk/15.7_rk)
-    call find_set_state_variable("P1_Chl",&
-      is_solid = .true.,density = 1.2E7_rk)!1200e6 from wiki
-    !nanophytoplankton
-    call find_set_state_variable("P2_c",&
-      is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
-    call find_set_state_variable("P2_n",&
-      is_solid = .true.,density = 1.5E7_rk)
-    call find_set_state_variable("P2_p",&
-      is_solid = .true.,density = 1.5E7_rk*1._rk/16._rk)
-    call find_set_state_variable("P2_f",&
-      is_solid = .true.,density = 1.5E7_rk*5._rk/1260._rk)
-    call find_set_state_variable("P2_Chl",&
-      is_solid = .true.,density = 1.2E7_rk)!1200e6 from wiki
-    !picophytoplankton
-    call find_set_state_variable("P3_c",&
-      is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
-    call find_set_state_variable("P3_n",&
-      is_solid = .true.,density = 1.5E7_rk)
-    call find_set_state_variable("P3_p",&
-      is_solid = .true.,density = 1.5E7_rk*1._rk/16._rk)
-    call find_set_state_variable("P3_f",&
-      is_solid = .true.,density = 1.5E7_rk*5._rk/1260._rk)
-    call find_set_state_variable("P3_Chl",&
-      is_solid = .true.,density = 1.2E7_rk)!1200e6 from wiki
-    !microphytoplankton
-    call find_set_state_variable("P4_c",&
-      is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
-    call find_set_state_variable("P4_n",&
-      is_solid = .true.,density = 1.5E7_rk)
-    call find_set_state_variable("P4_p",&
-      is_solid = .true.,density = 1.5E7_rk*1._rk/16._rk)
-    call find_set_state_variable("P4_f",&
-      is_solid = .true.,density = 1.5E7_rk*5._rk/1260._rk)
-    call find_set_state_variable("P4_Chl",&
-      is_solid = .true.,density = 1.2E7_rk)!1200e6 from wiki
+    !!small-size POM
+    !call find_set_state_variable("R4_c",&
+    !  is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
+    !call find_set_state_variable("R4_n",&
+    !  is_solid = .true.,density = 1.5E7_rk)
+    !call find_set_state_variable("R4_p",&
+    !  is_solid = .true.,density = 1.5E7_rk*1._rk/16._rk)
+    !call find_set_state_variable("R4_f",&
+    !  is_solid = .true.,density = 1.5E7_rk*5._rk/1260._rk)
+    !!medium-size POM
+    !call find_set_state_variable("R6_c",&
+    !  is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
+    !call find_set_state_variable("R6_n",&
+    !  is_solid = .true.,density = 1.5E7_rk)
+    !call find_set_state_variable("R6_p",&
+    !  is_solid = .true.,density = 1.5E7_rk*1._rk/16._rk)
+    !call find_set_state_variable("R6_s",&
+    !  is_solid = .true.,density = 1.5E7_rk*1._rk/1000._rk)
+    !call find_set_state_variable("R6_f",&
+    !  is_solid = .true.,density = 1.5E7_rk*5._rk/1260._rk)
+    !!large-size POM
+    !call find_set_state_variable("R8_c",&
+    !  is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
+    !call find_set_state_variable("R8_n",&
+    !  is_solid = .true.,density = 1.5E7_rk)
+    !call find_set_state_variable("R8_p",&
+    !  is_solid = .true.,density = 1.5E7_rk*1._rk/16._rk)
+    !call find_set_state_variable("R8_s",&
+    !  is_solid = .true.,density = 1.5E7_rk*1._rk/1000._rk)
+    !!diatoms
+    !call find_set_state_variable("P1_c",&
+    !  is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
+    !call find_set_state_variable("P1_n",&
+    !  is_solid = .true.,density = 1.5E7_rk)
+    !call find_set_state_variable("P1_p",&
+    !  is_solid = .true.,density = 1.5E7_rk*1._rk/16._rk)
+    !call find_set_state_variable("P1_f",&
+    !  is_solid = .true.,density = 1.5E7_rk*5._rk/1260._rk)
+    !call find_set_state_variable("P1_s",& !rios 1998
+    !  is_solid = .true.,density = 1.5E7_rk*6.2_rk/15.7_rk)
+    !call find_set_state_variable("P1_Chl",&
+    !  is_solid = .true.,density = 1.2E7_rk)!1200e6 from wiki
+    !!nanophytoplankton
+    !call find_set_state_variable("P2_c",&
+    !  is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
+    !call find_set_state_variable("P2_n",&
+    !  is_solid = .true.,density = 1.5E7_rk)
+    !call find_set_state_variable("P2_p",&
+    !  is_solid = .true.,density = 1.5E7_rk*1._rk/16._rk)
+    !call find_set_state_variable("P2_f",&
+    !  is_solid = .true.,density = 1.5E7_rk*5._rk/1260._rk)
+    !call find_set_state_variable("P2_Chl",&
+    !  is_solid = .true.,density = 1.2E7_rk)!1200e6 from wiki
+    !!picophytoplankton
+    !call find_set_state_variable("P3_c",&
+    !  is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
+    !call find_set_state_variable("P3_n",&
+    !  is_solid = .true.,density = 1.5E7_rk)
+    !call find_set_state_variable("P3_p",&
+    !  is_solid = .true.,density = 1.5E7_rk*1._rk/16._rk)
+    !call find_set_state_variable("P3_f",&
+    !  is_solid = .true.,density = 1.5E7_rk*5._rk/1260._rk)
+    !call find_set_state_variable("P3_Chl",&
+    !  is_solid = .true.,density = 1.2E7_rk)!1200e6 from wiki
+    !!microphytoplankton
+    !call find_set_state_variable("P4_c",&
+    !  is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
+    !call find_set_state_variable("P4_n",&
+    !  is_solid = .true.,density = 1.5E7_rk)
+    !call find_set_state_variable("P4_p",&
+    !  is_solid = .true.,density = 1.5E7_rk*1._rk/16._rk)
+    !call find_set_state_variable("P4_f",&
+    !  is_solid = .true.,density = 1.5E7_rk*5._rk/1260._rk)
+    !call find_set_state_variable("P4_Chl",&
+    !  is_solid = .true.,density = 1.2E7_rk)!1200e6 from wiki
   end subroutine
 
   function find_state_variable(inname)

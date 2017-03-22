@@ -41,13 +41,6 @@ instances:
       s0: 0.0003 # background si concentration (mmol Si/m^3), default = 0.0
     initialization:
       s: 4.5     # silicate (mmol Si/m^3)
-  N6:
-    long_name: organic iron
-    model: ersem/pelagic_base
-    parameters:
-      composition: f
-    initialization:
-      f: 0.5
   O2:
     long_name: oxygen
     model: ersem/oxygen
@@ -117,7 +110,7 @@ instances:
       kso4:     B_EQ/kso4
       kflu:     B_EQ/kflu
       Kw:       B_EQ/Kw
-      tot_free: B_EQ/tot_free 
+      tot_free: B_EQ/tot_free
       DIC:      B_CARB/DIC
       PO4:      N1/p
       Si:       N5/s
@@ -125,7 +118,7 @@ instances:
       H2S:      B_SULF/H2S
       SO4:      B_SULF/SO4
   B_METH:
-    long_name: methane 
+    long_name: methane
     model: niva/brom_methane
     parameters:
       s_omso_o2: 25.0 # threshold of o2 for OM sulfate reduction
@@ -150,37 +143,37 @@ instances:
       PON: R4/n # small-size pom (mmol N/m^3)
       DON: R1/n # labile dissolved organic matter (mmol N/m^3)
       SO4: B_SULF/SO4
-  B_NITR:
-    long_name: nitrogen_cycle
-    model: niva/brom_nitrogen
-    parameters:
-      # Spec.rate of 1st st. of nitrification
-      K_nitrif1: 0.01
-      # Spec.rate of 2d st. of nitrification
-      K_nitrif2: 0.1
-      # Spec.rate of 1 stage of denitrif
-      K_denitr1: 0.3
-      # Spec.rate of 2 stage of denitrif
-      K_denitr2: 0.20
-      K_omno_no3: 0.001 # Half sat. of no3 for OM denitr. (uM N)
-      K_omno_no2: 0.001 # Half sat. of no2 for OM denitr. (uM N)
-      # Spec.rate of Anammox (1/d) (Gregoire, Lacroix, 2001)
-      K_annamox: 0.8
-      # Threshold of O2 saturation for nitrification (uM)
-      O2s_nf: 5.
-      # Threshold of O2 for denitrification, anammox, Mn reduction (uM O2)
-      O2s_dn: 10.0
-      r_n_p: 16.0  # N[uM]/P[uM]
-      r_c_n: 8.0   # C[uM]/N[uM]
-    coupling:
-      NO2: N2/n # nitrite (mmol N/m^3)
-      NO3: N3/n # nitrate (mmol N/m^3)
-      NH4: N4/n # ammonium (mmol N/m^3)
-      DIC: B_CARB/DIC # carbon dioxide (mmol C/m^3)
-      O2: O2/o # oxygen (mmol O_2/m^3)
-      PON: R4/n # small-size pom (mmol N/m^3)
-      DON: R1/n # labile dissolved organic matter (mmol N/m^3)
-      PO4: N1/p # phosphate (mmol N/m^3)
+  #B_NITR:
+  #  long_name: nitrogen_cycle
+  #  model: niva/brom_nitrogen
+  #  parameters:
+  #    # Spec.rate of 1st st. of nitrification
+  #    K_nitrif1: 0.01
+  #    # Spec.rate of 2d st. of nitrification
+  #    K_nitrif2: 0.1
+  #    # Spec.rate of 1 stage of denitrif
+  #    K_denitr1: 0.3
+  #    # Spec.rate of 2 stage of denitrif
+  #    K_denitr2: 0.20
+  #    K_omno_no3: 0.001 # Half sat. of no3 for OM denitr. (uM N)
+  #    K_omno_no2: 0.001 # Half sat. of no2 for OM denitr. (uM N)
+  #    # Spec.rate of Anammox (1/d) (Gregoire, Lacroix, 2001)
+  #    K_annamox: 0.8
+  #    # Threshold of O2 saturation for nitrification (uM)
+  #    O2s_nf: 5.
+  #    # Threshold of O2 for denitrification, anammox, Mn reduction (uM O2)
+  #    O2s_dn: 10.0
+  #    r_n_p: 16.0  # N[uM]/P[uM]
+  #    r_c_n: 8.0   # C[uM]/N[uM]
+  #  coupling:
+  #    NO2: N2/n # nitrite (mmol N/m^3)
+  #    NO3: N3/n # nitrate (mmol N/m^3)
+  #    NH4: N4/n # ammonium (mmol N/m^3)
+  #    DIC: B_CARB/DIC # carbon dioxide (mmol C/m^3)
+  #    O2: O2/o # oxygen (mmol O_2/m^3)
+  #    PON: R4/n # small-size pom (mmol N/m^3)
+  #    DON: R1/n # labile dissolved organic matter (mmol N/m^3)
+  #    PO4: N1/p # phosphate (mmol N/m^3)
   B_SULF:
     long_name: sulfur_cycle
     model: niva/brom_sulfur
@@ -604,7 +597,6 @@ instances:
       O2o: O2/o # oxygen (mmol O_2/m^3)
       O3c: B_CARB/DIC # carbon dioxide (mmol C/m^3)
       N7f: B_IRON/Fe2
-      RPf: N6/f
   P2:
     long_name: nanophytoplankton
     model: ersem/primary_producer
@@ -674,7 +666,6 @@ instances:
       RainR: L2/RainR # rain ratio (PIC : POC) (-)
       L2c: L2/c # free calcite (mg C/m^3)
       N7f: B_IRON/Fe2
-      RPf: N6/f
   P3:
     long_name: picophytoplankton
     model: ersem/primary_producer
@@ -741,7 +732,6 @@ instances:
       O2o: O2/o # oxygen (mmol O_2/m^3)
       O3c: B_CARB/DIC # carbon dioxide (mmol C/m^3)
       N7f: B_IRON/Fe2
-      RPf: N6/f
   P4:
     long_name: microphytoplankton
     model: ersem/primary_producer
@@ -808,7 +798,6 @@ instances:
       O2o: O2/o # oxygen (mmol O_2/m^3)
       O3c: B_CARB/DIC # carbon dioxide (mmol C/m^3)
       N7f: B_IRON/Fe2
-      RPf: N6/f
   Z4:
     long_name: mesozooplankton
     model: ersem/mesozooplankton
