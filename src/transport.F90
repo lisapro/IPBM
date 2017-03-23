@@ -66,6 +66,7 @@ contains
   !
   subroutine initialize_brom()
     real(rk),allocatable,dimension(:):: air_ice_indexes
+    real(rk),allocatable,dimension(:):: zeros
     !NaN value
     REAL(rk), PARAMETER :: D_QNAN = &
               TRANSFER((/ Z'00000000', Z'7FF80000' /),1.0_rk)
@@ -91,17 +92,19 @@ contains
     !linking state variables to fabm
     number_of_parameters = size(fabm_model%state_variables)
     allocate(state_vars(number_of_parameters))
+    allocate(zeros(number_of_layers))
+    zeros = 0._rk
     do i = 1,number_of_parameters
       state_vars(i)%name = fabm_model%state_variables(i)%name
       allocate(state_vars(i)%value(number_of_layers))
       allocate(state_vars(i)%sinking_velocity(number_of_layers))
       state_vars(i)%value = fabm_model%state_variables(i)%initial_value
       call state_vars(i)%set_brom_state_variable(.false.,.false.,&
-        _NEUMANN_,_NEUMANN_,0._rk,0._rk,0._rk)
+        _NEUMANN_,_NEUMANN_,0._rk,0._rk,0._rk,zeros)
       !vertical movement rates (m/s, positive for upwards),
       !and set these to the values provided by the model.
-      state_vars(i)%sinking_velocity = &
-                    fabm_model%state_variables(i)%vertical_movement
+      !state_vars(i)%sinking_velocity = &
+      !              fabm_model%state_variables(i)%vertical_movement
       !if (fabm_model%state_variables(i)%vertical_movement/=0._rk) then
       !  state_vars(i)%is_solid=.true.
       !  state_vars(i)%density=1.5E7_rk
@@ -251,20 +254,21 @@ contains
     allocate(air_ice_indexes(number_of_days))
     air_ice_indexes = standard_vars%get_column("air_ice_indexes")
 
-    netcdf_ice = type_output(fabm_model,_FILE_NAME_ICE_,&
-                         ice_water_index,number_of_layers,&
-                         number_of_layers)
-    netcdf_water = type_output(fabm_model,_FILE_NAME_WATER_,&
-                         water_bbl_index,ice_water_index-1,&
-                         number_of_layers)
-    netcdf_sediments = type_output(fabm_model,_FILE_NAME_SEDIMENTS_,&
-                         1,water_bbl_index-1,&
-                         number_of_layers)
-
     day = standard_vars%first_day()
     call initial_date(day,year)
-    call stabilize(day,year,ice_water_index)
+    !for testing
+    call first_year_circle(day,year,ice_water_index,&
+                           water_bbl_index,indices)
 
+    netcdf_ice = type_output(fabm_model,_FILE_NAME_ICE_,&
+                             ice_water_index,number_of_layers,&
+                             number_of_layers)
+    netcdf_water = type_output(fabm_model,_FILE_NAME_WATER_,&
+                               water_bbl_index,ice_water_index-1,&
+                               number_of_layers)
+    netcdf_sediments = type_output(fabm_model,_FILE_NAME_SEDIMENTS_,&
+                                   1,water_bbl_index-1,&
+                                   number_of_layers)
     do i = 1,number_of_days
       call date(day,year)
       !ice   = standard_vars%get_value(_ICE_THICKNESS_,i)
@@ -876,9 +880,17 @@ contains
     end do
   end subroutine brom_do_sedimentation
 
-  subroutine stabilize(inday,inyear,ice_water_index)
-    integer,intent(in):: inday,inyear,ice_water_index
+  subroutine first_year_circle(inday,inyear,ice_water_index,&
+                               water_bbl_index,indices)
+    use output_mod
 
+    integer,intent(in):: inday,inyear
+    integer,intent(in):: ice_water_index,water_bbl_index
+    real(rk),allocatable,intent(in):: indices(:)
+    
+    type(type_output):: netcdf_ice
+    type(type_output):: netcdf_water
+    type(type_output):: netcdf_sediments
     integer day,year
     integer pseudo_day,days_in_year,counter
     integer i
@@ -889,7 +901,17 @@ contains
              standard_vars%get_column("air_ice_indexes"))
     day = inday; year = inyear;
     days_in_year = 365+merge(1,0,(mod(year,4).eq.0))
-    counter = days_in_year*1
+    counter = days_in_year*10
+
+    netcdf_ice = type_output(fabm_model,'ice_year.nc',&
+                         ice_water_index,number_of_layers,&
+                         number_of_layers)
+    netcdf_water = type_output(fabm_model,'water_year.nc',&
+                         water_bbl_index,ice_water_index-1,&
+                         number_of_layers)
+    netcdf_sediments = type_output(fabm_model,'sediments_year.nc',&
+                         1,water_bbl_index-1,&
+                         number_of_layers)
     do i = 1,counter
       !day from 1 to 365 or 366
       if (mod(i,days_in_year).eq.0) then
@@ -899,7 +921,11 @@ contains
                      days_in_year
       end if
 
+      !for netcdf output
+      depth = standard_vars%get_column("middle_layer_depths",pseudo_day)
+      
       call date(day,year)
+      year = inyear
       !change surface index due to ice depth
       !index for boundaries so for layers it should be -1
       surface_index = air_ice_indexes(pseudo_day)
@@ -944,6 +970,17 @@ contains
            value=sinusoidal(day,2._rk),layer=ice_water_index-1)
 
       call day_circle(pseudo_day,surface_index)
+      
+      call netcdf_ice%save(fabm_model,state_vars,indices,pseudo_day,&
+                           temp,salt,depth,radiative_flux,&
+                           int(air_ice_indexes(pseudo_day)))
+      call netcdf_water%save(fabm_model,state_vars,depth,pseudo_day,&
+                             temp,salt,depth,radiative_flux,&
+                             int(air_ice_indexes(pseudo_day)))
+      call netcdf_sediments%save(fabm_model,state_vars,depth,pseudo_day,&
+                                 temp,salt,depth,radiative_flux,&
+                                 int(air_ice_indexes(pseudo_day)))
+      
       write(*,*) "Stabilizing initial array of values, in progress ..."
       write(*,*) "number / ","julianday / ","pseudo day",&
                  i,day,pseudo_day
