@@ -513,14 +513,14 @@ contains
         state_vars(j)%value(:surface_index-1) = &
           state_vars(j)%value(:surface_index-1)+increment(:,j)
       !sedimentation
-      !call brom_do_sedimentation(surface_index,bbl_sed_index,&
-      !                           k_sed1,w_b,u_b,&
-      !                           dphidz_SWI,&
-      !                           increment,&
-      !                           face_porosity(:surface_index),&
-      !                           kz_bio(:surface_index),&
-      !                           layer_thicknesses(2:surface_index),&
-      !                           dz(:surface_index-2))
+      call brom_do_sedimentation(surface_index,bbl_sed_index,&
+                                 k_sed1,w_b,u_b,&
+                                 dphidz_SWI,&
+                                 increment,&
+                                 face_porosity(:surface_index),&
+                                 kz_bio(:surface_index),&
+                                 layer_thicknesses(2:surface_index),&
+                                 dz(:surface_index-2))
     end do
   end subroutine
 
@@ -986,6 +986,9 @@ contains
                  i,day,pseudo_day
       day = day+1
     end do
+    call netcdf_ice%close()
+    call netcdf_water%close()
+    call netcdf_sediments%close()
   end subroutine
 
   subroutine recalculate_ice(id)
