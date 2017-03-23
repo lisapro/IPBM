@@ -263,7 +263,7 @@ contains
 
     day = standard_vars%first_day()
     call initial_date(day,year)
-    !call stabilize(day,year,ice_water_index)
+    call stabilize(day,year,ice_water_index)
 
     do i = 1,number_of_days
       call date(day,year)
