@@ -7,10 +7,10 @@
 #define _RHO_                       'rho'
 #define _TURBULENCE_                'AKs'
 #define _ICE_THICKNESS_             'hice'
-#define _SNOW_THICKNESS_			      'snow_thick'
+#define _SNOW_THICKNESS_            'snow_thick'
 #define _ICE_SURFACE_TEMPERATURE_   'tisrf'
 
-#define _FILE_NAME_ICE_				      'ice.nc'
+#define _FILE_NAME_ICE_             'ice.nc'
 #define _FILE_NAME_WATER_           'water.nc'
 #define _FILE_NAME_SEDIMENTS_       'sediments.nc'
 
@@ -25,5 +25,23 @@
 #define _WIDTH_SEDIMENTS_           0.1_rk
 #define _RESOLUTION_SEDIMENTS_      0.02_rk
 
-#define _ICE_LAYERS_                5
 #define _ICE_LAYERS_RESOLUTION_     0.03_rk
+
+#define _Alk_                       'B_C_Alk'
+#define _PO4_                       'B_NUT_PO4'
+#define _NO3_                       'B_NUT_NO3'
+#define _Si_                        'B_NUT_Si'
+#define _NH4_                       'B_NUT_NH4'
+#define _O2_                        'B_BIO_O2'
+#define _H2S_                       'B_S_H2S'
+#define _CH4_                       'B_CH4_CH4'
+#define _CaCO3_                     'B_Ca_CaCO3'
+#define _S0_                        'B_S_S0'
+#define _Fe3_                       'B_Fe_Fe3'
+#define _FeCO3_                     'B_Fe_FeCO3'
+#define _FeS_                       'B_Fe_FeS'
+#define _FeS2_                      'B_Fe_FeS2'
+#define _Mn4_                       'B_Mn_Mn4'
+#define _MnCO3_                     'B_Mn_MnCO3'
+#define _MnS_                       'B_Mn_MnS'
+#define _Sipart_                    'B_Si_Sipart'

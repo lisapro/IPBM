@@ -303,20 +303,17 @@ contains
       !call fabm_link_horizontal_data(fabm_model,taub_id,taub)
 
       !setting inflows as constant concentrations
-      call find_set_state_variable("B_MANG_Mn4",&
+      call find_set_state_variable(_Mn4_,&
            value=0.5e-4_rk,layer=ice_water_index-1)
-      call find_set_state_variable("B_IRON_Fe3",&
+      call find_set_state_variable(_Fe3_,&
            value=0.4e-4_rk,layer=ice_water_index-1)
-      call find_set_state_variable("B_CARB_Alk",&
+      call find_set_state_variable(_Alk_,&
            value=2300._rk,layer=ice_water_index-1)
-      !call find_set_state_variable("N1_p",&
-      call find_set_state_variable("B_NUTR_PO4",&
+      call find_set_state_variable(_PO4_,&
            value=sinusoidal(day,0.45_rk),layer=ice_water_index-1)
-      !call find_set_state_variable("N3_n",&
-      call find_set_state_variable("B_NUTR_NO3",&
+      call find_set_state_variable(_NO3_,&
            value=sinusoidal(day,3.8_rk),layer=ice_water_index-1)
-      !call find_set_state_variable("N5_s",&
-      call find_set_state_variable("B_NUTR_Si",&
+      call find_set_state_variable(_Si_,&
            value=sinusoidal(day,2._rk),layer=ice_water_index-1)
 
       call cpu_time(t1)
@@ -512,14 +509,14 @@ contains
         state_vars(j)%value(:surface_index-1) = &
           state_vars(j)%value(:surface_index-1)+increment(:,j)
       !sedimentation
-      call brom_do_sedimentation(surface_index,bbl_sed_index,&
-                                 k_sed1,w_b,u_b,&
-                                 dphidz_SWI,&
-                                 increment,&
-                                 face_porosity(:surface_index),&
-                                 kz_bio(:surface_index),&
-                                 layer_thicknesses(2:surface_index),&
-                                 dz(:surface_index-2))
+      !call brom_do_sedimentation(surface_index,bbl_sed_index,&
+      !                           k_sed1,w_b,u_b,&
+      !                           dphidz_SWI,&
+      !                           increment,&
+      !                           face_porosity(:surface_index),&
+      !                           kz_bio(:surface_index),&
+      !                           layer_thicknesses(2:surface_index),&
+      !                           dz(:surface_index-2))
     end do
   end subroutine
 
@@ -563,7 +560,7 @@ contains
     taur_r= 1.e20_rk
 
     !oxygen = find_state_variable("O2_o")
-    oxygen = find_state_variable("B_BIO_O2")
+    oxygen = find_state_variable(_O2_)
     !oxygen status of sediments
     O2stat = oxygen%value(bbl_sed_index)/&
       (oxygen%value(bbl_sed_index)+_KO2_)
@@ -789,8 +786,7 @@ contains
     !where w_1cinf can be approximated by the deepest value of w_1c
     !
 
-    !oxygen = find_state_variable("O2_o")
-    oxygen = find_state_variable("B_BIO_O2")
+    oxygen = find_state_variable(_O2_)
     !oxygen status of sediments set by O2
     !level just above sediment surface
     O2stat = oxygen%value(bbl_sed_index)/&
@@ -934,20 +930,17 @@ contains
       !call fabm_link_horizontal_data(fabm_model,taub_id,taub)
 
       !setting inflows as constant concentrations
-      call find_set_state_variable("B_MANG_Mn4",&
+      call find_set_state_variable(_Mn4_,&
            value=0.5e-4_rk,layer=ice_water_index-1)
-      call find_set_state_variable("B_IRON_Fe3",&
+      call find_set_state_variable(_Fe3_,&
            value=0.4e-4_rk,layer=ice_water_index-1)
-      call find_set_state_variable("B_CARB_Alk",&
+      call find_set_state_variable(_Alk_,&
            value=2300._rk,layer=ice_water_index-1)
-      !call find_set_state_variable("N1_p",&
-      call find_set_state_variable("B_NUTR_PO4",&
+      call find_set_state_variable(_PO4_,&
            value=sinusoidal(day,0.45_rk),layer=ice_water_index-1)
-      !call find_set_state_variable("N3_n",&
-      call find_set_state_variable("B_NUTR_NO3",&
+      call find_set_state_variable(_NO3_,&
            value=sinusoidal(day,3.8_rk),layer=ice_water_index-1)
-      !call find_set_state_variable("N5_s",&
-      call find_set_state_variable("B_NUTR_Si",&
+      call find_set_state_variable(_Si_,&
            value=sinusoidal(day,2._rk),layer=ice_water_index-1)
 
       call day_circle(pseudo_day,surface_index)
@@ -1049,39 +1042,36 @@ contains
 
   subroutine configurate_state_variables()
     !ammonium NH4+
-    !call find_set_state_variable("N4_n",is_gas = .true.)
-    call find_set_state_variable("B_NUTR_NH4",is_gas = .true.)
+    call find_set_state_variable(_NH4_,is_gas = .true.)
     !oxygen O2
-    !call find_set_state_variable("O2_o",is_gas = .true.)
-    call find_set_state_variable("B_BIO_O2",is_gas = .true.)
-    call find_set_state_variable("B_SULF_H2S",is_gas = .true.)
-    call find_set_state_variable("B_METH_CH4",is_gas = .true.)
+    call find_set_state_variable(_O2_,is_gas = .true.)
+    call find_set_state_variable(_H2S_,is_gas = .true.)
+    call find_set_state_variable(_CH4_,is_gas = .true.)
 
     !calcite - CaCO3
-    !call find_set_state_variable("L2_c",&
-    call find_set_state_variable("B_CALC_CaCO3",&
+    call find_set_state_variable(_CaCO3_,&
       is_solid = .true.,density = 2.80E7_rk)
     !S0
-    call find_set_state_variable("B_SULF_S0",&
+    call find_set_state_variable(_S0_,&
       is_solid = .true.,density = 6.56E7_rk)
     !Fe
-    call find_set_state_variable("B_IRON_Fe3",&
+    call find_set_state_variable(_Fe3_,&
       is_solid = .true.,density = 3.27E7_rk)
-    call find_set_state_variable("B_IRON_FeCO3",&
+    call find_set_state_variable(_FeCO3_,&
       is_solid = .true.,density = 2.93E7_rk)
-    call find_set_state_variable("B_IRON_FeS",&
+    call find_set_state_variable(_FeS_,&
       is_solid = .true.,density = 5.90E7_rk)
-    call find_set_state_variable("B_IRON_FeS2",&
+    call find_set_state_variable(_FeS2_,&
       is_solid = .true.,density = 4.17E7_rk)
     !Mn
-    call find_set_state_variable("B_MANG_Mn4",&
+    call find_set_state_variable(_Mn4_,&
       is_solid = .true.,density = 5.78E7_rk)
-    call find_set_state_variable("B_MANG_MnCO3",&
+    call find_set_state_variable(_MnCO3_,&
       is_solid = .true.,density = 3.20E7_rk)
-    call find_set_state_variable("B_MANG_MnS",&
+    call find_set_state_variable(_MnS_,&
       is_solid = .true.,density = 4.60E7_rk)
     !Silicon particulate
-    call find_set_state_variable("B_SILI_Sipart",&
+    call find_set_state_variable(_Sipart_,&
       is_solid = .true.,density = 4.40E7_rk)
     !organic compounds
     !!small-size POM
