@@ -41,13 +41,6 @@ instances:
       s0: 0.0003 # background si concentration (mmol Si/m^3), default = 0.0
     initialization:
       s: 4.5     # silicate (mmol Si/m^3)
-  N6:
-    long_name: organic iron
-    model: ersem/pelagic_base
-    parameters:
-      composition: f
-    initialization:
-      f: 0.5
   N7:
     long_name: inorganic iron
     model: ersem/pelagic_base
@@ -314,7 +307,6 @@ instances:
       O2o: O2/o # oxygen (mmol O_2/m^3)
       O3c: O3/c # carbon dioxide (mmol C/m^3)
       N7f: N7/f
-      RPf: N6/f
   P2:
     long_name: nanophytoplankton
     model: ersem/primary_producer
@@ -384,7 +376,6 @@ instances:
       RainR: L2/RainR # rain ratio (PIC : POC) (-)
       L2c: L2/c # free calcite (mg C/m^3)
       N7f: N7/f
-      RPf: N6/f
   P3:
     long_name: picophytoplankton
     model: ersem/primary_producer
@@ -451,7 +442,6 @@ instances:
       O2o: O2/o # oxygen (mmol O_2/m^3)
       O3c: O3/c # carbon dioxide (mmol C/m^3)
       N7f: N7/f
-      RPf: N6/f
   P4:
     long_name: microphytoplankton
     model: ersem/primary_producer
@@ -518,7 +508,6 @@ instances:
       O2o: O2/o # oxygen (mmol O_2/m^3)
       O3c: O3/c # carbon dioxide (mmol C/m^3)
       N7f: N7/f
-      RPf: N6/f
   Z4:
     long_name: mesozooplankton
     model: ersem/mesozooplankton

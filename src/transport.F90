@@ -500,18 +500,18 @@ contains
     do i = 1,number_of_circles
       dcc = 0._rk
       !diffusion
-      !call brom_do_diffusion(surface_index,bbl_sed_index,ice_water_index,&
-      !                       pF1_solutes,pF2_solutes,pF1_solids,&
-      !                       pF2_solids,kz_mol,kz_bio,kz_turb,&
-      !                       layer_thicknesses,dcc)
+      call brom_do_diffusion(surface_index,bbl_sed_index,ice_water_index,&
+                             pF1_solutes,pF2_solutes,pF1_solids,&
+                             pF2_solids,kz_mol,kz_bio,kz_turb,&
+                             layer_thicknesses,dcc)
       !biogeochemistry
       call fabm_check_state(fabm_model,1,surface_index-1,repair,valid)
       increment = 0._rk
       call fabm_do(fabm_model,1,surface_index-1,increment)
-      !increment = _SECONDS_PER_CIRCLE_*increment
-      !forall(j = 1:number_of_parameters)&
-      !  state_vars(j)%value(:surface_index-1) = &
-      !    state_vars(j)%value(:surface_index-1)+increment(:,j)
+      increment = _SECONDS_PER_CIRCLE_*increment
+      forall(j = 1:number_of_parameters)&
+        state_vars(j)%value(:surface_index-1) = &
+          state_vars(j)%value(:surface_index-1)+increment(:,j)
       !sedimentation
       call brom_do_sedimentation(surface_index,bbl_sed_index,&
                                  k_sed1,w_b,u_b,&
@@ -841,9 +841,9 @@ contains
         dz(bbl_sed_index:surface_index-2)
       !Sediment layer interfaces, including SWI
       if (state_vars(ip)%is_solid) then
-        wti(k_sed1,ip) = u_b(k_sed1)+u_1(k_sed1)+u_1c(k_sed1)
-      else
         wti(k_sed1,ip) = w_b(k_sed1)+w_1(k_sed1)+w_1c(k_sed1)
+      else
+        wti(k_sed1,ip) = u_b(k_sed1)+u_1(k_sed1)+u_1c(k_sed1)
       end if
       wti(1,ip) = wti(2,ip)
     end do
