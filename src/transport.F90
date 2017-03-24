@@ -500,18 +500,18 @@ contains
     do i = 1,number_of_circles
       dcc = 0._rk
       !diffusion
-      call brom_do_diffusion(surface_index,bbl_sed_index,ice_water_index,&
-                             pF1_solutes,pF2_solutes,pF1_solids,&
-                             pF2_solids,kz_mol,kz_bio,kz_turb,&
-                             layer_thicknesses,dcc)
+      !call brom_do_diffusion(surface_index,bbl_sed_index,ice_water_index,&
+      !                       pF1_solutes,pF2_solutes,pF1_solids,&
+      !                       pF2_solids,kz_mol,kz_bio,kz_turb,&
+      !                       layer_thicknesses,dcc)
       !biogeochemistry
       call fabm_check_state(fabm_model,1,surface_index-1,repair,valid)
       increment = 0._rk
       call fabm_do(fabm_model,1,surface_index-1,increment)
-      increment = _SECONDS_PER_CIRCLE_*increment
-      forall(j = 1:number_of_parameters)&
-        state_vars(j)%value(:surface_index-1) = &
-          state_vars(j)%value(:surface_index-1)+increment(:,j)
+      !increment = _SECONDS_PER_CIRCLE_*increment
+      !forall(j = 1:number_of_parameters)&
+      !  state_vars(j)%value(:surface_index-1) = &
+      !    state_vars(j)%value(:surface_index-1)+increment(:,j)
       !sedimentation
       call brom_do_sedimentation(surface_index,bbl_sed_index,&
                                  k_sed1,w_b,u_b,&
@@ -887,7 +887,7 @@ contains
     integer,intent(in):: inday,inyear
     integer,intent(in):: ice_water_index,water_bbl_index
     real(rk),allocatable,intent(in):: indices(:)
-    
+
     type(type_output):: netcdf_ice
     type(type_output):: netcdf_water
     type(type_output):: netcdf_sediments
@@ -923,7 +923,7 @@ contains
 
       !for netcdf output
       depth = standard_vars%get_column("middle_layer_depths",pseudo_day)
-      
+
       call date(day,year)
       year = inyear
       !change surface index due to ice depth
@@ -970,7 +970,7 @@ contains
            value=sinusoidal(day,2._rk),layer=ice_water_index-1)
 
       call day_circle(pseudo_day,surface_index)
-      
+
       call netcdf_ice%save(fabm_model,state_vars,indices,pseudo_day,&
                            temp,salt,depth,radiative_flux,&
                            int(air_ice_indexes(pseudo_day)))
@@ -980,7 +980,7 @@ contains
       call netcdf_sediments%save(fabm_model,state_vars,depth,pseudo_day,&
                                  temp,salt,depth,radiative_flux,&
                                  int(air_ice_indexes(pseudo_day)))
-      
+
       write(*,*) "Stabilizing initial array of values, in progress ..."
       write(*,*) "number / ","julianday / ","pseudo day",&
                  i,day,pseudo_day
