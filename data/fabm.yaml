@@ -83,8 +83,8 @@ instances:
       Hplus:  B_pH/Hplus
     parameters:
 # ---- Phy  ----------
-      K_phy_gro: 2.5 #3. #4.7        # Maximum specific growth rate (1/d) = 0.9-1.3 (Savchuk, 2002), = 3.(Gregoire, Lacroix, 2001) >!0.5 worked for Berre!<
-      Iopt: 25.             # Optimal irradiance (W/m2) =50 (Savchuk, 2002)
+      K_phy_gro: 2.5        # Maximum specific growth rate (1/d) = 0.9-1.3 (Savchuk, 2002), = 3.(Gregoire, Lacroix, 2001) >!0.5 worked for Berre!<
+      Iopt: 10.             # Optimal irradiance (W/m2) =50 (Savchuk, 2002)
       K_phy_mrt: 0.10       # Specific rate of mortality, (1/d) = 0.3-0.6 (Savchuk, 2002), = 0.05 (Gregoire, Lacroix, 2001)
       K_phy_exc: 0.10       # Specific rate of excretion, (1/d) = 0.01 (Burchard et al., 2006)
 # ----Het -----------
@@ -268,8 +268,8 @@ instances:
     long_name: iron
     model: niva/brom_fe
     initialization:
-      Fe2:    0.5
-      Fe3:    0.5
+      Fe2:    0.0
+      Fe3:    0.004
       FeS:    0.0
       FeCO3:  0.0
       FeS2:   0.0
@@ -338,7 +338,7 @@ instances:
     long_name: manganese
     model: niva/brom_manganese
     initialization:
-      Mn2:    0.5
+      Mn2:    0.0
       Mn3:    0.0
       Mn4:    0.0
       MnS:    0.0
@@ -443,9 +443,9 @@ instances:
       resm: 5.0 # maximum nutrient-limitation-induced sinking velocity (m/d), default = 0.0
       esni: 0.7 # level of nutrient limitation below which sinking commences (-)
       cenh: false # enable atmospheric CO2 influence on photosynthesis, default = false
-      qflc: 5.e-5 # minimum iron to carbon ratio
-      qfRc: 5.e-4 # maximum/optimal iron to carbon ratio
-      qurf: 3.e-4 # specific affinity for iron
+      #qflc: 5.e-5 # minimum iron to carbon ratio
+      #qfRc: 5.e-4 # maximum/optimal iron to carbon ratio
+      #qurf: 3.e-4 # specific affinity for iron
       ndeposition: 3 # number of target pools for sedimentation, default = 1
       qxc2: 0.2 # fraction of carbon sinking into deposition target 2 (-)
       qxc3: 0.005 # fraction of carbon sinking into deposition target 3 (-)
@@ -455,20 +455,21 @@ instances:
       qxp3: 0.003 # fraction of phosphorus sinking into deposition target 3 (-)
       qxs2: 0.0 # fraction of silicate sinking into deposition target 2 (-)
       qxs3: 0.0 # fraction of silicate sinking into deposition target 3 (-)
-      qxf2: 0.0
-      qxf3: 0.0
+      #qxf2: 0.0
+      #qxf3: 0.0
     initialization:
       c: 8.0 # carbon (mg C/m^3)
       n: 0.1114 # nitrogen (mmol N/m^3)
       p: 0.009 # phosphorus (mmol P/m^3)
       s: 0.128 # silicate (mmol Si/m^3)
+      #f: 0.004
       Chl: 0.4 # chlorophyll a (mg/m^3)
     coupling:
       RPc: R6/c
       RPn: B_BIO/PON
       RPp: R6/p
       RPs: R6/s
-      RPf: R6/f
+      #RPf: B_Fe/Fe3
       R1c: R1/c # dissolved organic carbon (mg C/m^3)
       R1p: R1/p # dissolved organic phosphorus (mmol P/m^3)
       R1n: B_BIO/DON # dissolved organic nitrogen (mmol N/m^3)
@@ -482,7 +483,7 @@ instances:
       N5s: B_NUT/Si # silicate (mmol Si/m^3)
       O2o: B_BIO/O2 # oxygen (mmol O_2/m^3)
       O3c: B_C/DIC # carbon dioxide (mmol C/m^3)
-      N7f: B_Fe/Fe3
+      #N7f: B_Fe/Fe3
   R1:
     long_name: labile dissolved organic matter
     model: ersem/pelagic_base
@@ -554,7 +555,7 @@ instances:
       N3n: B_NUT/NO3 # nitrate (mmol N/m^3)
       N4n: B_NUT/NH4 # ammonium (mmol N/m^3)
       N5s: B_NUT/Si # silicate (mmol Si/m^3)
-      N7f: B_Fe/Fe3
+      #N7f: B_Fe/Fe3
   Q7:
     long_name: benthic refractory matter
     model: ersem/benthic_base

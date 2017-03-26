@@ -256,7 +256,7 @@ contains
 
     day = standard_vars%first_day()
     call initial_date(day,year)
-    !for testing
+    !cycle first year 10 times
     call first_year_circle(day,year,ice_water_index,&
                            water_bbl_index,indices)
 
@@ -306,22 +306,8 @@ contains
       !bottom stress - ersem
       !call fabm_link_horizontal_data(fabm_model,taub_id,taub)
 
-      !setting inflows as constant concentrations
-      call find_set_state_variable(_Mn4_,&
-           value=0.5e-4_rk,layer=ice_water_index-1)
-      call find_set_state_variable(_Fe3_,&
-           value=0.4e-4_rk,layer=ice_water_index-1)
-      call find_set_state_variable(_Alk_,&
-           value=2300._rk,layer=ice_water_index-1)
-      call find_set_state_variable(_PO4_,&
-           value=sinusoidal(day,0.45_rk),layer=ice_water_index-1)
-      call find_set_state_variable(_NO3_,&
-           value=sinusoidal(day,3.8_rk),layer=ice_water_index-1)
-      call find_set_state_variable(_Si_,&
-           value=sinusoidal(day,2._rk),layer=ice_water_index-1)
-
       call cpu_time(t1)
-      call day_circle(i,surface_index)
+      call day_circle(i,surface_index,day)
       call netcdf_ice%save(fabm_model,state_vars,indices,i,&
                            temp,salt,depth,radiative_flux,&
                            int(air_ice_indexes(i)))
@@ -409,6 +395,7 @@ contains
         radiative_flux(ice_water_index)*&
         exp(-_ERLOV_*depth(:ice_water_index-1))
     end if
+    radiative_flux = _PAR_PART_*radiative_flux
   end subroutine
 
   pure function sinusoidal(julian_day,multiplier)
@@ -420,9 +407,10 @@ contains
                   julian_day-40._rk)/365._rk))*multiplier
   end function
 
-  subroutine day_circle(id,surface_index)
+  subroutine day_circle(id,surface_index,day)
     integer,intent(in):: id !number of the count
     integer,intent(in):: surface_index
+    integer,intent(in):: day !julianday
 
     real(rk),dimension(number_of_layers+1):: face_porosity
     real(rk),dimension(number_of_layers+1):: pF1_solutes
@@ -497,6 +485,8 @@ contains
       number_of_circles = int(60*60*24/_SECONDS_PER_CIRCLE_)
     end if
     call recalculate_ice(id)
+    !sets inflow on ice_water_index-1(water surface)
+    call inflow(ice_water_index,day)
     do i = 1,number_of_circles
       dcc = 0._rk
       !diffusion
@@ -955,21 +945,7 @@ contains
       !bottom stress - ersem
       !call fabm_link_horizontal_data(fabm_model,taub_id,taub)
 
-      !setting inflows as constant concentrations
-      call find_set_state_variable(_Mn4_,&
-           value=0.5e-4_rk,layer=ice_water_index-1)
-      call find_set_state_variable(_Fe3_,&
-           value=0.4e-4_rk,layer=ice_water_index-1)
-      call find_set_state_variable(_Alk_,&
-           value=2300._rk,layer=ice_water_index-1)
-      call find_set_state_variable(_PO4_,&
-           value=sinusoidal(day,0.45_rk),layer=ice_water_index-1)
-      call find_set_state_variable(_NO3_,&
-           value=sinusoidal(day,3.8_rk),layer=ice_water_index-1)
-      call find_set_state_variable(_Si_,&
-           value=sinusoidal(day,2._rk),layer=ice_water_index-1)
-
-      call day_circle(pseudo_day,surface_index)
+      call day_circle(pseudo_day,surface_index,day)
 
       call netcdf_ice%save(fabm_model,state_vars,indices,pseudo_day,&
                            temp,salt,depth,radiative_flux,&
@@ -1152,8 +1128,8 @@ contains
       is_solid = .true.,density = 1.5E7_rk)
     call find_set_state_variable("P1_p",&
       is_solid = .true.,density = 1.5E7_rk*1._rk/16._rk)
-    call find_set_state_variable("P1_f",&
-      is_solid = .true.,density = 1.5E7_rk*5._rk/1260._rk)
+    !call find_set_state_variable("P1_f",&
+    !  is_solid = .true.,density = 1.5E7_rk*5._rk/1260._rk)
     call find_set_state_variable("P1_s",& !rios 1998
       is_solid = .true.,density = 1.5E7_rk*6.2_rk/15.7_rk)
     call find_set_state_variable("P1_Chl",&
@@ -1192,7 +1168,27 @@ contains
     !call find_set_state_variable("P4_Chl",&
     !  is_solid = .true.,density = 1.2E7_rk)!1200e6 from wiki
   end subroutine
-
+  !
+  !sets inflows on ice_water_index-1(water_surface)
+  !
+  subroutine inflow(ice_water_index,day)
+    integer,intent(in):: ice_water_index
+    integer,intent(in):: day
+    
+    call find_set_state_variable(_Mn4_,&
+         value=0.5e-4_rk,layer=ice_water_index-1)
+    call find_set_state_variable(_Fe3_,&
+         value=0.4e-4_rk,layer=ice_water_index-1)
+    call find_set_state_variable(_Alk_,&
+         value=2300._rk,layer=ice_water_index-1)
+    call find_set_state_variable(_PO4_,&
+         value=sinusoidal(day,0.45_rk),layer=ice_water_index-1)
+    call find_set_state_variable(_NO3_,&
+         value=sinusoidal(day,3.8_rk),layer=ice_water_index-1)
+    call find_set_state_variable(_Si_,&
+         value=sinusoidal(day,2._rk),layer=ice_water_index-1)
+  end subroutine
+  
   function find_state_variable(inname)
     character(len=*),intent(in):: inname
     type(brom_state_variable):: find_state_variable
