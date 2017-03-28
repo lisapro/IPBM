@@ -6,5 +6,5 @@ CWD=`pwd`
 cp data/* build &&
 cd build && cmake $CWD/src -DFABM_BASE=$FABMDIR \
                            -DFABM_ERSEM_BASE=$CWD/../ersem \
-                           -DERSEM_USE_IRON=ON \
 -DFABM_NIVA_BASE=$CWD/../brom_niva_module -DCMAKE_BUILD_TYPE=Release
+#                           -DERSEM_USE_IRON=ON \
