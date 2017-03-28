@@ -1,5 +1,8 @@
 build/
 *~
 data/sediments.nc
+data/sediments_year.nc
 data/water.nc
+data/water_year.nc
 data/ice.nc
+data/ice_year.nc
