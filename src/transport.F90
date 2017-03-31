@@ -860,6 +860,11 @@ contains
       !except diatoms
       if (ip/=i) then
         wti(ice_water_index:surface_index,ip) = 0._rk
+      else
+        !to decrease sinking velocity of diatoms in the ice core
+        wti(ice_water_index:surface_index,ip) = &
+          wti(ice_water_index:surface_index,ip)/10._rk
+        wti(ice_water_index,ip) = 0._rk
       end if
     end do
 
