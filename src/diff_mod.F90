@@ -138,7 +138,7 @@ contains
     ! index to indentify the cell just below the SWI
     integer,  intent(in)                :: i_sed_top
     logical,  intent(in)                :: is_solid
-    ! for gases handling in ice core
+    ! for gases handling in the ice core
     integer,  intent(in)                :: i_ice_water
     logical,  intent(in)                :: is_gas
     ! porosity factors
@@ -166,6 +166,7 @@ contains
     real(rk), dimension(0:N)  :: au,bu,cu,du
 
     !choose btw solute, solid and gas
+    !in ice maybe a problem
     if (.not.is_solid) then
       if (.not.is_gas) then
         pF = pF1_solutes

@@ -83,7 +83,7 @@ instances:
       Hplus:  B_pH/Hplus
     parameters:
 # ---- Phy  ----------
-      K_phy_gro: 0. #2.5        # Maximum specific growth rate (1/d) = 0.9-1.3 (Savchuk, 2002), = 3.(Gregoire, Lacroix, 2001) >!0.5 worked for Berre!<
+      K_phy_gro: 2.5        # Maximum specific growth rate (1/d) = 0.9-1.3 (Savchuk, 2002), = 3.(Gregoire, Lacroix, 2001) >!0.5 worked for Berre!<
       Iopt: 10.             # Optimal irradiance (W/m2) =50 (Savchuk, 2002)
       K_phy_mrt: 0.10       # Specific rate of mortality, (1/d) = 0.3-0.6 (Savchuk, 2002), = 0.05 (Gregoire, Lacroix, 2001)
       K_phy_exc: 0.10       # Specific rate of excretion, (1/d) = 0.01 (Burchard et al., 2006)
