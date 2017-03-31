@@ -222,7 +222,7 @@ contains
     end if
     _LINE_
   end subroutine
-  
+
   function get_array(self,inname)
     real(rk),allocatable:: get_array(:,:)
     class(list_variables),intent(in):: self
@@ -239,7 +239,7 @@ contains
                        "Wrong variable")
     end select
   end function
-  
+
   function get_column(self,inname,column)
     real(rk),allocatable:: get_column(:)
     class(list_variables),intent(in):: self

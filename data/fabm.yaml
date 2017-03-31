@@ -512,8 +512,8 @@ instances:
       gutdiss: 0.5 # fraction of prey calcite that dissolves after ingestion (-)
       c0: 0.0033 # background concentration (mg C/m^3)
       nprey: 2 # number of prey types, default = 0
-      suprey1: 0.9 # relative affinity for prey type 1 (-)
-      suprey2: 0.1 # relative affinity for prey type 1 (-)
+      suprey1: 0.5 # relative affinity for prey type 1 (-)
+      suprey2: 0.5 # relative affinity for prey type 1 (-)
       #suprey2: 0.05 # relative affinity for prey type 2 (-)
       #suprey3: 0.0 # relative affinity for prey type 3 (-)
       #suprey4: 0.15 # relative affinity for prey type 4 (-)

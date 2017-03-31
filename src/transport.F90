@@ -420,12 +420,14 @@ contains
     real(rk),dimension(number_of_layers+1):: kz_mol
     real(rk),dimension(number_of_layers+1):: kz_bio
     real(rk),dimension(number_of_layers+1):: kz_turb
+    real(rk),dimension(number_of_layers+1):: kz_ice_gravity
     real(rk),dimension(number_of_layers+1):: layer_thicknesses
     real(rk),dimension(number_of_layers-1):: dz
     !indices of layer interfaces in the sediments including the SWI
     real(rk),dimension(:),allocatable:: k_sed1
     real(rk),dimension(:),allocatable:: w_b
     real(rk),dimension(:),allocatable:: u_b
+    real(rk) brine_release
     real(rk) dphidz_SWI
     integer i,j,bbl_sed_index,ice_water_index
     integer number_of_circles
@@ -458,6 +460,7 @@ contains
     kz_mol = standard_vars%get_column("molecular_diffusivity",id)
     kz_bio = standard_vars%get_column("bioturbation_diffusivity",id)
     kz_turb = standard_vars%get_column(_TURBULENCE_,id)
+    kz_ice_gravity = standard_vars%get_column("ice_gravity_drainage",id)
     !first zero for gotm diff solver
     layer_thicknesses = &
     (/ 0._rk,standard_vars%get_column("layer_thicknesses",id) /)
@@ -484,7 +487,7 @@ contains
     else
       number_of_circles = int(60*60*24/_SECONDS_PER_CIRCLE_)
     end if
-    call recalculate_ice(id)
+    call recalculate_ice(id,brine_release)
     !sets inflow on ice_water_index-1(water surface)
     call inflow(ice_water_index,day)
     do i = 1,number_of_circles
@@ -492,8 +495,8 @@ contains
       !diffusion
       call brom_do_diffusion(surface_index,bbl_sed_index,ice_water_index,&
                              pF1_solutes,pF2_solutes,pF1_solids,&
-                             pF2_solids,kz_mol,kz_bio,kz_turb,&
-                             layer_thicknesses,dcc)
+                             pF2_solids,kz_mol,kz_bio,kz_turb,kz_ice_gravity,&
+                             layer_thicknesses,brine_release,dcc)
       !biogeochemistry
       call fabm_check_state(fabm_model,1,surface_index-1,repair,valid)
       increment = 0._rk
@@ -504,7 +507,7 @@ contains
           state_vars(j)%value(:surface_index-1)+increment(:,j)
       !sedimentation
       call brom_do_sedimentation(surface_index,bbl_sed_index,&
-                                 k_sed1,w_b,u_b,&
+                                 ice_water_index,k_sed1,w_b,u_b,&
                                  dphidz_SWI,&
                                  increment,&
                                  face_porosity(:surface_index),&
@@ -517,8 +520,8 @@ contains
   subroutine brom_do_diffusion(&
              surface_index,bbl_sed_index,ice_water_index,&
              pF1_solutes,pF2_solutes,pF1_solids,&
-             pF2_solids,kz_mol,kz_bio,kz_turb,&
-             layer_thicknesses,increment)
+             pF2_solids,kz_mol,kz_bio,kz_turb,kz_ice_gravity,&
+             layer_thicknesses,brine_release,increment)
     use diff_mod
 
     integer,intent(in):: surface_index
@@ -531,7 +534,9 @@ contains
     real(rk),dimension(number_of_layers+1),intent(in):: kz_mol
     real(rk),dimension(number_of_layers+1),intent(in):: kz_bio
     real(rk),dimension(number_of_layers+1),intent(in):: kz_turb
+    real(rk),dimension(number_of_layers+1),intent(in):: kz_ice_gravity
     real(rk),dimension(number_of_layers+1),intent(in):: layer_thicknesses
+    real(rk)                              ,intent(in):: brine_release
 
     real(rk),dimension(surface_index-1,number_of_parameters),&
                                            intent(out):: increment
@@ -540,8 +545,10 @@ contains
     real(rk),dimension(number_of_layers+1):: ones
     real(rk),dimension(number_of_layers+1):: zeros
     real(rk),dimension(number_of_layers+1):: taur_r
-    real(rk),dimension(number_of_layers+1):: kz_tot
+    real(rk),dimension(number_of_layers+1):: brine_flux
     real(rk),dimension(number_of_parameters):: surface_flux
+    real(rk),dimension(number_of_layers+1,&
+                         number_of_parameters):: kz_tot
     real(rk),dimension(0:number_of_layers,&
                          number_of_parameters):: temporary
     integer i
@@ -553,12 +560,22 @@ contains
     zeros = 0._rk
     taur_r= 1.e20_rk
 
-    !oxygen = find_state_variable("O2_o")
+    !calculating kz in the whole column
     oxygen = find_state_variable(_O2_)
     !oxygen status of sediments
     O2stat = oxygen%value(bbl_sed_index)/&
       (oxygen%value(bbl_sed_index)+_KO2_)
-    kz_tot = kz_turb+kz_mol+kz_bio*O2stat
+    brine_flux = 0._rk
+    brine_flux(ice_water_index) = brine_release
+    do i = 1,number_of_parameters
+      kz_tot(:,i) = brine_flux+kz_ice_gravity+&
+                    kz_turb+kz_mol+kz_bio*O2stat
+    end do
+    !remove influence of diffusivity on diatoms
+    !also in 'sedimentation' they sinks to bottom
+    !boundary of the ice core
+    i = find_index_of_state_variable(_Phy_)
+    kz_tot(ice_water_index,i) = 0._rk
 
     !calculate surface fluxes only for ice free periods
     surface_flux = 0._rk
@@ -613,7 +630,7 @@ contains
           Bcdw = state_vars(i)%use_bound_low,&
           Yup  = state_vars(i)%bound_up,&
           Ydw  = state_vars(i)%bound_low,&
-          nuY_in  = kz_tot(:surface_index),&
+          nuY_in  = kz_tot(:surface_index,i),&
           Lsour = zeros(:surface_index),&
           Qsour = zeros(:surface_index),&
           Taur  = taur_r(:surface_index),&
@@ -644,12 +661,13 @@ contains
   !in the water column and sediments
   !
   subroutine brom_do_sedimentation(surface_index,bbl_sed_index,&
-                                   k_sed1,w_b,u_b,&
+                                   ice_water_index,k_sed1,w_b,u_b,&
                                    dphidz_SWI,increment,&
                                    face_porosity,kz_bio,&
                                    hz,dz)
     integer ,intent(in):: surface_index
     integer ,intent(in):: bbl_sed_index
+    integer ,intent(in):: ice_water_index
 
     real(rk),dimension(bbl_sed_index),intent(in):: k_sed1
     real(rk),dimension(bbl_sed_index),intent(in):: w_b,u_b
@@ -816,6 +834,7 @@ contains
                    (1.0_rk-face_porosity(k_sed1))*&
                    w_1(k_sed1))/face_porosity(k_sed1)
 
+    i = find_index_of_state_variable(_Phy_)
     !Interpolate velocities from FABM (defined on layer midpoints, as for
     !  concentrations) to wti on the layer interfaces
     do ip=1,number_of_parameters
@@ -836,6 +855,12 @@ contains
         wti(k_sed1,ip) = u_b(k_sed1)+u_1(k_sed1)+u_1c(k_sed1)
       end if
       wti(1,ip) = wti(2,ip)
+      !zero velocity for sedimentation in the ice column
+      !it is defined in the diffusive subroutine
+      !except diatoms
+      if (ip/=i) then
+        wti(ice_water_index:surface_index,ip) = 0._rk
+      end if
     end do
 
     !Perform advective flux calculation and concentrations update
@@ -967,8 +992,9 @@ contains
     call netcdf_sediments%close()
   end subroutine
 
-  subroutine recalculate_ice(id)
-    integer,intent(in):: id
+  subroutine recalculate_ice(id,brine_release)
+    integer ,intent(in) :: id
+    real(rk),intent(out):: brine_release
     real(rk),dimension(:),allocatable:: air_ice_indexes
     real(rk),dimension(:),allocatable:: layer_thicknesses
     !real(rk) ice_water_layer_thickness
@@ -1022,6 +1048,25 @@ contains
         end do
       end if
     end do
+    if (ice_growth_save<0) then
+      brine_release = calc_brine_release(ice_growth)
+    else
+      brine_release = 0._rk
+    end if
+  contains
+    !
+    !adapted from Arrigo 1993, Duarte 2007
+    !
+    real(rk) function calc_brine_release(ice_growth)
+      integer, intent(in):: ice_growth
+
+      real(rk) growth_rate
+
+      growth_rate = ice_growth*_ICE_LAYERS_RESOLUTION_
+      calc_brine_release = ((9.667e-9_rk+4.49e-6_rk*growth_rate &
+                                        -1.39e-7_rk*growth_rate**2) &
+                           /100._rk)*_ICE_LAYERS_RESOLUTION_
+    end function
   end subroutine recalculate_ice
 
   subroutine find_set_state_variable(inname,is_solid,&
@@ -1174,7 +1219,7 @@ contains
   subroutine inflow(ice_water_index,day)
     integer,intent(in):: ice_water_index
     integer,intent(in):: day
-    
+
     call find_set_state_variable(_Mn4_,&
          value=0.5e-4_rk,layer=ice_water_index-1)
     call find_set_state_variable(_Fe3_,&
@@ -1188,7 +1233,7 @@ contains
     call find_set_state_variable(_Si_,&
          value=sinusoidal(day,2._rk),layer=ice_water_index-1)
   end subroutine
-  
+
   function find_state_variable(inname)
     character(len=*),intent(in):: inname
     type(brom_state_variable):: find_state_variable
@@ -1199,6 +1244,25 @@ contains
     do i = 1,number_of_vars
       if (state_vars(i)%name.eq.inname) then
         find_state_variable = state_vars(i)
+        return
+      end if
+    end do
+    call fatal_error("Search state variable",&
+                     "No such variable")
+  end function
+  !
+  !returns index of variable
+  !
+  function find_index_of_state_variable(inname)
+    character(len=*),intent(in):: inname
+    integer:: find_index_of_state_variable
+    integer number_of_vars
+    integer i
+
+    number_of_vars = size(state_vars)
+    do i = 1,number_of_vars
+      if (state_vars(i)%name.eq.inname) then
+        find_index_of_state_variable = i
         return
       end if
     end do

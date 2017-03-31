@@ -156,7 +156,7 @@ contains
     class(ice),intent(inout)           :: self
     real(rk),dimension(:),intent(in)   :: air_temp,water_temp,ice_thickness
     integer i
-    
+
     forall (i = 1:self%number_of_layers)
       self%t_face(i,:) = air_temp+((water_temp-air_temp)*&
         self%depth_face(i,:))/ice_thickness
@@ -181,7 +181,7 @@ contains
     real(rk),dimension(:),intent(in)   :: water_salt
 
     integer i,j
-    
+
     self%s_brine_face = D_QNAN
     do j = 1,self%number_of_days
       do i = 1,self%air_ice_index(j)
@@ -217,7 +217,7 @@ contains
     !else where
     !  self%s_brine_face = 0._rk
     !end where
-    
+
     self%s_brine_center = D_QNAN
     do j = 1,self%number_of_days
       do i = 1,self%air_ice_index(j)

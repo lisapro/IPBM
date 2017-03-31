@@ -585,14 +585,17 @@ contains
     character(len=*),intent(in):: name_bioturbation_diffusivity
 
     class(variable)        ,allocatable:: var
+    !real(rk),dimension(:)  ,allocatable:: value_1d
     real(rk),dimension(:,:),allocatable:: eddy_kz
     real(rk),dimension(:,:),allocatable:: value_2d
     real(rk),dimension(:,:),allocatable:: tortuosity
+    real(rk),dimension(:,:),allocatable:: porosity
     real(rk),dimension(:,:),allocatable:: depth_boundary
     real(rk),dimension(:)  ,allocatable:: air_ice_indexes
     type(variable_2d):: new_var_2d
     !type(variable_1d):: new_var_1d
-    integer i,time
+    real    z_conv
+    integer i,j,time
     integer number_of_boundaries
     integer water_bbl_index,ice_water_index
     integer bbl_sediments_index
@@ -639,7 +642,6 @@ contains
       _RELATIVE_DYNAMIC_VISCOSITY_*&
       _INFINITE_DILLUTION_MOLECULAR_DIFFUSIVITY_/&
       tortuosity(:bbl_sediments_index,:)**2
-
     do i = 1,time
       value_2d(air_ice_indexes(i)+1:,i) = D_QNAN
     end do
@@ -665,6 +667,28 @@ contains
       value_2d(air_ice_indexes(i)+1:,i) = D_QNAN
     end do
     new_var_2d = variable_2d(name_bioturbation_diffusivity,'',value_2d)
+    call self%add_item(new_var_2d)
+
+    !add brine channel gravity drainage diffusivity
+    allocate(porosity(number_of_boundaries,time))
+    value_2d = 0._rk
+    porosity = self%get_array("porosity_on_interfaces")
+    do i = 1,time
+      z_conv = 0._rk
+      !if no ice, go to the next day
+      if (air_ice_indexes(i)/=ice_water_index) then
+        do j = ice_water_index,air_ice_indexes(i)
+          if (porosity(j,i)>0.072_rk) then
+            z_conv = z_conv+_ICE_LAYERS_RESOLUTION_
+          else
+            exit
+          end if
+        end do
+        value_2d(ice_water_index:air_ice_indexes(i),i) = &
+          z_conv*_GRAVITY_DRAINAGE_
+      end if
+    end do
+    new_var_2d = variable_2d("ice_gravity_drainage",'',value_2d)
     call self%add_item(new_var_2d)
   end subroutine
 

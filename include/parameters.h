@@ -26,6 +26,8 @@
 #define _MIXED_LAYER_DEPTH_                        0.02_rk
 #define _MAX_BIOTURBATION_DIFFUSIVITY_             1.e-11_rk
 #define _DECAY_BIOTURBATION_SCALE_                 0.01_rk
+!ice gravity drainage
+#define _GRAVITY_DRAINAGE_                         1.e-8_rk
 !Half-saturation constant for the effect of oxygen on bioturbation
 !and bioirrigation [uM] (default = 5.0 uM)
 #define _KO2_                                      5._rk
