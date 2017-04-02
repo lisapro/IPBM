@@ -863,7 +863,7 @@ contains
       else
         !to decrease sinking velocity of diatoms in the ice core
         wti(ice_water_index:surface_index,ip) = &
-          wti(ice_water_index:surface_index,ip)/10._rk
+          wti(ice_water_index:surface_index,ip)/5._rk
         wti(ice_water_index,ip) = 0._rk
       end if
     end do
@@ -1172,18 +1172,18 @@ contains
     !call find_set_state_variable("R8_s",&
     !  is_solid = .true.,density = 1.5E7_rk*1._rk/1000._rk)
     !diatoms
-    call find_set_state_variable("P1_c",&
-      is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
-    call find_set_state_variable("P1_n",&
-      is_solid = .true.,density = 1.5E7_rk)
-    call find_set_state_variable("P1_p",&
-      is_solid = .true.,density = 1.5E7_rk*1._rk/16._rk)
+    !call find_set_state_variable("P1_c",&
+    !  is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
+    !call find_set_state_variable("P1_n",&
+    !  is_solid = .true.,density = 1.5E7_rk)
+    !call find_set_state_variable("P1_p",&
+    !  is_solid = .true.,density = 1.5E7_rk*1._rk/16._rk)
     !call find_set_state_variable("P1_f",&
     !  is_solid = .true.,density = 1.5E7_rk*5._rk/1260._rk)
-    call find_set_state_variable("P1_s",& !rios 1998
-      is_solid = .true.,density = 1.5E7_rk*6.2_rk/15.7_rk)
-    call find_set_state_variable("P1_Chl",&
-      is_solid = .true.,density = 1.2E7_rk)!1200e6 from wiki
+    !call find_set_state_variable("P1_s",& !rios 1998
+    !  is_solid = .true.,density = 1.5E7_rk*6.2_rk/15.7_rk)
+    !call find_set_state_variable("P1_Chl",&
+    !  is_solid = .true.,density = 1.2E7_rk)!1200e6 from wiki
     !!nanophytoplankton
     !call find_set_state_variable("P2_c",&
     !  is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
