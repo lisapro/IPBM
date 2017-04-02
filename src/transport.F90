@@ -574,8 +574,11 @@ contains
     !remove influence of diffusivity on diatoms
     !also in 'sedimentation' they sinks to bottom
     !boundary of the ice core
-    i = find_index_of_state_variable(_Phy_)
-    kz_tot(ice_water_index,i) = 0._rk
+    kz_tot(ice_water_index,find_index_of_state_variable('P1_c')) = 0._rk
+    kz_tot(ice_water_index,find_index_of_state_variable('P1_n')) = 0._rk
+    kz_tot(ice_water_index,find_index_of_state_variable('P1_p')) = 0._rk
+    kz_tot(ice_water_index,find_index_of_state_variable('P1_s')) = 0._rk
+    kz_tot(ice_water_index,find_index_of_state_variable('P1_Chl')) = 0._rk
 
     !calculate surface fluxes only for ice free periods
     surface_flux = 0._rk
@@ -834,7 +837,6 @@ contains
                    (1.0_rk-face_porosity(k_sed1))*&
                    w_1(k_sed1))/face_porosity(k_sed1)
 
-    i = find_index_of_state_variable(_Phy_)
     !Interpolate velocities from FABM (defined on layer midpoints, as for
     !  concentrations) to wti on the layer interfaces
     do ip=1,number_of_parameters
@@ -858,7 +860,12 @@ contains
       !zero velocity for sedimentation in the ice column
       !it is defined in the diffusive subroutine
       !except diatoms
-      if (ip/=i) then
+      if (ip/=find_index_of_state_variable('P1_c').or.&
+          ip/=find_index_of_state_variable('P1_n').or.&
+          ip/=find_index_of_state_variable('P1_p').or.&
+          ip/=find_index_of_state_variable('P1_s').or.&
+          ip/=find_index_of_state_variable('P1_Chl')&
+          ) then
         wti(ice_water_index:surface_index,ip) = 0._rk
       else
         !to decrease sinking velocity of diatoms in the ice core
@@ -1111,66 +1118,66 @@ contains
     call find_set_state_variable(_NH4_,is_gas = .true.)
     !oxygen O2
     call find_set_state_variable(_O2_,is_gas = .true.)
-    call find_set_state_variable(_H2S_,is_gas = .true.)
-    call find_set_state_variable(_CH4_,is_gas = .true.)
+    !call find_set_state_variable(_H2S_,is_gas = .true.)
+    !call find_set_state_variable(_CH4_,is_gas = .true.)
 
     !calcite - CaCO3
     call find_set_state_variable(_CaCO3_,&
       is_solid = .true.,density = 2.80E7_rk)
     !S0
-    call find_set_state_variable(_S0_,&
-      is_solid = .true.,density = 6.56E7_rk)
+    !call find_set_state_variable(_S0_,&
+    !  is_solid = .true.,density = 6.56E7_rk)
     !Fe
-    call find_set_state_variable(_Fe3_,&
-      is_solid = .true.,density = 3.27E7_rk)
-    call find_set_state_variable(_FeCO3_,&
-      is_solid = .true.,density = 2.93E7_rk)
-    call find_set_state_variable(_FeS_,&
-      is_solid = .true.,density = 5.90E7_rk)
-    call find_set_state_variable(_FeS2_,&
-      is_solid = .true.,density = 4.17E7_rk)
+    !call find_set_state_variable(_Fe3_,&
+    !  is_solid = .true.,density = 3.27E7_rk)
+    !call find_set_state_variable(_FeCO3_,&
+    !  is_solid = .true.,density = 2.93E7_rk)
+    !call find_set_state_variable(_FeS_,&
+    !  is_solid = .true.,density = 5.90E7_rk)
+    !call find_set_state_variable(_FeS2_,&
+    !  is_solid = .true.,density = 4.17E7_rk)
     !Mn
-    call find_set_state_variable(_Mn4_,&
-      is_solid = .true.,density = 5.78E7_rk)
-    call find_set_state_variable(_MnCO3_,&
-      is_solid = .true.,density = 3.20E7_rk)
-    call find_set_state_variable(_MnS_,&
-      is_solid = .true.,density = 4.60E7_rk)
+    !call find_set_state_variable(_Mn4_,&
+    !  is_solid = .true.,density = 5.78E7_rk)
+    !call find_set_state_variable(_MnCO3_,&
+    !  is_solid = .true.,density = 3.20E7_rk)
+    !call find_set_state_variable(_MnS_,&
+    !  is_solid = .true.,density = 4.60E7_rk)
     !Silicon particulate
-    call find_set_state_variable(_Sipart_,&
-      is_solid = .true.,density = 4.40E7_rk)
+    !call find_set_state_variable(_Sipart_,&
+    !  is_solid = .true.,density = 4.40E7_rk)
     !organic compounds
-    call find_set_state_variable(_Phy_,&
-      is_solid = .true.,density = 1.5E7_rk)
-    !!small-size POM
-    !call find_set_state_variable("R4_c",&
-    !  is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
-    !call find_set_state_variable("R4_n",&
+    !call find_set_state_variable(_Phy_,&
     !  is_solid = .true.,density = 1.5E7_rk)
-    !call find_set_state_variable("R4_p",&
-    !  is_solid = .true.,density = 1.5E7_rk*1._rk/16._rk)
+    !!small-size POM
+    call find_set_state_variable("R4_c",&
+      is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
+    call find_set_state_variable("R4_n",&
+      is_solid = .true.,density = 1.5E7_rk)
+    call find_set_state_variable("R4_p",&
+      is_solid = .true.,density = 1.5E7_rk*1._rk/16._rk)
     !call find_set_state_variable("R4_f",&
     !  is_solid = .true.,density = 1.5E7_rk*5._rk/1260._rk)
     !!medium-size POM
-    !call find_set_state_variable("R6_c",&
-    !  is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
-    !call find_set_state_variable("R6_n",&
-    !  is_solid = .true.,density = 1.5E7_rk)
-    !call find_set_state_variable("R6_p",&
-    !  is_solid = .true.,density = 1.5E7_rk*1._rk/16._rk)
-    !call find_set_state_variable("R6_s",&
-    !  is_solid = .true.,density = 1.5E7_rk*1._rk/1000._rk)
+    call find_set_state_variable("R6_c",&
+      is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
+    call find_set_state_variable("R6_n",&
+      is_solid = .true.,density = 1.5E7_rk)
+    call find_set_state_variable("R6_p",&
+      is_solid = .true.,density = 1.5E7_rk*1._rk/16._rk)
+    call find_set_state_variable("R6_s",&
+      is_solid = .true.,density = 1.5E7_rk*1._rk/1000._rk)
     !call find_set_state_variable("R6_f",&
     !  is_solid = .true.,density = 1.5E7_rk*5._rk/1260._rk)
     !!large-size POM
-    !call find_set_state_variable("R8_c",&
-    !  is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
-    !call find_set_state_variable("R8_n",&
-    !  is_solid = .true.,density = 1.5E7_rk)
-    !call find_set_state_variable("R8_p",&
-    !  is_solid = .true.,density = 1.5E7_rk*1._rk/16._rk)
-    !call find_set_state_variable("R8_s",&
-    !  is_solid = .true.,density = 1.5E7_rk*1._rk/1000._rk)
+    call find_set_state_variable("R8_c",&
+      is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
+    call find_set_state_variable("R8_n",&
+      is_solid = .true.,density = 1.5E7_rk)
+    call find_set_state_variable("R8_p",&
+      is_solid = .true.,density = 1.5E7_rk*1._rk/16._rk)
+    call find_set_state_variable("R8_s",&
+      is_solid = .true.,density = 1.5E7_rk*1._rk/1000._rk)
     !diatoms
     call find_set_state_variable("P1_c",&
       is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
@@ -1185,38 +1192,38 @@ contains
     call find_set_state_variable("P1_Chl",&
       is_solid = .true.,density = 1.2E7_rk)!1200e6 from wiki
     !!nanophytoplankton
-    !call find_set_state_variable("P2_c",&
-    !  is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
-    !call find_set_state_variable("P2_n",&
-    !  is_solid = .true.,density = 1.5E7_rk)
-    !call find_set_state_variable("P2_p",&
-    !  is_solid = .true.,density = 1.5E7_rk*1._rk/16._rk)
+    call find_set_state_variable("P2_c",&
+      is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
+    call find_set_state_variable("P2_n",&
+      is_solid = .true.,density = 1.5E7_rk)
+    call find_set_state_variable("P2_p",&
+      is_solid = .true.,density = 1.5E7_rk*1._rk/16._rk)
     !call find_set_state_variable("P2_f",&
     !  is_solid = .true.,density = 1.5E7_rk*5._rk/1260._rk)
-    !call find_set_state_variable("P2_Chl",&
-    !  is_solid = .true.,density = 1.2E7_rk)!1200e6 from wiki
+    call find_set_state_variable("P2_Chl",&
+      is_solid = .true.,density = 1.2E7_rk)!1200e6 from wiki
     !!picophytoplankton
-    !call find_set_state_variable("P3_c",&
-    !  is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
-    !call find_set_state_variable("P3_n",&
-    !  is_solid = .true.,density = 1.5E7_rk)
-    !call find_set_state_variable("P3_p",&
-    !  is_solid = .true.,density = 1.5E7_rk*1._rk/16._rk)
+    call find_set_state_variable("P3_c",&
+      is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
+    call find_set_state_variable("P3_n",&
+      is_solid = .true.,density = 1.5E7_rk)
+    call find_set_state_variable("P3_p",&
+      is_solid = .true.,density = 1.5E7_rk*1._rk/16._rk)
     !call find_set_state_variable("P3_f",&
     !  is_solid = .true.,density = 1.5E7_rk*5._rk/1260._rk)
-    !call find_set_state_variable("P3_Chl",&
-    !  is_solid = .true.,density = 1.2E7_rk)!1200e6 from wiki
+    call find_set_state_variable("P3_Chl",&
+      is_solid = .true.,density = 1.2E7_rk)!1200e6 from wiki
     !!microphytoplankton
-    !call find_set_state_variable("P4_c",&
-    !  is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
-    !call find_set_state_variable("P4_n",&
-    !  is_solid = .true.,density = 1.5E7_rk)
-    !call find_set_state_variable("P4_p",&
-    !  is_solid = .true.,density = 1.5E7_rk*1._rk/16._rk)
+    call find_set_state_variable("P4_c",&
+      is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
+    call find_set_state_variable("P4_n",&
+      is_solid = .true.,density = 1.5E7_rk)
+    call find_set_state_variable("P4_p",&
+      is_solid = .true.,density = 1.5E7_rk*1._rk/16._rk)
     !call find_set_state_variable("P4_f",&
     !  is_solid = .true.,density = 1.5E7_rk*5._rk/1260._rk)
-    !call find_set_state_variable("P4_Chl",&
-    !  is_solid = .true.,density = 1.2E7_rk)!1200e6 from wiki
+    call find_set_state_variable("P4_Chl",&
+      is_solid = .true.,density = 1.2E7_rk)!1200e6 from wiki
   end subroutine
   !
   !sets inflows on ice_water_index-1(water_surface)
@@ -1225,12 +1232,12 @@ contains
     integer,intent(in):: ice_water_index
     integer,intent(in):: day
 
-    call find_set_state_variable(_Mn4_,&
-         value=0.5e-4_rk,layer=ice_water_index-1)
-    call find_set_state_variable(_Fe3_,&
-         value=0.4e-4_rk,layer=ice_water_index-1)
-    call find_set_state_variable(_Alk_,&
-         value=2300._rk,layer=ice_water_index-1)
+    !call find_set_state_variable(_Mn4_,&
+    !     value=0.5e-4_rk,layer=ice_water_index-1)
+    !call find_set_state_variable(_Fe3_,&
+    !     value=0.4e-4_rk,layer=ice_water_index-1)
+    !call find_set_state_variable(_Alk_,&
+    !     value=2300._rk,layer=ice_water_index-1)
     call find_set_state_variable(_PO4_,&
          value=sinusoidal(day,0.45_rk),layer=ice_water_index-1)
     call find_set_state_variable(_NO3_,&
