@@ -483,7 +483,6 @@ instances:
       N5s: B_NUT/Si # silicate (mmol Si/m^3)
       O2o: B_BIO/O2 # oxygen (mmol O_2/m^3)
       O3c: B_C/DIC # carbon dioxide (mmol C/m^3)
-      #N7f: B_Fe/Fe3
   Z5:
     long_name: microzooplankton
     model: ersem/microzooplankton
@@ -542,7 +541,6 @@ instances:
       R2c: R2/c # semi-labile dissolved organic carbon (mg C/m^3)
       O2o: B_BIO/O2 # oxygen (mmol O_2/m^3)
       O3c: B_C/DIC # carbon dioxide (mmol C/m^3)
-      #L2c: L2/c # calcite (mg C/m^3)
   R1:
     long_name: labile dissolved organic matter
     model: ersem/pelagic_base
@@ -614,7 +612,6 @@ instances:
       N3n: B_NUT/NO3 # nitrate (mmol N/m^3)
       N4n: B_NUT/NH4 # ammonium (mmol N/m^3)
       N5s: B_NUT/Si # silicate (mmol Si/m^3)
-      #N7f: B_Fe/Fe3
   Q7:
     long_name: benthic refractory matter
     model: ersem/benthic_base

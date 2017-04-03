@@ -100,6 +100,7 @@ contains
     !across SWI
     !
     !SY - minor changes to implement pure function
+    !     choose btw solute, solid and gas
     !
     real(rk),dimension(0:N):: do_diffusive
 
@@ -166,23 +167,38 @@ contains
     real(rk), dimension(0:N)  :: au,bu,cu,du
 
     !choose btw solute, solid and gas
-    !in ice maybe a problem
     if (.not.is_solid) then
       if (.not.is_gas) then
+        !liquid case
+        !dC/dt = d/dz(kzti*dC/dz)            in the water column
+        !dC/dt = d/dz(phi*kzti*d/dz(C/phi))  in the ice and the sediments
         pF = pF1_solutes
         nuY = nuY_in*pF2_solutes
       else
+        !gas case
+        !dC/dt = d/dz(phi*kzti*dC/dz)        in the ice
+        !dC/dt = d/dz(kzti*dC/dz)            in the water column
+        !dC/dt = d/dz(phi*kzti*d/dz(C/phi))  in the sediments
         pF(:i_ice_water-1) = pF1_solutes(:i_ice_water-1)
         pF(i_ice_water:) = 1._rk
-        nuY(:i_ice_water-1) = nuY_in(:i_ice_water-1)*&
-                              pF2_solutes(:i_ice_water-1)
-        nuY(i_ice_water:) = nuY_in(i_ice_water:)
+        nuY = nuY_in*pF2_solutes
+        !nuY(:i_ice_water-1) = nuY_in(:i_ice_water-1)*&
+        !                      pF2_solutes(:i_ice_water-1)
+        !nuY(i_ice_water:) = nuY_in(i_ice_water:)
       end if
       pFSWIup = pFSWIup_solutes
       pFSWIdw = pFSWIdw_solutes
     else
+      !solid case
+      !dC/dt = d/dz(phi*kzti*dC/dz)        in the ice
+      !dC/dt = d/dz(kzti*dC/dz)            in the water column
+      !dC/dt = d/dz(phi*kzti*d/dz(C/phi))  in the sediments
       pF = pF1_solids
-      nuY = nuY_in*pF2_solids
+      !nuY = nuY_in*pF2_solids
+      nuY(:i_ice_water-1) = nuY_in(:i_ice_water-1)*&
+                            pF2_solids(:i_ice_water-1)
+      nuY(i_ice_water:)   = nuY_in(i_ice_water:)*&
+                            pF2_solutes(i_ice_water:)
       pFSWIup = pFSWIup_solids
       pFSWIdw = pFSWIdw_solids
     end if

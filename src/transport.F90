@@ -881,8 +881,8 @@ contains
         wti(ice_water_index:surface_index,ip) = 0._rk
       else
         !to decrease sinking velocity of diatoms in the ice core
-        wti(ice_water_index:surface_index,ip) = &
-          wti(ice_water_index:surface_index,ip)/1._rk
+        !wti(ice_water_index:surface_index,ip) = &
+        !  wti(ice_water_index:surface_index,ip)/1._rk
         wti(ice_water_index,ip) = 0._rk
       end if
     end do
@@ -1161,6 +1161,8 @@ contains
     !organic compounds
     call find_set_state_variable(_Phy_,&
       is_solid = .true.,density = 1.5E7_rk)
+    call find_set_state_variable(_PON_,&
+      is_solid = .true.,density = 1.5E7_rk)
     !!small-size POM
     !call find_set_state_variable("R4_c",&
     !  is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
@@ -1203,6 +1205,13 @@ contains
       is_solid = .true.,density = 1.5E7_rk*6.2_rk/15.7_rk)
     call find_set_state_variable("P1_Chl",&
       is_solid = .true.,density = 1.2E7_rk)!1200e6 from wiki
+    !microzooplankton
+    call find_set_state_variable("Z5_c",&
+      is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
+    call find_set_state_variable("Z5_n",&
+      is_solid = .true.,density = 1.5E7_rk)
+    call find_set_state_variable("Z5_p",&
+      is_solid = .true.,density = 1.5E7_rk*1._rk/16._rk)
     !!nanophytoplankton
     !call find_set_state_variable("P2_c",&
     !  is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
