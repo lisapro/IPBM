@@ -46,7 +46,7 @@ instances:
     parameters:
       iswCO2: 1 # carbonate system diagnostics (0: off, 1: on), default = 1
       iswASFLUX: 1 # air-sea CO2 exchange (0: none, 1: Nightingale and Liss, 2: Wanninkhof 1992 without chemical enhancement, 3: Wanninkhof 1992 with chemical enhancement, 4: Wanninkhof 1999), default = 1
-      iswtalk: 2 # alkalinity formulation (1-4: from salinity and temperature, 5: dynamic alkalinity), default = 5
+      iswtalk: 5 # alkalinity formulation (1-4: from salinity and temperature, 5: dynamic alkalinity), default = 5
     initialization:
       c: 2130.0 # total dissolved inorganic carbon (mmol C/m^3)
   R1:
@@ -155,7 +155,6 @@ instances:
       N3n: N3/n # nitrate (mmol N/m^3)
       N4n: N4/n # ammonium (mmol N/m^3)
       N5s: N5/s # silicate (mmol Si/m^3)
-      #N7f: N7/f
   Q7:
     long_name: benthic refractory matter
     model: ersem/benthic_base
@@ -290,7 +289,6 @@ instances:
       R2c: R2/c # semi-labile dissolved organic carbon (mg C/m^3)
       O2o: O2/o # oxygen (mmol O_2/m^3)
       O3c: O3/c # carbon dioxide (mmol C/m^3)
-      #N7f: N7/f
   P2:
     long_name: nanophytoplankton
     model: ersem/primary_producer
@@ -489,7 +487,6 @@ instances:
       R2c: R2/c # semi-labile dissolved organic carbon (mg C/m^3)
       O2o: O2/o # oxygen (mmol O_2/m^3)
       O3c: O3/c # carbon dioxide (mmol C/m^3)
-      #N7f: N7/f
   Z4:
     long_name: mesozooplankton
     model: ersem/mesozooplankton
