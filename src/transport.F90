@@ -574,8 +574,13 @@ contains
     !remove influence of diffusivity on diatoms
     !also in 'sedimentation' they sinks to bottom
     !boundary of the ice core
-    i = find_index_of_state_variable(_Phy_)
-    kz_tot(ice_water_index,i) = 0._rk
+    kz_tot(ice_water_index,find_index_of_state_variable('P1_c')) = 0._rk
+    kz_tot(ice_water_index,find_index_of_state_variable('P1_n')) = 0._rk
+    kz_tot(ice_water_index,find_index_of_state_variable('P1_p')) = 0._rk
+    kz_tot(ice_water_index,find_index_of_state_variable('P1_s')) = 0._rk
+    kz_tot(ice_water_index,find_index_of_state_variable('P1_Chl')) = 0._rk
+    !i = find_index_of_state_variable(_Phy_)
+    !kz_tot(ice_water_index,i) = 0._rk
 
     !calculate surface fluxes only for ice free periods
     surface_flux = 0._rk
@@ -834,7 +839,8 @@ contains
                    (1.0_rk-face_porosity(k_sed1))*&
                    w_1(k_sed1))/face_porosity(k_sed1)
 
-    i = find_index_of_state_variable(_Phy_)
+    !find phy to specify its sinking behavior
+    !i = find_index_of_state_variable(_Phy_)
     !Interpolate velocities from FABM (defined on layer midpoints, as for
     !  concentrations) to wti on the layer interfaces
     do ip=1,number_of_parameters
@@ -858,12 +864,25 @@ contains
       !zero velocity for sedimentation in the ice column
       !it is defined in the diffusive subroutine
       !except diatoms
-      if (ip/=i) then
+      !if (ip/=i) then
+      !  wti(ice_water_index:surface_index,ip) = 0._rk
+      !else
+      !  !to decrease sinking velocity of diatoms in the ice core
+      !  wti(ice_water_index:surface_index,ip) = &
+      !    wti(ice_water_index:surface_index,ip)/10._rk
+      !  wti(ice_water_index,ip) = 0._rk
+      !end if
+      if (ip/=find_index_of_state_variable('P1_c').or.&
+          ip/=find_index_of_state_variable('P1_n').or.&
+          ip/=find_index_of_state_variable('P1_p').or.&
+          ip/=find_index_of_state_variable('P1_s').or.&
+          ip/=find_index_of_state_variable('P1_Chl')&
+          ) then
         wti(ice_water_index:surface_index,ip) = 0._rk
       else
         !to decrease sinking velocity of diatoms in the ice core
         wti(ice_water_index:surface_index,ip) = &
-          wti(ice_water_index:surface_index,ip)/10._rk
+          wti(ice_water_index:surface_index,ip)/1._rk
         wti(ice_water_index,ip) = 0._rk
       end if
     end do

@@ -484,58 +484,52 @@ instances:
       O2o: B_BIO/O2 # oxygen (mmol O_2/m^3)
       O3c: B_C/DIC # carbon dioxide (mmol C/m^3)
       #N7f: B_Fe/Fe3
-  Z4:
-    long_name: mesozooplankton
-    model: ersem/mesozooplankton
+  Z5:
+    long_name: microzooplankton
+    model: ersem/microzooplankton
     parameters:
       q10: 2.0 # Q_10 temperature coefficient (-)
       minfood: 12.0 # Michaelis-Menten constant to perceive food (mg C/m^3)
-      chuc: 36.0 # Michaelis-Menten constant for food uptake (mg C/m^3)
-      sum: 1.0 # maximum specific uptake at reference temperature (1/d)
-      pu: 0.6 # assimilation efficiency (-)
+      chuc: 32.0 # Michaelis-Menten constant for food uptake (mg C/m^3)
+      sum: 1.25 # maximum specific uptake at reference temperature (1/d)
+      pu: 0.5 # assimilation efficiency (-)
       pu_ea: 0.5 # fraction of unassimilated prey that is excreted (not respired) (-)
-      pu_eaR: 0.9 # fraction of unassimilated detritus that is excreted (not respired) (-)
       pe_R1: 0.5 # dissolved fraction of excreted/dying matter (-)
-      srs: 0.015 # specific rest respiration at reference temperature (1/d)
+      srs: 0.02 # specific rest respiration at reference temperature (1/d)
       sd: 0.05 # basal mortality (1/d)
-      sdo: 0.2 # maximum mortality due to oxygen limitation (1/d)
+      sdo: 0.25 # maximum mortality due to oxygen limitation (1/d)
       chro: 7.81 # Michaelis-Menten constant for oxygen limitation (-)
-      qpc: 0.000786 # phosphorus to carbon ratio (mmol P/mg C)
-      qnc: 0.0126 # nitrogen to carbon ratio (mmol N/mg C)
-      Minprey: 300.0 # food threshold for overwintering state (mg C/m^2)
-      repw: 0.0025 # specific overwintering respiration (1/d)
-      mort: 0.0025 # specific overwintering mortality (1/d)
+      qpc: 0.001 # maximum phosphorus to carbon ratio (mmol P/mg C)
+      qnc: 0.0167 # maximum nitrogen to carbon ratio (mmol N/mg C)
+      stempp: 0.5 # specific excretion rate of excess phosphorus (1/d)
+      stempn: 0.5 # specific excretion rate of excess nitrogen (1/d)
       R1R2: 1.0 # labile fraction of produced dissolved organic carbon (-)
-      xR1p: 1.2 # transfer of phosphorus to DOM, relative to POM (-), default = 0.0
-      xR1n: 1.0 # transfer of nitrogen to DOM, relative to POM (-), default = 0.0
+      xR1p: 1.2 # transfer of phosphorus to DOM, relative to POM (-), default = 1.0
+      xR1n: 1.0 # transfer of nitrogen to DOM, relative to POM (-), default = 1.0
       urB1_O2: 0.1 # oxygen consumed per carbon respired (mmol O_2/mg C)
       gutdiss: 0.5 # fraction of prey calcite that dissolves after ingestion (-)
       c0: 0.0033 # background concentration (mg C/m^3)
       nprey: 2 # number of prey types, default = 0
       suprey1: 0.5 # relative affinity for prey type 1 (-)
-      suprey2: 0.5 # relative affinity for prey type 1 (-)
-      #suprey2: 0.05 # relative affinity for prey type 2 (-)
-      #suprey3: 0.0 # relative affinity for prey type 3 (-)
+      suprey2: 0.5 # relative affinity for prey type 2 (-)
+      #suprey3: 0.15 # relative affinity for prey type 3 (-)
       #suprey4: 0.15 # relative affinity for prey type 4 (-)
-      #suprey5: 0.25 # relative affinity for prey type 5 (-)
-      #suprey6: 0.25 # relative affinity for prey type 6 (-)
-      #suprey7: 0.05 # relative affinity for prey type 7 (-)
-      #suprey8: 0.0 # relative affinity for prey type 8 (-)
-      #suprey9: 0.1 # relative affinity for prey type 9 (-)
-      #prey9ispom: true # prey type 9 is detritus, default = false
+      #suprey5: 0.1 # relative affinity for prey type 5 (-)
+      #suprey6: 0.15 # relative affinity for prey type 6 (-)
+      #suprey7: 0.2 # relative affinity for prey type 7 (-)
     initialization:
-      c: 1.2 # carbon (mg C/m^3)
+      c: 7.2 # carbon (mg C/m^3)
+      n: 0.12 # nitrogen (mmol N/m^3)
+      p: 0.0113 # phosphorus (mmol P/m^3)
     coupling:
       prey1: P1
-      prey2: Z4
-      #prey2: P2
-      #prey3: P3
-      #prey4: P4
-      #prey5: Z4
+      prey2: Z5 
+      #prey3: P2
+      #prey4: P3
+      #prey5: P4
       #prey6: Z5
       #prey7: Z6
-      #prey8: B1
-      #prey9: R6
+      #RP: R6
       RPc: R6/c
       RPn: B_BIO/PON
       RPp: R6/p
