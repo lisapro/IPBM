@@ -422,6 +422,7 @@ contains
     real(rk),dimension(number_of_layers+1):: kz_turb
     real(rk),dimension(number_of_layers+1):: kz_ice_gravity
     real(rk),dimension(number_of_layers+1):: layer_thicknesses
+    real(rk),dimension(number_of_layers)  :: porosity
     real(rk),dimension(number_of_layers-1):: dz
     !indices of layer interfaces in the sediments including the SWI
     real(rk),dimension(:),allocatable:: k_sed1
@@ -470,6 +471,9 @@ contains
     !is needed by brom_do_sedimentation
     face_porosity = &
     standard_vars%get_column("porosity_on_interfaces",id)
+    !is needed to constrain production in ice and seds
+    porosity = &
+    standard_vars%get_column("porosity",id)
     !indices of sediments
     allocate(k_sed1(bbl_sed_index))
     k_sed1 = standard_vars%get_column("k_sed1")
@@ -501,10 +505,13 @@ contains
       call fabm_check_state(fabm_model,1,surface_index-1,repair,valid)
       increment = 0._rk
       call fabm_do(fabm_model,1,surface_index-1,increment)
-      increment = _SECONDS_PER_CIRCLE_*increment
-      forall(j = 1:number_of_parameters)&
+      !porosity is needed to constrain production
+      forall (j = 1:number_of_parameters)
+        increment(:,j) = _SECONDS_PER_CIRCLE_*&
+          increment(:,j)*porosity(:surface_index-1)
         state_vars(j)%value(:surface_index-1) = &
           state_vars(j)%value(:surface_index-1)+increment(:,j)
+      end forall
       !sedimentation
       call brom_do_sedimentation(surface_index,bbl_sed_index,&
                                  ice_water_index,k_sed1,w_b,u_b,&
