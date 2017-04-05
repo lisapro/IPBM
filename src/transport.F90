@@ -97,6 +97,7 @@ contains
     do i = 1,number_of_parameters
       state_vars(i)%name = fabm_model%state_variables(i)%name
       allocate(state_vars(i)%value(number_of_layers))
+      !allocate(state_vars(i)%fabm_value(number_of_layers))
       allocate(state_vars(i)%sinking_velocity(number_of_layers))
       state_vars(i)%value = fabm_model%state_variables(i)%initial_value
       call state_vars(i)%set_brom_state_variable(.false.,.false.,&
@@ -323,6 +324,9 @@ contains
       write(*,*) "Time taken by day circle:",t2-t1," seconds"
       day = day+1
     end do
+    call netcdf_ice%close()
+    call netcdf_water%close()
+    call netcdf_sediments%close()
     write(*,*) "Finish"
     _LINE_
   end subroutine
@@ -501,17 +505,34 @@ contains
                              pF1_solutes,pF2_solutes,pF1_solids,&
                              pF2_solids,kz_mol,kz_bio,kz_turb,kz_ice_gravity,&
                              layer_thicknesses,brine_release,dcc)
-      !biogeochemistry
+      !call check_array("after_diffusion",surface_index,id,i)
       call fabm_check_state(fabm_model,1,surface_index-1,repair,valid)
+      !biogeochemistry
       increment = 0._rk
+      do j = 1,number_of_parameters
+        if (state_vars(j)%is_solid/=.true. .and. &
+            state_vars(j)%is_gas  /=.true.) then
+          state_vars(j)%value = state_vars(j)%value/porosity
+        end if
+      end do
       call fabm_do(fabm_model,1,surface_index-1,increment)
       !porosity is needed to constrain production
-      forall (j = 1:number_of_parameters)
-        increment(:,j) = _SECONDS_PER_CIRCLE_*&
-          increment(:,j)*porosity(:surface_index-1)
-        state_vars(j)%value(:surface_index-1) = &
-          state_vars(j)%value(:surface_index-1)+increment(:,j)
-      end forall
+      do j = 1,number_of_parameters
+        if (state_vars(j)%is_solid/=.true. .and. &
+            state_vars(j)%is_gas  /=.true.) then
+          increment(:,j) = _SECONDS_PER_CIRCLE_*increment(:,j)
+          state_vars(j)%value(:surface_index-1) = &
+            (state_vars(j)%value(:surface_index-1)+increment(:,j))&
+            *porosity(:surface_index-1)
+        else
+          increment(:,j) = _SECONDS_PER_CIRCLE_*increment(:,j)&
+                           *porosity(:surface_index-1)
+          state_vars(j)%value(:surface_index-1) = &
+            state_vars(j)%value(:surface_index-1)+increment(:,j)
+        end if
+      end do
+      !call check_array("after_fabm_do",surface_index,id,i)
+      call fabm_check_state(fabm_model,1,surface_index-1,repair,valid)
       !sedimentation
       call brom_do_sedimentation(surface_index,bbl_sed_index,&
                                  ice_water_index,k_sed1,w_b,u_b,&
@@ -521,6 +542,8 @@ contains
                                  kz_bio(:surface_index),&
                                  layer_thicknesses(2:surface_index),&
                                  dz(:surface_index-2))
+      !call check_array("after_sedimentation",surface_index,id,i)
+      call fabm_check_state(fabm_model,1,surface_index-1,repair,valid)
     end do
   end subroutine
 
@@ -1309,6 +1332,37 @@ contains
     call fatal_error("Search state variable",&
                      "No such variable")
   end function
+  !
+  !checking for negative and NaNs
+  !
+  subroutine check_array(location,surface_index,day,i)
+    character(len=*),intent(in):: location
+    integer         ,intent(in):: surface_index
+    integer         ,intent(in):: day
+    integer         ,intent(in):: i
+    
+    character(10)::sday,si
+    integer j
+    
+    write(si,'(i10)') i
+    write(sday,'(i10)') day
+    
+    do j = 1,number_of_parameters
+      if (any(state_vars(j)%value<0._rk)) then
+        _LINE_
+        write(*,*) "value=", state_vars(j)%value
+        _LINE_
+        call fatal_error("Negative value: ",&
+                         location//": day="//trim(sday)//&
+                         " iteration="//trim(si)//&
+                         " name="//state_vars(j)%name)
+      end if
+      if (any(isnan(state_vars(j)%value(1:surface_index-1)))) then
+        call fatal_error("NaN: ",&
+                         location//": "//state_vars(j)%name)
+      end if
+    end do
+  end subroutine check_array
 end module
 
 program main
