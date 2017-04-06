@@ -902,17 +902,27 @@ contains
       !    wti(ice_water_index:surface_index,ip)/10._rk
       !  wti(ice_water_index,ip) = 0._rk
       !end if
-      if (ip/=find_index_of_state_variable('P1_c').or.&
-          ip/=find_index_of_state_variable('P1_n').or.&
-          ip/=find_index_of_state_variable('P1_p').or.&
-          ip/=find_index_of_state_variable('P1_s').or.&
-          ip/=find_index_of_state_variable('P1_Chl')&
+      !if (ip/=find_index_of_state_variable('P1_c').or.&
+      !    ip/=find_index_of_state_variable('P1_n').or.&
+      !    ip/=find_index_of_state_variable('P1_p').or.&
+      !    ip/=find_index_of_state_variable('P1_s').or.&
+      !    ip/=find_index_of_state_variable('P1_Chl')&
+      !    ) then
+      !  wti(ice_water_index:surface_index,ip) = 0._rk
+      !else
+      !  !to decrease sinking velocity of diatoms in the ice core
+      !  !wti(ice_water_index:surface_index,ip) = &
+      !  !  wti(ice_water_index:surface_index,ip)/1._rk
+      !  wti(ice_water_index,ip) = 0._rk
+      !end if
+      if (ip==find_index_of_state_variable('P1_c').or.&
+          ip==find_index_of_state_variable('P1_n').or.&
+          ip==find_index_of_state_variable('P1_p').or.&
+          ip==find_index_of_state_variable('P1_s').or.&
+          ip==find_index_of_state_variable('P1_Chl')&
           ) then
-        wti(ice_water_index:surface_index,ip) = 0._rk
-      else
-        !to decrease sinking velocity of diatoms in the ice core
-        !wti(ice_water_index:surface_index,ip) = &
-        !  wti(ice_water_index:surface_index,ip)/1._rk
+        !set velocity like small size pom
+        wti(ice_water_index+1:surface_index-1,ip) = -1._rk/86400._rk
         wti(ice_water_index,ip) = 0._rk
       end if
     end do
