@@ -97,6 +97,7 @@ contains
     do i = 1,number_of_parameters
       state_vars(i)%name = fabm_model%state_variables(i)%name
       allocate(state_vars(i)%value(number_of_layers))
+      !allocate(state_vars(i)%fabm_value(number_of_layers))
       allocate(state_vars(i)%sinking_velocity(number_of_layers))
       state_vars(i)%value = fabm_model%state_variables(i)%initial_value
       call state_vars(i)%set_brom_state_variable(.false.,.false.,&
@@ -256,7 +257,7 @@ contains
 
     day = standard_vars%first_day()
     call initial_date(day,year)
-    !cycle first year 10 times
+    !cycle first year 20 times
     call first_year_circle(day,year,ice_water_index,&
                            water_bbl_index,indices)
 
@@ -323,6 +324,9 @@ contains
       write(*,*) "Time taken by day circle:",t2-t1," seconds"
       day = day+1
     end do
+    call netcdf_ice%close()
+    call netcdf_water%close()
+    call netcdf_sediments%close()
     write(*,*) "Finish"
     _LINE_
   end subroutine
@@ -422,6 +426,7 @@ contains
     real(rk),dimension(number_of_layers+1):: kz_turb
     real(rk),dimension(number_of_layers+1):: kz_ice_gravity
     real(rk),dimension(number_of_layers+1):: layer_thicknesses
+    real(rk),dimension(number_of_layers)  :: porosity
     real(rk),dimension(number_of_layers-1):: dz
     !indices of layer interfaces in the sediments including the SWI
     real(rk),dimension(:),allocatable:: k_sed1
@@ -432,7 +437,7 @@ contains
     integer i,j,bbl_sed_index,ice_water_index
     integer number_of_circles
     !fabm logical parameters
-    logical:: repair=.true.,valid
+    logical:: repair=.true.,valid,inswitch
     !index for boundaries so for layers it should be -1
     !increment for fabm do
     real(rk),dimension(surface_index-1,number_of_parameters):: increment
@@ -470,6 +475,9 @@ contains
     !is needed by brom_do_sedimentation
     face_porosity = &
     standard_vars%get_column("porosity_on_interfaces",id)
+    !is needed to constrain production in ice and seds
+    porosity = &
+    standard_vars%get_column("porosity",id)
     !indices of sediments
     allocate(k_sed1(bbl_sed_index))
     k_sed1 = standard_vars%get_column("k_sed1")
@@ -488,23 +496,52 @@ contains
       number_of_circles = int(60*60*24/_SECONDS_PER_CIRCLE_)
     end if
     call recalculate_ice(id,brine_release)
-    !sets inflow on ice_water_index-1(water surface)
+    !inswitch=.true.
     call inflow(ice_water_index,day)
     do i = 1,number_of_circles
+      !do it every second iteration
+      !if (inswitch==.true.) then
+      !  !sets inflow on ice_water_index-1(water surface)
+      !  call inflow(ice_water_index,day)
+      !  inswitch=.false.
+      !else
+      !  inswitch=.true.
+      !end if
+
       dcc = 0._rk
       !diffusion
       call brom_do_diffusion(surface_index,bbl_sed_index,ice_water_index,&
                              pF1_solutes,pF2_solutes,pF1_solids,&
                              pF2_solids,kz_mol,kz_bio,kz_turb,kz_ice_gravity,&
                              layer_thicknesses,brine_release,dcc)
-      !biogeochemistry
+      !call check_array("after_diffusion",surface_index,id,i)
       call fabm_check_state(fabm_model,1,surface_index-1,repair,valid)
+      !biogeochemistry
       increment = 0._rk
+      do j = 1,number_of_parameters
+        if (state_vars(j)%is_solid/=.true. .and. &
+            state_vars(j)%is_gas  /=.true.) then
+          state_vars(j)%value = state_vars(j)%value/porosity
+        end if
+      end do
       call fabm_do(fabm_model,1,surface_index-1,increment)
-      increment = _SECONDS_PER_CIRCLE_*increment
-      forall(j = 1:number_of_parameters)&
-        state_vars(j)%value(:surface_index-1) = &
-          state_vars(j)%value(:surface_index-1)+increment(:,j)
+      !porosity is needed to constrain production
+      do j = 1,number_of_parameters
+        if (state_vars(j)%is_solid/=.true. .and. &
+            state_vars(j)%is_gas  /=.true.) then
+          increment(:,j) = _SECONDS_PER_CIRCLE_*increment(:,j)
+          state_vars(j)%value(:surface_index-1) = &
+            (state_vars(j)%value(:surface_index-1)+increment(:,j))&
+            *porosity(:surface_index-1)
+        else
+          increment(:,j) = _SECONDS_PER_CIRCLE_*increment(:,j)&
+                           *porosity(:surface_index-1)
+          state_vars(j)%value(:surface_index-1) = &
+            state_vars(j)%value(:surface_index-1)+increment(:,j)
+        end if
+      end do
+      !call check_array("after_fabm_do",surface_index,id,i)
+      call fabm_check_state(fabm_model,1,surface_index-1,repair,valid)
       !sedimentation
       call brom_do_sedimentation(surface_index,bbl_sed_index,&
                                  ice_water_index,k_sed1,w_b,u_b,&
@@ -514,6 +551,8 @@ contains
                                  kz_bio(:surface_index),&
                                  layer_thicknesses(2:surface_index),&
                                  dz(:surface_index-2))
+      !call check_array("after_sedimentation",surface_index,id,i)
+      call fabm_check_state(fabm_model,1,surface_index-1,repair,valid)
     end do
   end subroutine
 
@@ -860,17 +899,27 @@ contains
       !zero velocity for sedimentation in the ice column
       !it is defined in the diffusive subroutine
       !except diatoms
-      if (ip/=find_index_of_state_variable('P1_c').or.&
-          ip/=find_index_of_state_variable('P1_n').or.&
-          ip/=find_index_of_state_variable('P1_p').or.&
-          ip/=find_index_of_state_variable('P1_s').or.&
-          ip/=find_index_of_state_variable('P1_Chl')&
+      !if (ip/=find_index_of_state_variable('P1_c').or.&
+      !    ip/=find_index_of_state_variable('P1_n').or.&
+      !    ip/=find_index_of_state_variable('P1_p').or.&
+      !    ip/=find_index_of_state_variable('P1_s').or.&
+      !    ip/=find_index_of_state_variable('P1_Chl')&
+      !    ) then
+      !  wti(ice_water_index:surface_index,ip) = 0._rk
+      !else
+      !  !to decrease sinking velocity of diatoms in the ice core
+      !  !wti(ice_water_index:surface_index,ip) = &
+      !  !  wti(ice_water_index:surface_index,ip)/1._rk
+      !  wti(ice_water_index,ip) = 0._rk
+      !end if
+      if (ip==find_index_of_state_variable('P1_c').or.&
+          ip==find_index_of_state_variable('P1_n').or.&
+          ip==find_index_of_state_variable('P1_p').or.&
+          ip==find_index_of_state_variable('P1_s').or.&
+          ip==find_index_of_state_variable('P1_Chl')&
           ) then
-        wti(ice_water_index:surface_index,ip) = 0._rk
-      else
-        !to decrease sinking velocity of diatoms in the ice core
-        wti(ice_water_index:surface_index,ip) = &
-          wti(ice_water_index:surface_index,ip)/10._rk
+        !set velocity like small size pom
+        wti(ice_water_index+1:surface_index-1,ip) = -1._rk/86400._rk
         wti(ice_water_index,ip) = 0._rk
       end if
     end do
@@ -1191,6 +1240,13 @@ contains
       is_solid = .true.,density = 1.5E7_rk*6.2_rk/15.7_rk)
     call find_set_state_variable("P1_Chl",&
       is_solid = .true.,density = 1.2E7_rk)!1200e6 from wiki
+    !microzooplankton
+    call find_set_state_variable("Z5_c",&
+      is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
+    call find_set_state_variable("Z5_n",&
+      is_solid = .true.,density = 1.5E7_rk)
+    call find_set_state_variable("Z5_p",&
+      is_solid = .true.,density = 1.5E7_rk*1._rk/16._rk)
     !!nanophytoplankton
     call find_set_state_variable("P2_c",&
       is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
@@ -1281,6 +1337,37 @@ contains
     call fatal_error("Search state variable",&
                      "No such variable")
   end function
+  !
+  !checking for negative and NaNs
+  !
+  subroutine check_array(location,surface_index,day,i)
+    character(len=*),intent(in):: location
+    integer         ,intent(in):: surface_index
+    integer         ,intent(in):: day
+    integer         ,intent(in):: i
+
+    character(10)::sday,si
+    integer j
+
+    write(si,'(i10)') i
+    write(sday,'(i10)') day
+
+    do j = 1,number_of_parameters
+      if (any(state_vars(j)%value<0._rk)) then
+        _LINE_
+        write(*,*) "value=", state_vars(j)%value
+        _LINE_
+        call fatal_error("Negative value: ",&
+                         location//": day="//trim(sday)//&
+                         " iteration="//trim(si)//&
+                         " name="//state_vars(j)%name)
+      end if
+      if (any(isnan(state_vars(j)%value(1:surface_index-1)))) then
+        call fatal_error("NaN: ",&
+                         location//": "//state_vars(j)%name)
+      end if
+    end do
+  end subroutine check_array
 end module
 
 program main

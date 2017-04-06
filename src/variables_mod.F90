@@ -50,6 +50,7 @@ module variables_mod
     real(rk) bound_low
     real(rk) density
     real(rk),allocatable,dimension(:):: sinking_velocity
+    !real(rk),allocatable,dimension(:):: fabm_value
   contains
     procedure:: set_brom_state_variable
     procedure:: print_state_variable
