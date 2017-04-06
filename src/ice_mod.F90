@@ -61,7 +61,7 @@ contains
     real(rk),dimension(:),intent(in):: ice_thickness
 
     constructor_ice%number_of_layers = &
-      int(maxval(ice_thickness)/_ICE_LAYERS_RESOLUTION_)
+      int(maxval(ice_thickness)/_ICE_LAYERS_RESOLUTION_)+2
     constructor_ice%number_of_days   = number_of_days
     allocate(constructor_ice%&
     air_ice_index (constructor_ice%number_of_days))

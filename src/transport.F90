@@ -980,7 +980,7 @@ contains
              standard_vars%get_column("air_ice_indexes"))
     day = inday; year = inyear;
     days_in_year = 365+merge(1,0,(mod(year,4).eq.0))
-    counter = days_in_year*10
+    counter = days_in_year*20
 
     netcdf_ice = type_output(fabm_model,'ice_year.nc',&
                          ice_water_index,number_of_layers,&
