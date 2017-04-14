@@ -407,7 +407,7 @@ contains
     real(rk),intent(in):: multiplier
     real(rk) sinusoidal
 
-    sinusoidal = (1._rk+sin(2._rk*_PI_*(&
+    sinusoidal = (1.02_rk+sin(2._rk*_PI_*(&
                   julian_day-40._rk)/365._rk))*multiplier
   end function
 
@@ -497,8 +497,12 @@ contains
     end if
     call recalculate_ice(id,brine_release)
     !sets inflow on ice_water_index-1(water surface)
-    call inflow(ice_water_index,day)
+    call inflow(ice_water_index,bbl_sed_index,day)
     do i = 1,number_of_circles
+      ! a little bit more nutrients inflow
+      !if (mod(i,150)==0) then
+      !  call inflow(ice_water_index,bbl_sed_index,day)
+      !end if
       dcc = 0._rk
       !diffusion
       call brom_do_diffusion(surface_index,bbl_sed_index,ice_water_index,&
@@ -597,6 +601,11 @@ contains
       (oxygen%value(bbl_sed_index)+_KO2_)
     brine_flux = 0._rk
     brine_flux(ice_water_index) = brine_release
+    !add turb to ice water boundary
+    !if (surface_index/=ice_water_index) then
+    !  brine_flux(ice_water_index) = &
+    !    brine_flux(ice_water_index)+kz_turb(ice_water_index-1)
+    !end if
     do i = 1,number_of_parameters
       kz_tot(:,i) = brine_flux+kz_ice_gravity+&
                     kz_turb+kz_mol+kz_bio*O2stat
@@ -921,9 +930,18 @@ contains
           ip==find_index_of_state_variable('P1_s').or.&
           ip==find_index_of_state_variable('P1_Chl')&
           ) then
-        !set velocity like small size pom
-        wti(ice_water_index+1:surface_index-1,ip) = -1._rk/86400._rk
+        !set velocity 3 cm/day
+        wti(ice_water_index+1:surface_index-1,ip) = -0.03_rk/86400._rk
         wti(ice_water_index,ip) = 0._rk
+      end if
+      !rest of phy
+      if (ip==find_index_of_state_variable('P4_c').or.&
+          ip==find_index_of_state_variable('P4_n').or.&
+          ip==find_index_of_state_variable('P4_p').or.&
+          ip==find_index_of_state_variable('P4_Chl')&
+          ) then
+        !set velocity 3 cm/day
+        wti(ice_water_index:surface_index-1,ip) = -0.03_rk/86400._rk
       end if
     end do
 
@@ -1275,22 +1293,22 @@ contains
     !call find_set_state_variable("P3_Chl",&
     !  is_solid = .true.,density = 1.2E7_rk)!1200e6 from wiki
     !!microphytoplankton
-    !call find_set_state_variable("P4_c",&
-    !  is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
-    !call find_set_state_variable("P4_n",&
-    !  is_solid = .true.,density = 1.5E7_rk)
-    !call find_set_state_variable("P4_p",&
-    !  is_solid = .true.,density = 1.5E7_rk*1._rk/16._rk)
+    call find_set_state_variable("P4_c",&
+      is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
+    call find_set_state_variable("P4_n",&
+      is_solid = .true.,density = 1.5E7_rk)
+    call find_set_state_variable("P4_p",&
+      is_solid = .true.,density = 1.5E7_rk*1._rk/16._rk)
     !call find_set_state_variable("P4_f",&
     !  is_solid = .true.,density = 1.5E7_rk*5._rk/1260._rk)
-    !call find_set_state_variable("P4_Chl",&
-    !  is_solid = .true.,density = 1.2E7_rk)!1200e6 from wiki
+    call find_set_state_variable("P4_Chl",&
+      is_solid = .true.,density = 1.2E7_rk)!1200e6 from wiki
   end subroutine
   !
   !sets inflows on ice_water_index-1(water_surface)
   !
-  subroutine inflow(ice_water_index,day)
-    integer,intent(in):: ice_water_index
+  subroutine inflow(ice_water_index,bbl_sed_index,day)
+    integer,intent(in):: ice_water_index,bbl_sed_index
     integer,intent(in):: day
 
     call find_set_state_variable(_Mn4_,&
@@ -1299,12 +1317,18 @@ contains
          value=0.4e-4_rk,layer=ice_water_index-1)
     call find_set_state_variable(_Alk_,&
          value=2300._rk,layer=ice_water_index-1)
+    call find_set_state_variable(_Alk_,&
+         value=2330._rk,layer=bbl_sed_index)
+    !call find_set_state_variable(_DIC_,&
+    !     value=2150._rk,layer=bbl_sed_index)
     call find_set_state_variable(_PO4_,&
-         value=sinusoidal(day,0.45_rk),layer=ice_water_index-1)
+         value=sinusoidal(day,0.15_rk),layer=ice_water_index-1)
     call find_set_state_variable(_NO3_,&
-         value=sinusoidal(day,3.8_rk),layer=ice_water_index-1)
+         value=sinusoidal(day,0.8_rk),layer=ice_water_index-1)
     call find_set_state_variable(_Si_,&
-         value=sinusoidal(day,2._rk),layer=ice_water_index-1)
+         value=sinusoidal(day,0.7_rk),layer=ice_water_index-1)
+    call find_set_state_variable(_O2_,&
+         value=200._rk,layer=bbl_sed_index)
   end subroutine
 
   function find_state_variable(inname)

@@ -28,6 +28,7 @@
 #define _ICE_LAYERS_RESOLUTION_     0.03_rk
 
 #define _Alk_                       'B_C_Alk'
+#define _DIC_                       'B_C_DIC'
 #define _PO4_                       'B_NUT_PO4'
 #define _NO3_                       'B_NUT_NO3'
 #define _Si_                        'B_NUT_Si'

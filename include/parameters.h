@@ -9,7 +9,7 @@
 #define _ICE_SCATTERED_   0.97_rk
 #define _ICE_EXTINCTION_  0.93_rk
 #define _ERLOV_           0.05_rk
-#define _PAR_PART_        0.5_rk
+#define _PAR_PART_        1.0_rk
 
 !porosity parameters:
 !(Soetaert etc., 1996)
