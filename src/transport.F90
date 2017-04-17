@@ -258,7 +258,7 @@ contains
     day = standard_vars%first_day()
     call initial_date(day,year)
     !first day circlt
-    call first_day_circle(1,1000,ice_water_index,&
+    call first_day_circle(230,100,ice_water_index,&
                               water_bbl_index,indices)
     !cycle first year 10 times
     call first_year_circle(day,year,ice_water_index,&
@@ -1399,16 +1399,18 @@ contains
          value=0.5e-4_rk,layer=ice_water_index-1)
     call find_set_state_variable(_Fe3_,&
          value=0.4e-4_rk,layer=ice_water_index-1)
+    call find_set_state_variable(_DIC_,&
+         value=1930._rk,layer=ice_water_index-1)
     call find_set_state_variable(_Alk_,&
-         value=2300._rk,layer=ice_water_index-1)
+         value=2000._rk,layer=ice_water_index-1)
     call find_set_state_variable(_Alk_,&
-         value=2330._rk,layer=bbl_sed_index)
+         value=2350._rk,layer=bbl_sed_index)
     call find_set_state_variable(_PO4_,&
-         value=sinusoidal(day,0.25_rk),layer=ice_water_index-1)
+         value=sinusoidal(day,0.5_rk),layer=ice_water_index-1)
     call find_set_state_variable(_NO3_,&
          value=sinusoidal(day,0.5_rk),layer=ice_water_index-1)
     call find_set_state_variable(_Si_,&
-         value=sinusoidal(day,3._rk),layer=ice_water_index-1)
+         value=sinusoidal(day,10._rk),layer=ice_water_index-1)
   end subroutine
 
   function find_state_variable(inname)

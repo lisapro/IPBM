@@ -7,9 +7,9 @@ instances:
     initialization:
       NH4: 0.0
       NO2: 0.0
-      NO3: 1.0
-      PO4: 2.0
-      Si:  20.0
+      NO3: 0.0
+      PO4: 1.0
+      Si:  10.0
   B_EQ:
     long_name: equilibrium_constrants
     model: niva/brom_eq_constants
@@ -17,8 +17,8 @@ instances:
     long_name: carbon
     model: niva/brom_carbon
     initialization:
-      DIC: 2150.0 # total dissolved inorganic carbon (mmol C/m^3)
-      Alk: 2300.0 # umol/kg
+      DIC: 1900.0 # total dissolved inorganic carbon (mmol C/m^3)
+      Alk: 2100.0 # umol/kg
     coupling:
       Kc0:   B_EQ/Kc0
       Kc1:   B_EQ/Kc1
