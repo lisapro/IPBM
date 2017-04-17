@@ -16,8 +16,8 @@
 
 #define _SECONDS_PER_CIRCLE_        300
 
-#define _LONGITUDE_                 70._rk
-#define _LATITUDE_                  70._rk
+#define _LONGITUDE_                 77.8_rk
+#define _LATITUDE_                  77.3_rk
 
 #define _WIDTH_BBL_                 0.5_rk
 #define _RESOLUTION_BBL_            0.1_rk

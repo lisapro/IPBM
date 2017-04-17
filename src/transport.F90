@@ -257,6 +257,9 @@ contains
 
     day = standard_vars%first_day()
     call initial_date(day,year)
+    !first day circlt
+    call first_day_circle(1,1000,ice_water_index,&
+                              water_bbl_index,indices)
     !cycle first year 10 times
     call first_year_circle(day,year,ice_water_index,&
                            water_bbl_index,indices)
@@ -500,7 +503,7 @@ contains
     call inflow(ice_water_index,bbl_sed_index,day)
     do i = 1,number_of_circles
       ! a little bit more nutrients inflow
-      !if (mod(i,150)==0) then
+      !if (mod(i,100)==0) then
       !  call inflow(ice_water_index,bbl_sed_index,day)
       !end if
       dcc = 0._rk
@@ -853,30 +856,30 @@ contains
     u_1(bbl_sed_index) = O2stat*kz_bio(bbl_sed_index)*dphidz_SWI/&
                        face_porosity(bbl_sed_index)
 
-    !Sum over contributions from each particulate variable
-    do i=1,number_of_parameters
-      if (state_vars(i)%is_solid) then
-        !First set rhop_i*(1-phi)*w_1i at the SWI
-        w_1m(bbl_sed_index,i) = &
-          state_vars(i)%sinking_velocity(bbl_sed_index)*&
-          min(state_vars(i)%value(bbl_sed_index),&
-          state_vars(i)%value(bbl_sed_index+1))
-          !Now set rhop_i*(1-phi)*w_1i in the sediments
-          !  by integrating the reaction terms
-        do k=bbl_sed_index-1,1,-1
-          w_1m(k,i) = w_1m(k+1,i)+increment(k,i)*hz(k)
-        end do
-        !Divide by rhop_i*(1-phi) to get w_1c(i)
-        w_1m(k_sed1,i) = w_1m(k_sed1,i)/&
-          (state_vars(i)%density*(1.0_rk-face_porosity(k_sed1)))
-        !Add to total w_1c
-        w_1c(k_sed1) = w_1c(k_sed1) + w_1m(k_sed1,i)
-      end if
-    end do
-    !Now calculate u from w using (4) above
-    u_1c(k_sed1) = (w_1c(1)-&
-                   (1.0_rk-face_porosity(k_sed1))*&
-                   w_1(k_sed1))/face_porosity(k_sed1)
+    !!Sum over contributions from each particulate variable
+    !do i=1,number_of_parameters
+    !  if (state_vars(i)%is_solid) then
+    !    !First set rhop_i*(1-phi)*w_1i at the SWI
+    !    w_1m(bbl_sed_index,i) = &
+    !      state_vars(i)%sinking_velocity(bbl_sed_index)*&
+    !      min(state_vars(i)%value(bbl_sed_index),&
+    !      state_vars(i)%value(bbl_sed_index+1))
+    !      !Now set rhop_i*(1-phi)*w_1i in the sediments
+    !      !  by integrating the reaction terms
+    !    do k=bbl_sed_index-1,1,-1
+    !      w_1m(k,i) = w_1m(k+1,i)+increment(k,i)*hz(k)
+    !    end do
+    !    !Divide by rhop_i*(1-phi) to get w_1c(i)
+    !    w_1m(k_sed1,i) = w_1m(k_sed1,i)/&
+    !      (state_vars(i)%density*(1.0_rk-face_porosity(k_sed1)))
+    !    !Add to total w_1c
+    !    w_1c(k_sed1) = w_1c(k_sed1) + w_1m(k_sed1,i)
+    !  end if
+    !end do
+    !!Now calculate u from w using (4) above
+    !u_1c(k_sed1) = (w_1c(1)-&
+    !               (1.0_rk-face_porosity(k_sed1))*&
+    !               w_1(k_sed1))/face_porosity(k_sed1)
 
     !find phy to specify its sinking behavior
     !i = find_index_of_state_variable(_Phy_)
@@ -934,7 +937,7 @@ contains
         wti(ice_water_index+1:surface_index-1,ip) = -0.03_rk/86400._rk
         wti(ice_water_index,ip) = 0._rk
       end if
-      !rest of phy
+      !!rest of phy
       if (ip==find_index_of_state_variable('P4_c').or.&
           ip==find_index_of_state_variable('P4_n').or.&
           ip==find_index_of_state_variable('P4_p').or.&
@@ -1074,6 +1077,87 @@ contains
     call netcdf_sediments%close()
   end subroutine
 
+  subroutine first_day_circle(day,counter,ice_water_index,&
+                              water_bbl_index,indices)
+    use output_mod
+    
+    integer,intent(in):: day,counter
+    integer,intent(in):: ice_water_index,water_bbl_index
+    real(rk),allocatable,intent(in):: indices(:)
+
+    type(type_output):: netcdf_ice
+    type(type_output):: netcdf_water
+    type(type_output):: netcdf_sediments
+    integer i
+    integer surface_index
+    real(rk),allocatable,dimension(:):: air_ice_indexes
+
+    allocate(air_ice_indexes,source = &
+             standard_vars%get_column("air_ice_indexes"))
+    !
+    netcdf_ice = type_output(fabm_model,'ice_day.nc',&
+                         ice_water_index,number_of_layers,&
+                         number_of_layers)
+    netcdf_water = type_output(fabm_model,'water_day.nc',&
+                         water_bbl_index,ice_water_index-1,&
+                         number_of_layers)
+    netcdf_sediments = type_output(fabm_model,'sediments_day.nc',&
+                         1,water_bbl_index-1,&
+                         number_of_layers)
+    !
+    !change surface index due to ice depth
+    !index for boundaries so for layers it should be -1
+    surface_index = air_ice_indexes(day)
+    call fabm_model%set_surface_index(surface_index-1)
+    !
+    !for netcdf output
+    depth = standard_vars%get_column("middle_layer_depths",day)
+    !
+    !update links
+    !realday = day !to convert integer to real - ersem zenith_angle
+    !call fabm_model%link_scalar(id_yearday,realday)
+    !cell thickness - ersem
+    cell = standard_vars%get_column("layer_thicknesses",day)
+    call fabm_link_bulk_data(fabm_model,h_id,cell)
+    !temperature
+    temp  = standard_vars%get_column(_TEMPERATURE_,day)
+    call fabm_link_bulk_data(fabm_model,temp_id,temp)
+    !salinity
+    salt  = standard_vars%get_column(_SALINITY_,day)
+    call fabm_link_bulk_data(fabm_model,salt_id,salt)
+    !density
+    density = standard_vars%get_column(_RHO_,day)+1000._rk
+    call fabm_link_bulk_data(fabm_model,rho_id,density)
+    !par
+    call calculate_radiative_flux(&
+      surface_radiative_flux(_LATITUDE_,day+13),& !kara case starts 14jan
+      standard_vars%get_value(_SNOW_THICKNESS_,day),&
+      standard_vars%get_value(_ICE_THICKNESS_ ,day))
+    call fabm_link_bulk_data(fabm_model,par_id,radiative_flux)
+    !
+    do i = 1,counter
+      call day_circle(day,surface_index,day)
+
+      call netcdf_ice%save(fabm_model,state_vars,indices,i,&
+                           temp,salt,depth,radiative_flux,&
+                           int(air_ice_indexes(day)))
+      call netcdf_water%save(fabm_model,state_vars,depth,i,&
+                             temp,salt,depth,radiative_flux,&
+                             int(air_ice_indexes(day)))
+      call netcdf_sediments%save(fabm_model,state_vars,depth,i,&
+                                 temp,salt,depth,radiative_flux,&
+                                 int(air_ice_indexes(day)))
+
+      write(*,*) "Stabilizing initial array of values, in progress ..."
+      write(*,*) "number / ","julianday / ",i,day
+    end do
+    call netcdf_ice%close()
+    call netcdf_water%close()
+    call netcdf_sediments%close()
+  end subroutine
+  !
+  !
+  !             
   subroutine recalculate_ice(id,brine_release)
     integer ,intent(in) :: id
     real(rk),intent(out):: brine_release
@@ -1292,7 +1376,7 @@ contains
     !  is_solid = .true.,density = 1.5E7_rk*5._rk/1260._rk)
     !call find_set_state_variable("P3_Chl",&
     !  is_solid = .true.,density = 1.2E7_rk)!1200e6 from wiki
-    !!microphytoplankton
+    !microphytoplankton
     call find_set_state_variable("P4_c",&
       is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
     call find_set_state_variable("P4_n",&
@@ -1319,16 +1403,12 @@ contains
          value=2300._rk,layer=ice_water_index-1)
     call find_set_state_variable(_Alk_,&
          value=2330._rk,layer=bbl_sed_index)
-    !call find_set_state_variable(_DIC_,&
-    !     value=2150._rk,layer=bbl_sed_index)
     call find_set_state_variable(_PO4_,&
-         value=sinusoidal(day,0.15_rk),layer=ice_water_index-1)
+         value=sinusoidal(day,0.25_rk),layer=ice_water_index-1)
     call find_set_state_variable(_NO3_,&
-         value=sinusoidal(day,0.8_rk),layer=ice_water_index-1)
+         value=sinusoidal(day,0.5_rk),layer=ice_water_index-1)
     call find_set_state_variable(_Si_,&
-         value=sinusoidal(day,0.7_rk),layer=ice_water_index-1)
-    call find_set_state_variable(_O2_,&
-         value=200._rk,layer=bbl_sed_index)
+         value=sinusoidal(day,3._rk),layer=ice_water_index-1)
   end subroutine
 
   function find_state_variable(inname)
