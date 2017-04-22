@@ -517,16 +517,16 @@ contains
       !biogeochemistry
       increment = 0._rk
       do j = 1,number_of_parameters
-        if (state_vars(j)%is_solid/=.true. .and. &
-            state_vars(j)%is_gas  /=.true.) then
+        if (state_vars(j)%is_solid.neqv..true. .and. &
+            state_vars(j)%is_gas  .neqv..true.) then
           state_vars(j)%value = state_vars(j)%value/porosity
         end if
       end do
       call fabm_do(fabm_model,1,surface_index-1,increment)
       !porosity is needed to constrain production
       do j = 1,number_of_parameters
-        if (state_vars(j)%is_solid/=.true. .and. &
-            state_vars(j)%is_gas  /=.true.) then
+        if (state_vars(j)%is_solid.neqv..true. .and. &
+            state_vars(j)%is_gas  .neqv..true.) then
           increment(:,j) = _SECONDS_PER_CIRCLE_*increment(:,j)
           state_vars(j)%value(:surface_index-1) = &
             (state_vars(j)%value(:surface_index-1)+increment(:,j))&
@@ -1080,7 +1080,7 @@ contains
   subroutine first_day_circle(day,counter,ice_water_index,&
                               water_bbl_index,indices)
     use output_mod
-    
+
     integer,intent(in):: day,counter
     integer,intent(in):: ice_water_index,water_bbl_index
     real(rk),allocatable,intent(in):: indices(:)
@@ -1157,7 +1157,7 @@ contains
   end subroutine
   !
   !
-  !             
+  !
   subroutine recalculate_ice(id,brine_release)
     integer ,intent(in) :: id
     real(rk),intent(out):: brine_release
@@ -1456,13 +1456,13 @@ contains
     integer         ,intent(in):: surface_index
     integer         ,intent(in):: day
     integer         ,intent(in):: i
-    
+
     character(10)::sday,si
     integer j
-    
+
     write(si,'(i10)') i
     write(sday,'(i10)') day
-    
+
     do j = 1,number_of_parameters
       if (any(state_vars(j)%value<0._rk)) then
         _LINE_
