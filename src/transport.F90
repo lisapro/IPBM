@@ -257,8 +257,8 @@ contains
 
     day = standard_vars%first_day()
     call initial_date(day,year)
-    !first day circlt
-    call first_day_circle(230,100,ice_water_index,&
+    !first day circle
+    call first_day_circle(230,200,ice_water_index,&
                               water_bbl_index,indices)
     !cycle first year 10 times
     call first_year_circle(day,year,ice_water_index,&
@@ -605,10 +605,10 @@ contains
     brine_flux = 0._rk
     brine_flux(ice_water_index) = brine_release
     !add turb to ice water boundary
-    !if (surface_index/=ice_water_index) then
-    !  brine_flux(ice_water_index) = &
-    !    brine_flux(ice_water_index)+kz_turb(ice_water_index-1)
-    !end if
+    if (surface_index/=ice_water_index) then
+      brine_flux(ice_water_index) = &
+        brine_flux(ice_water_index)+1.e-5_rk
+    end if
     do i = 1,number_of_parameters
       kz_tot(:,i) = brine_flux+kz_ice_gravity+&
                     kz_turb+kz_mol+kz_bio*O2stat
@@ -1001,7 +1001,7 @@ contains
              standard_vars%get_column("air_ice_indexes"))
     day = inday; year = inyear;
     days_in_year = 365+merge(1,0,(mod(year,4).eq.0))
-    counter = days_in_year*20
+    counter = days_in_year*10
 
     netcdf_ice = type_output(fabm_model,'ice_year.nc',&
                          ice_water_index,number_of_layers,&
@@ -1214,7 +1214,7 @@ contains
         end do
       end if
     end do
-    if (ice_growth_save<0) then
+    if (ice_growth_save>0) then
       brine_release = calc_brine_release(ice_growth)
     else
       brine_release = 0._rk
@@ -1229,9 +1229,12 @@ contains
       real(rk) growth_rate
 
       growth_rate = ice_growth*_ICE_LAYERS_RESOLUTION_
-      calc_brine_release = ((9.667e-9_rk+4.49e-6_rk*growth_rate &
-                                        -1.39e-7_rk*growth_rate**2) &
-                           /100._rk)*_ICE_LAYERS_RESOLUTION_
+      growth_rate = growth_rate*100._rk !m to cm
+      growth_rate = growth_rate/86400._rk !per day to per second
+      calc_brine_release = (9.667e-9_rk+4.49e-6_rk*growth_rate &
+                                        -1.39e-7_rk*growth_rate**2)&
+                                        *_ICE_LAYERS_RESOLUTION_
+      calc_brine_release = calc_brine_release/100._rk
     end function
   end subroutine recalculate_ice
 
@@ -1401,10 +1404,14 @@ contains
          value=0.4e-4_rk,layer=ice_water_index-1)
     call find_set_state_variable(_DIC_,&
          value=1930._rk,layer=ice_water_index-1)
+    call find_set_state_variable(_DIC_,&
+         value=2280._rk,layer=bbl_sed_index)
     call find_set_state_variable(_Alk_,&
          value=2000._rk,layer=ice_water_index-1)
     call find_set_state_variable(_Alk_,&
          value=2350._rk,layer=bbl_sed_index)
+    call find_set_state_variable(_NH4_,&
+         value=5._rk,layer=bbl_sed_index-1)
     call find_set_state_variable(_PO4_,&
          value=sinusoidal(day,0.5_rk),layer=ice_water_index-1)
     call find_set_state_variable(_NO3_,&

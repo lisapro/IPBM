@@ -644,6 +644,7 @@ contains
       _INFINITE_DILLUTION_MOLECULAR_DIFFUSIVITY_/&
       tortuosity(:bbl_sediments_index,:)**2
     do i = 1,time
+      value_2d(ice_water_index:air_ice_indexes(i),i) = 0._rk
       value_2d(air_ice_indexes(i)+1:,i) = D_QNAN
     end do
     new_var_2d = variable_2d(name_molecular_diffusivity,'',value_2d)

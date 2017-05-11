@@ -17,7 +17,7 @@ instances:
     long_name: carbon
     model: niva/brom_carbon
     initialization:
-      DIC: 1900.0 # total dissolved inorganic carbon (mmol C/m^3)
+      DIC: 2000.0 # total dissolved inorganic carbon (mmol C/m^3)
       Alk: 2100.0 # umol/kg
     coupling:
       Kc0:   B_EQ/Kc0

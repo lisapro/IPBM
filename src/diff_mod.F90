@@ -192,7 +192,7 @@ contains
       !solid case
       !dC/dt = d/dz(phi*kzti*dC/dz)        in the ice
       !dC/dt = d/dz(kzti*dC/dz)            in the water column
-      !dC/dt = d/dz(phi*kzti*d/dz(C/phi))  in the sediments
+      !dC/dt = d/dz((1-phi)*kzti*d/dz(C/(1-phi)))  in the sediments
       pF = pF1_solids
       !nuY = nuY_in*pF2_solids
       nuY(:i_ice_water-1) = nuY_in(:i_ice_water-1)*&
