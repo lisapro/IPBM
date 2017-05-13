@@ -5,9 +5,9 @@ instances:
     long_name: main_nutrients
     model: niva/brom_main_nutrients
     initialization:
-      NH4: 0.0
-      NO2: 0.0
-      NO3: 0.0
+      NH4: 0.1
+      NO2: 0.1
+      NO3: 0.1
       PO4: 1.0
       Si:  10.0
   B_EQ:
@@ -62,10 +62,10 @@ instances:
     long_name: bio
     model: niva/brom_bio
     initialization:
-      Phy: 0.00
-      Het: 0.00
-      PON: 0.00
-      DON: 0.0
+      Phy: 0.01
+      Het: 0.01
+      PON: 0.01
+      DON: 0.01
       O2:  300.0
     coupling:
       PO4:    B_NUT/PO4
@@ -104,7 +104,7 @@ instances:
 # ----P ------------
       K_po4_lim: 0.012      #! Half-sat. constant for uptake of PO4 by Phy
 # ----Si------------
-      K_si_lim: 0.0         #! Half-sat. constant for uptake of Si_lim by Phy
+      K_si_lim: 0.0001      #! Half-sat. constant for uptake of Si_lim by Phy
 # ----Sinking-------
       Wsed: 5.0        #! Rate of sinking of detritus (m/d), =0.4 (Savchuk, 2002), =5. (Gregoire, Lacroix, 2001), =1-370 (Alldredge, Gotschalk, 1988)
       Wphy: 0.2        #! Rate of sinking of Phy (m/d), =0.1-0.5 (Savchuk, 2002)
@@ -118,10 +118,10 @@ instances:
     long_name: bacteria
     model: niva/brom_bact
     initialization:
-      Baae: 0.00
-      Bhae: 0.00
-      Baan: 0.00
-      Bhan: 0.00
+      Baae: 0.01
+      Bhae: 0.01
+      Baan: 0.01
+      Bhan: 0.01
     coupling:
       NH4:      B_NUT/NH4
       DON:      B_BIO/DON
@@ -398,7 +398,7 @@ instances:
     long_name: silicon
     model: niva/brom_silicon
     initialization:
-      Sipart: 0.0
+      Sipart: 0.1
     coupling:
       Si: B_NUT/Si
     parameters:
