@@ -522,6 +522,7 @@ contains
           state_vars(j)%value = state_vars(j)%value/porosity
         end if
       end do
+      !call check_array("after_concentrations_recalculation",surface_index,id,i)
       call fabm_do(fabm_model,1,surface_index-1,increment)
       !porosity is needed to constrain production
       do j = 1,number_of_parameters

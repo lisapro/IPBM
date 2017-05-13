@@ -529,7 +529,7 @@ contains
         depth_boundary(1:swi_index,i)-swi_depth)/&
         porosity_decay)
     end forall
-    porosity(ice_water_index,:) = 1._rk
+    porosity(ice_water_index,:) = 0.5_rk
     porosity(ice_water_index+1:,:) = &
           self%type_ice%do_brine_relative_volume(&
           .false.,self%get_column(_ICE_THICKNESS_))
@@ -686,7 +686,7 @@ contains
             exit
           end if
         end do
-        value_2d(ice_water_index:air_ice_indexes(i),i) = &
+        value_2d(ice_water_index:j-1,i) = &
           z_conv*_GRAVITY_DRAINAGE_
       end if
     end do

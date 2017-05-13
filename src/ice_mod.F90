@@ -287,9 +287,9 @@ contains
     real(rk),dimension(:,:) ,intent(in):: brine_salinity
     real(rk):: c ![g*m-3*ppt-1]
 
-    c = 800._rk
+    c = 8.e-4_rk
     allocate(do_ice_brine_density(self%number_of_layers,self%number_of_days))
-    do_ice_brine_density = 1._rk+c*brine_salinity
+    do_ice_brine_density = (1._rk+c*brine_salinity)*1.e6_rk
   end function do_ice_brine_density
   !
   !Private procedure, bulk density through ice [g*m-3]
