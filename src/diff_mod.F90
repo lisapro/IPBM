@@ -175,12 +175,13 @@ contains
         pF = pF1_solutes
         nuY = nuY_in*pF2_solutes
       else
-        !gas case
+        !gas case - currently like liquid
         !dC/dt = d/dz(phi*kzti*dC/dz)        in the ice
         !dC/dt = d/dz(kzti*dC/dz)            in the water column
         !dC/dt = d/dz(phi*kzti*d/dz(C/phi))  in the sediments
-        pF(:i_ice_water-1) = pF1_solutes(:i_ice_water-1)
-        pF(i_ice_water:) = 1._rk
+        !pF(:i_ice_water-1) = pF1_solutes(:i_ice_water-1)
+        !pF(i_ice_water:) = 1._rk
+        pF = pF1_solutes
         nuY = nuY_in*pF2_solutes
         !nuY(:i_ice_water-1) = nuY_in(:i_ice_water-1)*&
         !                      pF2_solutes(:i_ice_water-1)

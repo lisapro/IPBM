@@ -137,9 +137,13 @@ contains
     !concentrations are per total volume of sediment
     water_sediments_index = standard_vars%get_value("bbl_sediments_index")
     forall (i = 1:number_of_parameters)
-      state_vars(i)%value(:water_sediments_index)&
-        = state_vars(i)%value(:water_sediments_index)*&
-          porosity(:water_sediments_index)
+    !  state_vars(i)%value(:water_sediments_index)&
+    !    = state_vars(i)%value(:water_sediments_index)*&
+    !      porosity(:water_sediments_index)
+    !  state_vars(i)%value(air_ice_indexes(1):) = D_QNAN
+      state_vars(i)%value(:air_ice_indexes(1)-1)&
+        = state_vars(i)%value(:air_ice_indexes(1)-1)*&
+          porosity(:air_ice_indexes(1)-1)
       state_vars(i)%value(air_ice_indexes(1):) = D_QNAN
     end forall
     !
@@ -258,8 +262,8 @@ contains
     day = standard_vars%first_day()
     call initial_date(day,year)
     !first day circle
-    call first_day_circle(230,200,ice_water_index,&
-                              water_bbl_index,indices)
+    call first_day_circle(100,ice_water_index,&
+                          water_bbl_index,indices)
     !cycle first year 10 times
     call first_year_circle(day,year,ice_water_index,&
                            water_bbl_index,indices)
@@ -517,8 +521,9 @@ contains
       !biogeochemistry
       increment = 0._rk
       do j = 1,number_of_parameters
-        if (state_vars(j)%is_solid.neqv..true. .and. &
-            state_vars(j)%is_gas  .neqv..true.) then
+        !if (state_vars(j)%is_solid.neqv..true. .and. &
+        !    state_vars(j)%is_gas  .neqv..true.) then
+        if (state_vars(j)%is_solid.neqv..true.) then
           state_vars(j)%value = state_vars(j)%value/porosity
         end if
       end do
@@ -526,8 +531,9 @@ contains
       call fabm_do(fabm_model,1,surface_index-1,increment)
       !porosity is needed to constrain production
       do j = 1,number_of_parameters
-        if (state_vars(j)%is_solid.neqv..true. .and. &
-            state_vars(j)%is_gas  .neqv..true.) then
+        !if (state_vars(j)%is_solid.neqv..true. .and. &
+        !    state_vars(j)%is_gas  .neqv..true.) then
+        if (state_vars(j)%is_solid.neqv..true.) then
           increment(:,j) = _SECONDS_PER_CIRCLE_*increment(:,j)
           state_vars(j)%value(:surface_index-1) = &
             (state_vars(j)%value(:surface_index-1)+increment(:,j))&
@@ -1078,11 +1084,11 @@ contains
     call netcdf_sediments%close()
   end subroutine
 
-  subroutine first_day_circle(day,counter,ice_water_index,&
+  subroutine first_day_circle(counter,ice_water_index,&
                               water_bbl_index,indices)
     use output_mod
 
-    integer,intent(in):: day,counter
+    integer,intent(in):: counter
     integer,intent(in):: ice_water_index,water_bbl_index
     real(rk),allocatable,intent(in):: indices(:)
 
@@ -1108,49 +1114,49 @@ contains
     !
     !change surface index due to ice depth
     !index for boundaries so for layers it should be -1
-    surface_index = air_ice_indexes(day)
+    surface_index = air_ice_indexes(1)
     call fabm_model%set_surface_index(surface_index-1)
     !
     !for netcdf output
-    depth = standard_vars%get_column("middle_layer_depths",day)
+    depth = standard_vars%get_column("middle_layer_depths",1)
     !
     !update links
     !realday = day !to convert integer to real - ersem zenith_angle
     !call fabm_model%link_scalar(id_yearday,realday)
     !cell thickness - ersem
-    cell = standard_vars%get_column("layer_thicknesses",day)
+    cell = standard_vars%get_column("layer_thicknesses",1)
     call fabm_link_bulk_data(fabm_model,h_id,cell)
     !temperature
-    temp  = standard_vars%get_column(_TEMPERATURE_,day)
+    temp  = standard_vars%get_column(_TEMPERATURE_,1)
     call fabm_link_bulk_data(fabm_model,temp_id,temp)
     !salinity
-    salt  = standard_vars%get_column(_SALINITY_,day)
+    salt  = standard_vars%get_column(_SALINITY_,1)
     call fabm_link_bulk_data(fabm_model,salt_id,salt)
     !density
-    density = standard_vars%get_column(_RHO_,day)+1000._rk
+    density = standard_vars%get_column(_RHO_,1)+1000._rk
     call fabm_link_bulk_data(fabm_model,rho_id,density)
     !par
     call calculate_radiative_flux(&
-      surface_radiative_flux(_LATITUDE_,day+13),& !kara case starts 14jan
-      standard_vars%get_value(_SNOW_THICKNESS_,day),&
-      standard_vars%get_value(_ICE_THICKNESS_ ,day))
+      surface_radiative_flux(_LATITUDE_,14),& !kara case starts 14jan
+      standard_vars%get_value(_SNOW_THICKNESS_,1),&
+      standard_vars%get_value(_ICE_THICKNESS_ ,1))
     call fabm_link_bulk_data(fabm_model,par_id,radiative_flux)
     !
     do i = 1,counter
-      call day_circle(day,surface_index,day)
+      call day_circle(1,surface_index,14)
 
       call netcdf_ice%save(fabm_model,state_vars,indices,i,&
                            temp,salt,depth,radiative_flux,&
-                           int(air_ice_indexes(day)))
+                           int(air_ice_indexes(1)))
       call netcdf_water%save(fabm_model,state_vars,depth,i,&
                              temp,salt,depth,radiative_flux,&
-                             int(air_ice_indexes(day)))
+                             int(air_ice_indexes(1)))
       call netcdf_sediments%save(fabm_model,state_vars,depth,i,&
                                  temp,salt,depth,radiative_flux,&
-                                 int(air_ice_indexes(day)))
+                                 int(air_ice_indexes(1)))
 
       write(*,*) "Stabilizing initial array of values, in progress ..."
-      write(*,*) "number / ","julianday / ",i,day
+      write(*,*) "number / ",i
     end do
     call netcdf_ice%close()
     call netcdf_water%close()
