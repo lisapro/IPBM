@@ -614,6 +614,8 @@ contains
     eddy_kz = 0._rk
 
     !add eddy diffusivity
+    allocate(depth_boundary(number_of_boundaries,time))
+    depth_boundary = self%get_array(_DEPTH_ON_BOUNDARY_)
     call name_input%get_var(name_eddy_diffusivity,var)
     select type(var)
     class is(variable_2d)
@@ -621,8 +623,13 @@ contains
       !linear interpolation in bbl
       forall (i = bbl_sediments_index+1:water_bbl_index)
         eddy_kz(i,:) = &
-        (i-bbl_sediments_index)*eddy_kz(water_bbl_index+1,:)/(&
-        water_bbl_index+1-bbl_sediments_index)
+        !(i-bbl_sediments_index)*eddy_kz(water_bbl_index+1,:)/(&
+        !water_bbl_index+1-bbl_sediments_index)
+        eddy_kz(bbl_sediments_index,:)+&
+        ((eddy_kz(water_bbl_index+1,:)-eddy_kz(bbl_sediments_index,:))/&
+        (depth_boundary(water_bbl_index+1,:)-&
+         depth_boundary(bbl_sediments_index,:)))*&
+        (depth_boundary(i,:)-depth_boundary(bbl_sediments_index,:))
       end forall
       do i = 1,time
         eddy_kz(air_ice_indexes(i)+1:,i) = D_QNAN
@@ -651,8 +658,6 @@ contains
     call self%add_item(new_var_2d)
 
     !add bioturbation diffusivity
-    allocate(depth_boundary(number_of_boundaries,time))
-    depth_boundary = self%get_array(_DEPTH_ON_BOUNDARY_)
     value_2d = 0._rk
     forall (i = 1:bbl_sediments_index)
     !accuracy problem
