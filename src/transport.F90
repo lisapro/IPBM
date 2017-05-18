@@ -653,11 +653,13 @@ contains
     !       p_1  = (phi_0/phi_1*Km + Kb) / (phi_0*(Km+Kb))
     !and subscripts refer to SWI (0), below (1), and above (-1)
     !
-    pFSWIup_solutes = (pF2_solutes(bbl_sed_index)*&
-      kz_mol(bbl_sed_index)+kz_bio(bbl_sed_index)*O2stat)/&
-      (pF2_solutes(bbl_sed_index)*(kz_mol(bbl_sed_index)+&
-      kz_bio(bbl_sed_index)*O2stat))
-    pFSWIdw_solutes = (pF1_solutes(bbl_sed_index)*&
+    !top cell of sediments
+    pFSWIup_solutes = (pF1_solutes(bbl_sed_index)*&
+      pF2_solutes(bbl_sed_index)*kz_mol(bbl_sed_index)+&
+      kz_bio(bbl_sed_index)*O2stat)/(pF2_solutes(bbl_sed_index)*&
+      (kz_mol(bbl_sed_index)+kz_bio(bbl_sed_index)*O2stat))
+    !bottom cell of water column
+    pFSWIdw_solutes = (pF1_solutes(bbl_sed_index+1)*&
       pF2_solutes(bbl_sed_index)*kz_mol(bbl_sed_index)+&
       kz_bio(bbl_sed_index)*O2stat)/(pF2_solutes(bbl_sed_index)*&
       (kz_mol(bbl_sed_index)+kz_bio(bbl_sed_index)*O2stat))
