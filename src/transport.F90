@@ -620,16 +620,6 @@ contains
       kz_tot(:,i) = brine_flux+kz_ice_gravity+&
                     kz_turb+kz_mol+kz_bio*O2stat
     end do
-    !remove influence of diffusivity on diatoms
-    !also in 'sedimentation' they sinks to bottom
-    !boundary of the ice core
-    kz_tot(ice_water_index,find_index_of_state_variable('P1_c')) = 0._rk
-    kz_tot(ice_water_index,find_index_of_state_variable('P1_n')) = 0._rk
-    kz_tot(ice_water_index,find_index_of_state_variable('P1_p')) = 0._rk
-    kz_tot(ice_water_index,find_index_of_state_variable('P1_s')) = 0._rk
-    kz_tot(ice_water_index,find_index_of_state_variable('P1_Chl')) = 0._rk
-    !i = find_index_of_state_variable(_Phy_)
-    !kz_tot(ice_water_index,i) = 0._rk
 
     !calculate surface fluxes only for ice free periods
     surface_flux = 0._rk
@@ -912,30 +902,7 @@ contains
         wti(k_sed1,ip) = u_b(k_sed1)+u_1(k_sed1)+u_1c(k_sed1)
       end if
       wti(1,ip) = wti(2,ip)
-      !zero velocity for sedimentation in the ice column
-      !it is defined in the diffusive subroutine
-      !except diatoms
-      !if (ip/=i) then
-      !  wti(ice_water_index:surface_index,ip) = 0._rk
-      !else
-      !  !to decrease sinking velocity of diatoms in the ice core
-      !  wti(ice_water_index:surface_index,ip) = &
-      !    wti(ice_water_index:surface_index,ip)/10._rk
-      !  wti(ice_water_index,ip) = 0._rk
-      !end if
-      !if (ip/=find_index_of_state_variable('P1_c').or.&
-      !    ip/=find_index_of_state_variable('P1_n').or.&
-      !    ip/=find_index_of_state_variable('P1_p').or.&
-      !    ip/=find_index_of_state_variable('P1_s').or.&
-      !    ip/=find_index_of_state_variable('P1_Chl')&
-      !    ) then
-      !  wti(ice_water_index:surface_index,ip) = 0._rk
-      !else
-      !  !to decrease sinking velocity of diatoms in the ice core
-      !  !wti(ice_water_index:surface_index,ip) = &
-      !  !  wti(ice_water_index:surface_index,ip)/1._rk
-      !  wti(ice_water_index,ip) = 0._rk
-      !end if
+      !special vertical sedimentation for diatoms in the ice
       if (ip==find_index_of_state_variable('P1_c').or.&
           ip==find_index_of_state_variable('P1_n').or.&
           ip==find_index_of_state_variable('P1_p').or.&
@@ -945,15 +912,6 @@ contains
         !set velocity 3 cm/day
         wti(ice_water_index+1:surface_index-1,ip) = -0.03_rk/86400._rk
         wti(ice_water_index,ip) = 0._rk
-      end if
-      !!rest of phy
-      if (ip==find_index_of_state_variable('P4_c').or.&
-          ip==find_index_of_state_variable('P4_n').or.&
-          ip==find_index_of_state_variable('P4_p').or.&
-          ip==find_index_of_state_variable('P4_Chl')&
-          ) then
-        !set velocity 3 cm/day
-        wti(ice_water_index:surface_index-1,ip) = -0.03_rk/86400._rk
       end if
     end do
 
@@ -1196,6 +1154,24 @@ contains
       !melting
       if (ice_growth<0) then
         ice_growth = abs(ice_growth)
+        if ((j==find_index_of_state_variable('P1_c').or.&
+            j==find_index_of_state_variable('P1_n').or.&
+            j==find_index_of_state_variable('P1_p').or.&
+            j==find_index_of_state_variable('P1_s').or.&
+            j==find_index_of_state_variable('P1_Chl'))&
+            .and.air_ice_indexes(id)/=ice_water_index) then
+          do i=1,ice_growth
+            state_vars(j)%value(ice_water_index) =&
+              state_vars(j)%value(ice_water_index)+&
+              state_vars(j)%value(ice_water_index+i)
+              !ice_water_layer_thickness
+            state_vars(j)%value(ice_water_index+i) = 0._rk
+          end do
+          do i=ice_water_index+1,int(air_ice_indexes(id))+ice_growth-1
+            state_vars(j)%value(i) = state_vars(j)%value(i+ice_growth)
+          end do
+          cycle
+        end if
         do i=1,ice_growth
           state_vars(j)%value(ice_water_index-1) =&
             state_vars(j)%value(ice_water_index-1)+&
@@ -1241,8 +1217,8 @@ contains
       growth_rate = growth_rate*100._rk !m to cm
       growth_rate = growth_rate/86400._rk !per day to per second
       calc_brine_release = (9.667e-9_rk+4.49e-6_rk*growth_rate &
-                                        -1.39e-7_rk*growth_rate**2)&
-                                        *_ICE_LAYERS_RESOLUTION_
+                                       -1.39e-7_rk*growth_rate**2)&
+                                       *_ICE_LAYERS_RESOLUTION_
       calc_brine_release = calc_brine_release/100._rk
     end function
   end subroutine recalculate_ice
