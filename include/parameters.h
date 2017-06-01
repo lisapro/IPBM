@@ -5,11 +5,17 @@
 #define _NEUMANN_   1
 
 !light parameters:
-#define _ICE_ALBEDO_      0.744_rk
-#define _ICE_SCATTERED_   0.97_rk
-#define _ICE_EXTINCTION_  0.93_rk
-#define _ERLOV_           0.05_rk
-#define _PAR_PART_        1.0_rk
+#define _ICE_ALBEDO_       0.744_rk
+#define _SNOW_ALBEDO_      0.9_rk
+#define _ICE_SCATTERED_    0.97_rk
+#define _ICE_EXTINCTION_   0.93_rk
+#define _SNOW_EXTINCTION_  4.3_rk
+#define _ERLOV_            0.05_rk
+!-Factor to convert downwelling shortwave in air to scalar PAR in water(default = 0.5)
+!-Radiative transfer models suggest an average value ~0.5 but with ~10 % variability
+!-at mid / high latitudes depending on season, latitude, and wind speed
+!-see Mobley and Boss(2012), Figs. 5b, 8b.
+#define _PAR_PART_        0.5_rk
 
 !porosity parameters:
 !(Soetaert etc., 1996)

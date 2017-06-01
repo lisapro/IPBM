@@ -369,9 +369,18 @@ contains
     integer, intent(in):: julian_day
     real(rk) surface_radiative_flux
 
-    surface_radiative_flux = 80._rk*cos((latitude-(23.5_rk*&
-      sin(2._rk*_PI_*(julian_day-81._rk)/365._rk)))*3.14_rk/180._rk)
-    if (surface_radiative_flux<0._rk) surface_radiative_flux = 0._rk
+    real(rk) Io,decl
+    !Theoretical maximum 24-hr average surface downwelling 
+    !shortwave irradiance in air [W/m2] (default = 180 W/m2)
+    !http://www.soda-pro.com
+    !This should include that effect of average cloud cover (local)
+    Io = 180._rk
+    !Compute surface shortwave downwelling irradiance [W m^-2, 24-hr average]
+    !Solar declination in degrees
+    decl = 23.5_rk*sin(2.0_rk*_PI_*(real(julian_day,rk)-81.0_rk)/365.0_rk)
+    !This is the approximation used in Yakushev and Sorensen (2013) for OXYDEP
+    surface_radiative_flux = max(0.0_rk, Io*cos((latitude-decl)*_PI_/180.0_rk))
+    surface_radiative_flux = _PAR_PART_*surface_radiative_flux
   end function
 
   subroutine calculate_radiative_flux(surface_flux,snow_thick,ice_thick)
@@ -384,14 +393,16 @@ contains
 
     ice_water_index = standard_vars%get_value("ice_water_index")
     !ice_column
-    !surface_flux in Watts,
-    !to calculate it in micromoles photons per m2*s =>
-    !=> [w] = 4.6*[micromole photons]
     !Grenfell and Maykutt 1977 indicate that the magnitude and shape
     !of the albedo curves depend strongly on the amount of liquid
     !water present in the upper part of the ice, so it fluctuates
     !throught year (true also for extinction coefficient)
-    par_alb = surface_flux*(1._rk-_ICE_ALBEDO_)
+    !if (snow_thick <= 0.005) then
+      par_alb = surface_flux*(1._rk-_ICE_ALBEDO_)
+    !else
+    !  par_alb = surface_flux*(1._rk-_SNOW_ALBEDO_)*&
+    !            exp(-_SNOW_EXTINCTION_*snow_thick)
+    !end if
     !after scattered surface of ice
     par_scat = par_alb*_ICE_SCATTERED_
     allocate(ice_depths,source=ice_thick-depth(ice_water_index:))
@@ -406,7 +417,6 @@ contains
         radiative_flux(ice_water_index)*&
         exp(-_ERLOV_*depth(:ice_water_index-1))
     end if
-    radiative_flux = _PAR_PART_*radiative_flux
   end subroutine
 
   pure function sinusoidal(julian_day,multiplier)

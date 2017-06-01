@@ -516,9 +516,6 @@ instances:
       resm: 5.0 # maximum nutrient-limitation-induced sinking velocity (m/d), default = 0.0
       esni: 0.7 # level of nutrient limitation below which sinking commences (-)
       cenh: false # enable atmospheric CO2 influence on photosynthesis, default = false
-      #qflc: 5.e-5 # minimum iron to carbon ratio
-      #qfRc: 5.e-4 # maximum/optimal iron to carbon ratio
-      #qurf: 2.e-4 # specific affinity for iron
       ndeposition: 3 # number of target pools for sedimentation, default = 1
       qxc2: 0.5 # fraction of carbon sinking into deposition target 2 (-)
       qxc3: 0.05 # fraction of carbon sinking into deposition target 3 (-)
@@ -526,8 +523,6 @@ instances:
       qxn3: 0.05 # fraction of nitrogen sinking into deposition target 3 (-)
       qxp2: 0.6 # fraction of phosphorus sinking into deposition target 2 (-)
       qxp3: 0.03 # fraction of phosphorus sinking into deposition target 3 (-)
-      #qxf2: 0.0
-      #qxf3: 0.0
     initialization:
       c: 5.9 # carbon (mg C/m^3)
       n: 0.0926 # nitrogen (mmol N/m^3)
@@ -577,9 +572,9 @@ instances:
       gutdiss: 0.5 # fraction of prey calcite that dissolves after ingestion (-)
       c0: 0.0033 # background concentration (mg C/m^3)
       nprey: 3 # number of prey types, default = 0
-      suprey1: 0.6 # relative affinity for prey type 1 (-)
-      suprey2: 0.2 # relative affinity for prey type 2 (-)
-      suprey3: 0.2 # relative affinity for prey type 3 (-)
+      suprey1: 0.4 # relative affinity for prey type 1 (-)
+      suprey2: 0.3 # relative affinity for prey type 2 (-)
+      suprey3: 0.3 # relative affinity for prey type 3 (-)
       #suprey4: 0.15 # relative affinity for prey type 4 (-)
       #suprey5: 0.1 # relative affinity for prey type 5 (-)
       #suprey6: 0.15 # relative affinity for prey type 6 (-)
