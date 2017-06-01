@@ -370,7 +370,7 @@ contains
     real(rk) surface_radiative_flux
 
     real(rk) Io,decl
-    !Theoretical maximum 24-hr average surface downwelling 
+    !Theoretical maximum 24-hr average surface downwelling
     !shortwave irradiance in air [W/m2] (default = 180 W/m2)
     !http://www.soda-pro.com
     !This should include that effect of average cloud cover (local)
@@ -950,11 +950,13 @@ contains
 
     !Time integration
     do i = 1,number_of_parameters
-      do k = 1,surface_index
+      do k = 1,surface_index-1
           state_vars(i)%value(k) = state_vars(i)%value(k)+&
                                    _SECONDS_PER_CIRCLE_*dcc(k,i)
       end do
     end do
+    !call state_vars(1)%print_state_variable()
+
   end subroutine brom_do_sedimentation
 
   subroutine first_year_circle(inday,inyear,ice_water_index,&

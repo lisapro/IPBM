@@ -729,10 +729,15 @@ contains
   subroutine print_state_variable(self)
     class(brom_state_variable),intent(in):: self
 
+    integer i
+
+    do i = 1,72!size(self%value,1)
+      write(*,'(f9.7,2x,i3)') self%value(i),i
+    end do
     write(*,*) self%name
     !write(*,*) "is_solid:",self%is_solid
     !write(*,*) "density:",self%density
-    write(*,'(f9.3)') (/ self%value(size(self%value,1):1:-1) /)
+    !write(*,'(f9.3)') (/ self%value(size(self%value,1):1:-1) /)
     !write(*,'(x,a,2x,i2,f9.6)') 'up',self%use_bound_up,self%bound_up
     !write(*,'(x,a,i2,f9.6)') 'down',self%use_bound_low,self%bound_low
     !write(*,*) 'sinking',self%sinking_velocity
