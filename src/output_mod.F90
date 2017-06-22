@@ -135,6 +135,7 @@ contains
   subroutine save(self,model,state_vars,z,day,&
                   temp,salt,depth,radiative_flux,&
                   air_ice_index)
+
     class(type_output),intent(inout):: self
     type (type_model)                    ,intent(in):: model
     type(brom_state_variable),allocatable,intent(in):: state_vars(:)
@@ -147,12 +148,18 @@ contains
     integer                              ,intent(in):: air_ice_index
 
     !NaN value
-    REAL(rk), PARAMETER :: D_QNAN = &
-              TRANSFER((/ Z'00000000', Z'7FF80000' /),1.0_rk)
+    !REAL(rk), PARAMETER :: D_QNAN = &
+    !          TRANSFER((/ Z'00000000', Z'7FF80000' /),1.0_rk)
+    real(rk) D_QNAN
+
     integer ip,i
     integer edges(2),start(2),start_time(1),edges_time(1)
     real(rk) temp_matrix(self%number_of_layers)
     real(rk) foo(1)
+
+    !NaN
+    D_QNAN = 0._rk
+    D_QNAN = D_QNAN / D_QNAN
 
     !write data
     edges(1) = self%last_layer-self%first_layer+1

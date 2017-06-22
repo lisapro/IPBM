@@ -68,10 +68,16 @@ contains
     real(rk),allocatable,dimension(:):: air_ice_indexes
     real(rk),allocatable,dimension(:):: zeros
     !NaN value
-    REAL(rk), PARAMETER :: D_QNAN = &
-              TRANSFER((/ Z'00000000', Z'7FF80000' /),1.0_rk)
+    !REAL(rk), PARAMETER :: D_QNAN = &
+    !          TRANSFER((/ Z'00000000', Z'7FF80000' /),1.0_rk)
+    real(rk) D_QNAN
+
     integer water_sediments_index
     integer i
+
+    !NaN
+    D_QNAN = 0._rk
+    D_QNAN = D_QNAN / D_QNAN
 
     !initializing fabm from fabm.yaml file
     _LINE_
@@ -240,7 +246,8 @@ contains
     type(type_output):: netcdf_water
     type(type_output):: netcdf_sediments
     integer:: year = _INITIALIZATION_SINCE_YEAR_
-    integer ice_water_index,water_bbl_index,number_of_days
+    integer ice_water_index,water_bbl_index,bbl_sediments_index
+    integer number_of_days
     integer surface_index
     integer day,i
     !ice thickness
@@ -255,6 +262,7 @@ contains
 
     ice_water_index = standard_vars%get_value ("ice_water_index")
     water_bbl_index = standard_vars%get_value ("water_bbl_index")
+    bbl_sediments_index = standard_vars%get_value ("bbl_sediments_index")
     number_of_days = standard_vars%get_1st_dim_length("day_number")
     allocate(air_ice_indexes(number_of_days))
     air_ice_indexes = standard_vars%get_column("air_ice_indexes")
@@ -263,16 +271,16 @@ contains
     call initial_date(day,year)
     !first day circle
     call first_day_circle(100,ice_water_index,&
-                          water_bbl_index,indices)
+                          water_bbl_index,bbl_sediments_index,indices)
     !cycle first year 10 times
     call first_year_circle(day,year,ice_water_index,&
-                           water_bbl_index,indices)
+                           water_bbl_index,bbl_sediments_index,indices)
 
     netcdf_ice = type_output(fabm_model,_FILE_NAME_ICE_,&
-                             ice_water_index,number_of_layers,&
+                             ice_water_index,ice_water_index+20,&
                              number_of_layers)
     netcdf_water = type_output(fabm_model,_FILE_NAME_WATER_,&
-                               water_bbl_index,ice_water_index-1,&
+                               bbl_sediments_index,ice_water_index-1,&
                                number_of_layers)
     netcdf_sediments = type_output(fabm_model,_FILE_NAME_SEDIMENTS_,&
                                    1,water_bbl_index-1,&
@@ -513,7 +521,7 @@ contains
       number_of_circles = int(60*60*24/_SECONDS_PER_CIRCLE_)
     end if
     call recalculate_ice(id,brine_release)
-    !sets inflow on ice_water_index-1(water surface)
+    !sets inflow
     call inflow(ice_water_index,bbl_sed_index,day)
     do i = 1,number_of_circles
       ! a little bit more nutrients inflow
@@ -960,11 +968,13 @@ contains
   end subroutine brom_do_sedimentation
 
   subroutine first_year_circle(inday,inyear,ice_water_index,&
-                               water_bbl_index,indices)
+                               water_bbl_index,bbl_sediments_index,&
+                               indices)
     use output_mod
 
     integer,intent(in):: inday,inyear
     integer,intent(in):: ice_water_index,water_bbl_index
+    integer,intent(in):: bbl_sediments_index
     real(rk),allocatable,intent(in):: indices(:)
 
     type(type_output):: netcdf_ice
@@ -983,10 +993,10 @@ contains
     counter = days_in_year*10
 
     netcdf_ice = type_output(fabm_model,'ice_year.nc',&
-                         ice_water_index,number_of_layers,&
+                         ice_water_index,ice_water_index+20,&
                          number_of_layers)
     netcdf_water = type_output(fabm_model,'water_year.nc',&
-                         water_bbl_index,ice_water_index-1,&
+                         bbl_sediments_index,ice_water_index-1,&
                          number_of_layers)
     netcdf_sediments = type_output(fabm_model,'sediments_year.nc',&
                          1,water_bbl_index-1,&
@@ -1057,11 +1067,12 @@ contains
   end subroutine
 
   subroutine first_day_circle(counter,ice_water_index,&
-                              water_bbl_index,indices)
+                              water_bbl_index,bbl_sediments_index,indices)
     use output_mod
 
     integer,intent(in):: counter
     integer,intent(in):: ice_water_index,water_bbl_index
+    integer,intent(in):: bbl_sediments_index
     real(rk),allocatable,intent(in):: indices(:)
 
     type(type_output):: netcdf_ice

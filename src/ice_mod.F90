@@ -19,8 +19,10 @@ module ice_mod
   implicit none
   private
   !NaN value
-  REAL(rk), PARAMETER :: D_QNAN = &
-            TRANSFER((/ Z'00000000', Z'7FF80000' /),1.0_rk)
+  !REAL(rk), PARAMETER :: D_QNAN = &
+  !          TRANSFER((/ Z'00000000', Z'7FF80000' /),1.0_rk)
+  real(rk) D_QNAN
+
   public:: ice
 
   type ice
@@ -54,11 +56,16 @@ module ice_mod
   interface ice
     procedure constructor_ice
   end interface
+
 contains
   function constructor_ice(number_of_days,ice_thickness)
     type(ice):: constructor_ice
     integer,intent(in):: number_of_days
     real(rk),dimension(:),intent(in):: ice_thickness
+
+    !NaN
+    D_QNAN = 0._rk
+    D_QNAN = D_QNAN / D_QNAN
 
     constructor_ice%number_of_layers = &
       int(maxval(ice_thickness)/_ICE_LAYERS_RESOLUTION_)+2

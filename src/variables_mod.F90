@@ -21,8 +21,9 @@ module variables_mod
 
   implicit none
   !NaN value
-  REAL(rk), PARAMETER :: D_QNAN = &
-            TRANSFER((/ Z'00000000', Z'7FF80000' /),1.0_rk)
+  !REAL(rk), PARAMETER :: D_QNAN = &
+  !          TRANSFER((/ Z'00000000', Z'7FF80000' /),1.0_rk)
+  real(rk) D_QNAN
 
   type,extends(list_variables):: brom_standard_variables
     type(ice) type_ice
@@ -62,6 +63,10 @@ module variables_mod
 contains
   function brom_standard_variables_constructor()
     type(brom_standard_variables):: brom_standard_variables_constructor
+
+    !NaN
+    D_QNAN = 0._rk
+    D_QNAN = D_QNAN / D_QNAN
 
     call brom_standard_variables_constructor%initialize()
   end function
