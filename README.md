@@ -23,9 +23,13 @@ Then:
 
   `$ git clone https://github.com/limash/BROM2.git`
   
-  download biogeochemistry module from the same directory as BROM2
+  download biogeochemistry model from the same directory as BROM2
   
   `$ git clone https://github.com/limash/brom_niva_module.git`
+
+  download ecosystem model from the same directory as BROM2
+
+  `$ git clone https://github.com/limash/ERSEM.git`
 
 2. Add FABMDIR and NetCDF_ROOT environment variables
 
@@ -40,15 +44,7 @@ Then:
 
 3. Make a build 
 
-  Enter BROM2 folder and execute `$ bash build.sh`
-
-  or
-
-  You can greate build folder manually: creat it, copy there files from `/data` folder, then execute command:
-
-  `$ cmake path/to/BROM2/code -DFABM_BASE=$FABMDIR -DFABM_NIVA_BASE=path/to/brom_niva_module`
-
-  from it.
+  Enter BROM2 folder and execute `$ bash build_release.sh`
 
 4. Compile the code
 
@@ -66,9 +62,13 @@ Then:
 
   `$ git clone https://github.com/limash/BROM2.git`
   
-  and to download biogeochemistry module type
+  to download biogeochemistry model type
   
   `$ git clone https://github.com/limash/brom_niva_module.git`
+
+  and to download ecosystem model type
+
+  `$ git clone https://github.com/limash/ERSEM.git`
 
   if using other software, use these URLs.
   
@@ -85,7 +85,7 @@ Then:
   * Browse the **Where is the source code** to the **path:\to\BROM2\src**
   * Browse the **Where to build the binaries** - e.g. **path:\to\BROM2\build**
   * Click the **Configure** button. Select a build system generator, if you use Intel Visual Fortran with Visual Studio integration and want to use NetCDF libraries that come with BROM2 please select a 32-bit generator.
-  * Now all configuration variables for the build system are listed and you can change them according to your preferences. You need set FABM_BASE variable to the directory where you have downloaded [FABM]. Then click the **Configure** button again. Select **Advanced** option and specify -DFABM_NIVA_BASE to `path/to/brom_niva_module` also.
+  * Now all configuration variables for the build system are listed and you can change them according to your preferences. You need set FABM_BASE variable to the directory where you have downloaded [FABM]. Then click the **Configure** button again. Specify FABM_ERSEM_BASE as well. Then click the **Configure** button again. Select **Advanced** option and specify -DFABM_NIVA_BASE to `path/to/brom_niva_module` also.
   * Click the **Configure** button until no new (red-coloured) configuration variables appear, then press **Generate** button.
 
 4. Compile the code

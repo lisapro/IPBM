@@ -148,8 +148,8 @@ instances:
       DcDM_NOX: B_N/DcDM_NOX
       DcPM_SO4: B_S/DcPM_SO4
       DcDM_SO4: B_S/DcDM_SO4
-      DcPM_Mn:  B_Mn/DcPM_Mn
-      DcDM_Mn:  B_Mn/DcDM_Mn
+      DcPM_Mn4: B_Mn/DcPM_Mn4
+      DcDM_Mn4: B_Mn/DcDM_Mn4
       DcPM_Fe:  B_Fe/DcPM_Fe
       DcDM_Fe:  B_Fe/DcDM_Fe
       DcPM_ch4: B_CH4/DcPM_ch4
@@ -228,6 +228,7 @@ instances:
       PON: B_BIO/PON
       NO3: B_NUT/NO3
       SO4: B_S/SO4
+      NH4: B_NUT/NH4
   B_S:
     long_name: sulfur_cycle
     model: niva/brom_sulfur
@@ -274,6 +275,7 @@ instances:
       FeS2:   0.0
     coupling:
       Mn2:   B_Mn/Mn2
+      Mn3:   B_Mn/Mn3
       Mn4:   B_Mn/Mn4
       H2S:   B_S/H2S
       S0:    B_S/S0
@@ -585,7 +587,7 @@ instances:
       p: 0.0113 # phosphorus (mmol P/m^3)
     coupling:
       prey1: P1
-      prey2: P4 
+      prey2: P4
       prey3: Z5
       #prey4: P3
       #prey5: P4

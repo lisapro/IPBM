@@ -56,7 +56,6 @@ module ice_mod
   interface ice
     procedure constructor_ice
   end interface
-
 contains
   function constructor_ice(number_of_days,ice_thickness)
     type(ice):: constructor_ice

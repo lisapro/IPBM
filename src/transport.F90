@@ -12,7 +12,9 @@
 
 #include "../include/brom.h"
 #include "../include/parameters.h"
-
+!
+!main module for transport calculations
+!
 module transport
   use fabm
   use fabm_config
@@ -237,8 +239,132 @@ contains
     call configurate_state_variables()
 
     previous_ice_index=0
-  end subroutine
+  contains
+    subroutine configurate_state_variables()
+      !ammonium NH4+
+      call find_set_state_variable(_NH4_,is_gas = .true.)
+      !oxygen O2
+      call find_set_state_variable(_O2_,is_gas = .true.)
+      call find_set_state_variable(_H2S_,is_gas = .true.)
+      call find_set_state_variable(_CH4_,is_gas = .true.)
 
+      !calcite - CaCO3
+      call find_set_state_variable(_CaCO3_,&
+        is_solid = .true.,density = 2.80E7_rk)
+      !S0
+      call find_set_state_variable(_S0_,&
+        is_solid = .true.,density = 6.56E7_rk)
+      !Fe
+      call find_set_state_variable(_Fe3_,&
+        is_solid = .true.,density = 3.27E7_rk)
+      call find_set_state_variable(_FeCO3_,&
+        is_solid = .true.,density = 2.93E7_rk)
+      call find_set_state_variable(_FeS_,&
+        is_solid = .true.,density = 5.90E7_rk)
+      call find_set_state_variable(_FeS2_,&
+        is_solid = .true.,density = 4.17E7_rk)
+      !Mn
+      call find_set_state_variable(_Mn4_,&
+        is_solid = .true.,density = 5.78E7_rk)
+      call find_set_state_variable(_MnCO3_,&
+        is_solid = .true.,density = 3.20E7_rk)
+      call find_set_state_variable(_MnS_,&
+        is_solid = .true.,density = 4.60E7_rk)
+      !Silicon particulate
+      call find_set_state_variable(_Sipart_,&
+        is_solid = .true.,density = 4.40E7_rk)
+      !organic compounds
+      call find_set_state_variable(_Phy_,&
+        is_solid = .true.,density = 1.5E7_rk)
+      call find_set_state_variable(_PON_,&
+        is_solid = .true.,density = 1.5E7_rk)
+      !!small-size POM
+      !call find_set_state_variable("R4_c",&
+      !  is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
+      !call find_set_state_variable("R4_n",&
+      !  is_solid = .true.,density = 1.5E7_rk)
+      !call find_set_state_variable("R4_p",&
+      !  is_solid = .true.,density = 1.5E7_rk*1._rk/16._rk)
+      !call find_set_state_variable("R4_f",&
+      !  is_solid = .true.,density = 1.5E7_rk*5._rk/1260._rk)
+      !!medium-size POM
+      !call find_set_state_variable("R6_c",&
+      !  is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
+      !call find_set_state_variable("R6_n",&
+      !  is_solid = .true.,density = 1.5E7_rk)
+      !call find_set_state_variable("R6_p",&
+      !  is_solid = .true.,density = 1.5E7_rk*1._rk/16._rk)
+      !call find_set_state_variable("R6_s",&
+      !  is_solid = .true.,density = 1.5E7_rk*1._rk/1000._rk)
+      !call find_set_state_variable("R6_f",&
+      !  is_solid = .true.,density = 1.5E7_rk*5._rk/1260._rk)
+      !!large-size POM
+      !call find_set_state_variable("R8_c",&
+      !  is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
+      !call find_set_state_variable("R8_n",&
+      !  is_solid = .true.,density = 1.5E7_rk)
+      !call find_set_state_variable("R8_p",&
+      !  is_solid = .true.,density = 1.5E7_rk*1._rk/16._rk)
+      !call find_set_state_variable("R8_s",&
+      !  is_solid = .true.,density = 1.5E7_rk*1._rk/1000._rk)
+      !diatoms
+      call find_set_state_variable("P1_c",&
+        is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
+      call find_set_state_variable("P1_n",&
+        is_solid = .true.,density = 1.5E7_rk)
+      call find_set_state_variable("P1_p",&
+        is_solid = .true.,density = 1.5E7_rk*1._rk/16._rk)
+      !call find_set_state_variable("P1_f",&
+      !  is_solid = .true.,density = 1.5E7_rk*5._rk/1260._rk)
+      call find_set_state_variable("P1_s",& !rios 1998
+        is_solid = .true.,density = 1.5E7_rk*6.2_rk/15.7_rk)
+      call find_set_state_variable("P1_Chl",&
+        is_solid = .true.,density = 1.2E7_rk)!1200e6 from wiki
+      !microzooplankton
+      call find_set_state_variable("Z5_c",&
+        is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
+      call find_set_state_variable("Z5_n",&
+        is_solid = .true.,density = 1.5E7_rk)
+      call find_set_state_variable("Z5_p",&
+        is_solid = .true.,density = 1.5E7_rk*1._rk/16._rk)
+      !!nanophytoplankton
+      !call find_set_state_variable("P2_c",&
+      !  is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
+      !call find_set_state_variable("P2_n",&
+      !  is_solid = .true.,density = 1.5E7_rk)
+      !call find_set_state_variable("P2_p",&
+      !  is_solid = .true.,density = 1.5E7_rk*1._rk/16._rk)
+      !call find_set_state_variable("P2_f",&
+      !  is_solid = .true.,density = 1.5E7_rk*5._rk/1260._rk)
+      !call find_set_state_variable("P2_Chl",&
+      !  is_solid = .true.,density = 1.2E7_rk)!1200e6 from wiki
+      !!picophytoplankton
+      !call find_set_state_variable("P3_c",&
+      !  is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
+      !call find_set_state_variable("P3_n",&
+      !  is_solid = .true.,density = 1.5E7_rk)
+      !call find_set_state_variable("P3_p",&
+      !  is_solid = .true.,density = 1.5E7_rk*1._rk/16._rk)
+      !call find_set_state_variable("P3_f",&
+      !  is_solid = .true.,density = 1.5E7_rk*5._rk/1260._rk)
+      !call find_set_state_variable("P3_Chl",&
+      !  is_solid = .true.,density = 1.2E7_rk)!1200e6 from wiki
+      !microphytoplankton
+      call find_set_state_variable("P4_c",&
+        is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
+      call find_set_state_variable("P4_n",&
+        is_solid = .true.,density = 1.5E7_rk)
+      call find_set_state_variable("P4_p",&
+        is_solid = .true.,density = 1.5E7_rk*1._rk/16._rk)
+      !call find_set_state_variable("P4_f",&
+      !  is_solid = .true.,density = 1.5E7_rk*5._rk/1260._rk)
+      call find_set_state_variable("P4_Chl",&
+        is_solid = .true.,density = 1.2E7_rk)!1200e6 from wiki
+    end subroutine
+  end subroutine
+  !
+  !procedure with the main cycle
+  !
   subroutine sarafan()
     use output_mod
 
@@ -269,7 +395,7 @@ contains
 
     day = standard_vars%first_day()
     call initial_date(day,year)
-    !first day circle
+    !first day cycle
     call first_day_circle(100,ice_water_index,&
                           water_bbl_index,bbl_sediments_index,indices)
     !cycle first year 10 times
@@ -344,22 +470,207 @@ contains
     call netcdf_sediments%close()
     write(*,*) "Finish"
     _LINE_
-  end subroutine
+  contains
+    subroutine initial_date(day,first_year)
+      integer,intent(inout):: day
+      integer,intent(inout):: first_year
+      integer nydays
 
-  subroutine initial_date(day,first_year)
-    integer,intent(inout):: day
-    integer,intent(inout):: first_year
-    integer nydays
-
-    nydays = 365+merge(1,0,(mod(first_year,4).eq.0))
-    do
-      if (day<=nydays) exit
       nydays = 365+merge(1,0,(mod(first_year,4).eq.0))
-      day = day-nydays
-      first_year = first_year+1
-    end do
+      do
+        if (day<=nydays) exit
+        nydays = 365+merge(1,0,(mod(first_year,4).eq.0))
+        day = day-nydays
+        first_year = first_year+1
+      end do
+    end subroutine
   end subroutine
+  !
+  !first day iteration
+  !
+  subroutine first_day_circle(counter,ice_water_index,&
+                              water_bbl_index,bbl_sediments_index,indices)
+    use output_mod
 
+    integer,intent(in):: counter
+    integer,intent(in):: ice_water_index,water_bbl_index
+    integer,intent(in):: bbl_sediments_index
+    real(rk),allocatable,intent(in):: indices(:)
+
+    type(type_output):: netcdf_ice
+    type(type_output):: netcdf_water
+    type(type_output):: netcdf_sediments
+    integer i
+    integer surface_index
+    real(rk),allocatable,dimension(:):: air_ice_indexes
+
+    allocate(air_ice_indexes,source = &
+             standard_vars%get_column("air_ice_indexes"))
+    !
+    netcdf_ice = type_output(fabm_model,'ice_day.nc',&
+                         ice_water_index,number_of_layers,&
+                         number_of_layers)
+    netcdf_water = type_output(fabm_model,'water_day.nc',&
+                         water_bbl_index,ice_water_index-1,&
+                         number_of_layers)
+    netcdf_sediments = type_output(fabm_model,'sediments_day.nc',&
+                         1,water_bbl_index-1,&
+                         number_of_layers)
+    !
+    !change surface index due to ice depth
+    !index for boundaries so for layers it should be -1
+    surface_index = air_ice_indexes(1)
+    call fabm_model%set_surface_index(surface_index-1)
+    !
+    !for netcdf output
+    depth = standard_vars%get_column("middle_layer_depths",1)
+    !
+    !update links
+    !realday = day !to convert integer to real - ersem zenith_angle
+    !call fabm_model%link_scalar(id_yearday,realday)
+    !cell thickness - ersem
+    cell = standard_vars%get_column("layer_thicknesses",1)
+    call fabm_link_bulk_data(fabm_model,h_id,cell)
+    !temperature
+    temp  = standard_vars%get_column(_TEMPERATURE_,1)
+    call fabm_link_bulk_data(fabm_model,temp_id,temp)
+    !salinity
+    salt  = standard_vars%get_column(_SALINITY_,1)
+    call fabm_link_bulk_data(fabm_model,salt_id,salt)
+    !density
+    density = standard_vars%get_column(_RHO_,1)+1000._rk
+    call fabm_link_bulk_data(fabm_model,rho_id,density)
+    !par
+    call calculate_radiative_flux(&
+      surface_radiative_flux(_LATITUDE_,14),& !kara case starts 14jan
+      standard_vars%get_value(_SNOW_THICKNESS_,1),&
+      standard_vars%get_value(_ICE_THICKNESS_ ,1))
+    call fabm_link_bulk_data(fabm_model,par_id,radiative_flux)
+    !
+    do i = 1,counter
+      call day_circle(1,surface_index,14)
+
+      call netcdf_ice%save(fabm_model,state_vars,indices,i,&
+                           temp,salt,depth,radiative_flux,&
+                           int(air_ice_indexes(1)))
+      call netcdf_water%save(fabm_model,state_vars,depth,i,&
+                             temp,salt,depth,radiative_flux,&
+                             int(air_ice_indexes(1)))
+      call netcdf_sediments%save(fabm_model,state_vars,depth,i,&
+                                 temp,salt,depth,radiative_flux,&
+                                 int(air_ice_indexes(1)))
+
+      write(*,*) "Stabilizing initial array of values, in progress ..."
+      write(*,*) "number / ",i
+    end do
+    call netcdf_ice%close()
+    call netcdf_water%close()
+    call netcdf_sediments%close()
+  end subroutine
+  !
+  !first year iteration
+  !
+  subroutine first_year_circle(inday,inyear,ice_water_index,&
+                               water_bbl_index,bbl_sediments_index,&
+                               indices)
+    use output_mod
+
+    integer,intent(in):: inday,inyear
+    integer,intent(in):: ice_water_index,water_bbl_index
+    integer,intent(in):: bbl_sediments_index
+    real(rk),allocatable,intent(in):: indices(:)
+
+    type(type_output):: netcdf_ice
+    type(type_output):: netcdf_water
+    type(type_output):: netcdf_sediments
+    integer day,year
+    integer pseudo_day,days_in_year,counter
+    integer i
+    integer surface_index
+    real(rk),allocatable,dimension(:):: air_ice_indexes
+
+    allocate(air_ice_indexes,source = &
+             standard_vars%get_column("air_ice_indexes"))
+    day = inday; year = inyear;
+    days_in_year = 365+merge(1,0,(mod(year,4).eq.0))
+    counter = days_in_year*10
+
+    netcdf_ice = type_output(fabm_model,'ice_year.nc',&
+                         ice_water_index,ice_water_index+20,&
+                         number_of_layers)
+    netcdf_water = type_output(fabm_model,'water_year.nc',&
+                         bbl_sediments_index,ice_water_index-1,&
+                         number_of_layers)
+    netcdf_sediments = type_output(fabm_model,'sediments_year.nc',&
+                         1,water_bbl_index-1,&
+                         number_of_layers)
+    do i = 1,counter
+      !day from 1 to 365 or 366
+      if (mod(i,days_in_year).eq.0) then
+        pseudo_day = days_in_year
+      else
+        pseudo_day = i-int(i/days_in_year)*&
+                     days_in_year
+      end if
+
+      !for netcdf output
+      depth = standard_vars%get_column("middle_layer_depths",pseudo_day)
+
+      call date(day,year)
+      year = inyear
+      !change surface index due to ice depth
+      !index for boundaries so for layers it should be -1
+      surface_index = air_ice_indexes(pseudo_day)
+      call fabm_model%set_surface_index(surface_index-1)
+
+      !update links
+      !realday = day !to convert integer to real - ersem zenith_angle
+      !call fabm_model%link_scalar(id_yearday,realday)
+      !cell thickness - ersem
+      cell = standard_vars%get_column("layer_thicknesses",pseudo_day)
+      call fabm_link_bulk_data(fabm_model,h_id,cell)
+      !temperature
+      temp  = standard_vars%get_column(_TEMPERATURE_,pseudo_day)
+      call fabm_link_bulk_data(fabm_model,temp_id,temp)
+      !salinity
+      salt  = standard_vars%get_column(_SALINITY_,pseudo_day)
+      call fabm_link_bulk_data(fabm_model,salt_id,salt)
+      !density
+      density = standard_vars%get_column(_RHO_,pseudo_day)+1000._rk
+      call fabm_link_bulk_data(fabm_model,rho_id,density)
+      !par
+      call calculate_radiative_flux(&
+        surface_radiative_flux(_LATITUDE_,day),&
+        standard_vars%get_value(_SNOW_THICKNESS_,pseudo_day),&
+        standard_vars%get_value(_ICE_THICKNESS_ ,pseudo_day))
+      call fabm_link_bulk_data(fabm_model,par_id,radiative_flux)
+      !bottom stress - ersem
+      !call fabm_link_horizontal_data(fabm_model,taub_id,taub)
+
+      call day_circle(pseudo_day,surface_index,day)
+
+      call netcdf_ice%save(fabm_model,state_vars,indices,pseudo_day,&
+                           temp,salt,depth,radiative_flux,&
+                           int(air_ice_indexes(pseudo_day)))
+      call netcdf_water%save(fabm_model,state_vars,depth,pseudo_day,&
+                             temp,salt,depth,radiative_flux,&
+                             int(air_ice_indexes(pseudo_day)))
+      call netcdf_sediments%save(fabm_model,state_vars,depth,pseudo_day,&
+                                 temp,salt,depth,radiative_flux,&
+                                 int(air_ice_indexes(pseudo_day)))
+
+      write(*,*) "Stabilizing initial array of values, in progress ..."
+      write(*,*) "number / ","julianday / ","pseudo day",&
+                 i,day,pseudo_day
+      day = day+1
+    end do
+    call netcdf_ice%close()
+    call netcdf_water%close()
+    call netcdf_sediments%close()
+  end subroutine
+  !
+  !keeps actual julian day and year
+  !
   subroutine date(day,year)
     integer,intent(inout):: day
     integer,intent(inout):: year
@@ -371,7 +682,9 @@ contains
       day = day-days
     end if
   end subroutine
-
+  !
+  !returns surface PAR
+  !
   pure function surface_radiative_flux(latitude,julian_day)
     real(rk),intent(in):: latitude
     integer, intent(in):: julian_day
@@ -390,7 +703,9 @@ contains
     surface_radiative_flux = max(0.0_rk, Io*cos((latitude-decl)*_PI_/180.0_rk))
     surface_radiative_flux = _PAR_PART_*surface_radiative_flux
   end function
-
+  !
+  !calculates PAR in the ice and water columns
+  !
   subroutine calculate_radiative_flux(surface_flux,snow_thick,ice_thick)
     real(rk),intent(in):: surface_flux
     real(rk),intent(in):: snow_thick
@@ -426,16 +741,9 @@ contains
         exp(-_ERLOV_*depth(:ice_water_index-1))
     end if
   end subroutine
-
-  pure function sinusoidal(julian_day,multiplier)
-    integer, intent(in):: julian_day
-    real(rk),intent(in):: multiplier
-    real(rk) sinusoidal
-
-    sinusoidal = (1.02_rk+sin(2._rk*_PI_*(&
-                  julian_day-40._rk)/365._rk))*multiplier
-  end function
-
+  !
+  !calculate iterations within day
+  !
   subroutine day_circle(id,surface_index,day)
     integer,intent(in):: id !number of the count
     integer,intent(in):: surface_index
@@ -578,7 +886,9 @@ contains
       call fabm_check_state(fabm_model,1,surface_index-1,repair,valid)
     end do
   end subroutine
-
+  !
+  !diffusion part
+  !
   subroutine brom_do_diffusion(&
              surface_index,bbl_sed_index,ice_water_index,&
              pF1_solutes,pF2_solutes,pF1_solids,&
@@ -721,7 +1031,7 @@ contains
   end subroutine
   !
   !adapted from Phil Wallhead code
-  !Calculates vertical advection (sedimentation)
+  !calculates vertical advection (sedimentation)
   !in the water column and sediments
   !
   subroutine brom_do_sedimentation(surface_index,bbl_sed_index,&
@@ -964,189 +1274,9 @@ contains
       end do
     end do
     !call state_vars(1)%print_state_variable()
-
   end subroutine brom_do_sedimentation
-
-  subroutine first_year_circle(inday,inyear,ice_water_index,&
-                               water_bbl_index,bbl_sediments_index,&
-                               indices)
-    use output_mod
-
-    integer,intent(in):: inday,inyear
-    integer,intent(in):: ice_water_index,water_bbl_index
-    integer,intent(in):: bbl_sediments_index
-    real(rk),allocatable,intent(in):: indices(:)
-
-    type(type_output):: netcdf_ice
-    type(type_output):: netcdf_water
-    type(type_output):: netcdf_sediments
-    integer day,year
-    integer pseudo_day,days_in_year,counter
-    integer i
-    integer surface_index
-    real(rk),allocatable,dimension(:):: air_ice_indexes
-
-    allocate(air_ice_indexes,source = &
-             standard_vars%get_column("air_ice_indexes"))
-    day = inday; year = inyear;
-    days_in_year = 365+merge(1,0,(mod(year,4).eq.0))
-    counter = days_in_year*10
-
-    netcdf_ice = type_output(fabm_model,'ice_year.nc',&
-                         ice_water_index,ice_water_index+20,&
-                         number_of_layers)
-    netcdf_water = type_output(fabm_model,'water_year.nc',&
-                         bbl_sediments_index,ice_water_index-1,&
-                         number_of_layers)
-    netcdf_sediments = type_output(fabm_model,'sediments_year.nc',&
-                         1,water_bbl_index-1,&
-                         number_of_layers)
-    do i = 1,counter
-      !day from 1 to 365 or 366
-      if (mod(i,days_in_year).eq.0) then
-        pseudo_day = days_in_year
-      else
-        pseudo_day = i-int(i/days_in_year)*&
-                     days_in_year
-      end if
-
-      !for netcdf output
-      depth = standard_vars%get_column("middle_layer_depths",pseudo_day)
-
-      call date(day,year)
-      year = inyear
-      !change surface index due to ice depth
-      !index for boundaries so for layers it should be -1
-      surface_index = air_ice_indexes(pseudo_day)
-      call fabm_model%set_surface_index(surface_index-1)
-
-      !update links
-      !realday = day !to convert integer to real - ersem zenith_angle
-      !call fabm_model%link_scalar(id_yearday,realday)
-      !cell thickness - ersem
-      cell = standard_vars%get_column("layer_thicknesses",pseudo_day)
-      call fabm_link_bulk_data(fabm_model,h_id,cell)
-      !temperature
-      temp  = standard_vars%get_column(_TEMPERATURE_,pseudo_day)
-      call fabm_link_bulk_data(fabm_model,temp_id,temp)
-      !salinity
-      salt  = standard_vars%get_column(_SALINITY_,pseudo_day)
-      call fabm_link_bulk_data(fabm_model,salt_id,salt)
-      !density
-      density = standard_vars%get_column(_RHO_,pseudo_day)+1000._rk
-      call fabm_link_bulk_data(fabm_model,rho_id,density)
-      !par
-      call calculate_radiative_flux(&
-        surface_radiative_flux(_LATITUDE_,day),&
-        standard_vars%get_value(_SNOW_THICKNESS_,pseudo_day),&
-        standard_vars%get_value(_ICE_THICKNESS_ ,pseudo_day))
-      call fabm_link_bulk_data(fabm_model,par_id,radiative_flux)
-      !bottom stress - ersem
-      !call fabm_link_horizontal_data(fabm_model,taub_id,taub)
-
-      call day_circle(pseudo_day,surface_index,day)
-
-      call netcdf_ice%save(fabm_model,state_vars,indices,pseudo_day,&
-                           temp,salt,depth,radiative_flux,&
-                           int(air_ice_indexes(pseudo_day)))
-      call netcdf_water%save(fabm_model,state_vars,depth,pseudo_day,&
-                             temp,salt,depth,radiative_flux,&
-                             int(air_ice_indexes(pseudo_day)))
-      call netcdf_sediments%save(fabm_model,state_vars,depth,pseudo_day,&
-                                 temp,salt,depth,radiative_flux,&
-                                 int(air_ice_indexes(pseudo_day)))
-
-      write(*,*) "Stabilizing initial array of values, in progress ..."
-      write(*,*) "number / ","julianday / ","pseudo day",&
-                 i,day,pseudo_day
-      day = day+1
-    end do
-    call netcdf_ice%close()
-    call netcdf_water%close()
-    call netcdf_sediments%close()
-  end subroutine
-
-  subroutine first_day_circle(counter,ice_water_index,&
-                              water_bbl_index,bbl_sediments_index,indices)
-    use output_mod
-
-    integer,intent(in):: counter
-    integer,intent(in):: ice_water_index,water_bbl_index
-    integer,intent(in):: bbl_sediments_index
-    real(rk),allocatable,intent(in):: indices(:)
-
-    type(type_output):: netcdf_ice
-    type(type_output):: netcdf_water
-    type(type_output):: netcdf_sediments
-    integer i
-    integer surface_index
-    real(rk),allocatable,dimension(:):: air_ice_indexes
-
-    allocate(air_ice_indexes,source = &
-             standard_vars%get_column("air_ice_indexes"))
-    !
-    netcdf_ice = type_output(fabm_model,'ice_day.nc',&
-                         ice_water_index,number_of_layers,&
-                         number_of_layers)
-    netcdf_water = type_output(fabm_model,'water_day.nc',&
-                         water_bbl_index,ice_water_index-1,&
-                         number_of_layers)
-    netcdf_sediments = type_output(fabm_model,'sediments_day.nc',&
-                         1,water_bbl_index-1,&
-                         number_of_layers)
-    !
-    !change surface index due to ice depth
-    !index for boundaries so for layers it should be -1
-    surface_index = air_ice_indexes(1)
-    call fabm_model%set_surface_index(surface_index-1)
-    !
-    !for netcdf output
-    depth = standard_vars%get_column("middle_layer_depths",1)
-    !
-    !update links
-    !realday = day !to convert integer to real - ersem zenith_angle
-    !call fabm_model%link_scalar(id_yearday,realday)
-    !cell thickness - ersem
-    cell = standard_vars%get_column("layer_thicknesses",1)
-    call fabm_link_bulk_data(fabm_model,h_id,cell)
-    !temperature
-    temp  = standard_vars%get_column(_TEMPERATURE_,1)
-    call fabm_link_bulk_data(fabm_model,temp_id,temp)
-    !salinity
-    salt  = standard_vars%get_column(_SALINITY_,1)
-    call fabm_link_bulk_data(fabm_model,salt_id,salt)
-    !density
-    density = standard_vars%get_column(_RHO_,1)+1000._rk
-    call fabm_link_bulk_data(fabm_model,rho_id,density)
-    !par
-    call calculate_radiative_flux(&
-      surface_radiative_flux(_LATITUDE_,14),& !kara case starts 14jan
-      standard_vars%get_value(_SNOW_THICKNESS_,1),&
-      standard_vars%get_value(_ICE_THICKNESS_ ,1))
-    call fabm_link_bulk_data(fabm_model,par_id,radiative_flux)
-    !
-    do i = 1,counter
-      call day_circle(1,surface_index,14)
-
-      call netcdf_ice%save(fabm_model,state_vars,indices,i,&
-                           temp,salt,depth,radiative_flux,&
-                           int(air_ice_indexes(1)))
-      call netcdf_water%save(fabm_model,state_vars,depth,i,&
-                             temp,salt,depth,radiative_flux,&
-                             int(air_ice_indexes(1)))
-      call netcdf_sediments%save(fabm_model,state_vars,depth,i,&
-                                 temp,salt,depth,radiative_flux,&
-                                 int(air_ice_indexes(1)))
-
-      write(*,*) "Stabilizing initial array of values, in progress ..."
-      write(*,*) "number / ",i
-    end do
-    call netcdf_ice%close()
-    call netcdf_water%close()
-    call netcdf_sediments%close()
-  end subroutine
   !
-  !
+  !recalculates state variables concentrations due to freezing or melting
   !
   subroutine recalculate_ice(id,brine_release)
     integer ,intent(in) :: id
@@ -1245,7 +1375,9 @@ contains
       calc_brine_release = calc_brine_release/100._rk
     end function
   end subroutine recalculate_ice
-
+  !
+  !sets state variable value and other parameters by name
+  !
   subroutine find_set_state_variable(inname,is_solid,&
       is_gas,use_bound_up,use_bound_low,bound_up,&
       bound_low,density,sinking_velocity,value,layer)
@@ -1277,128 +1409,6 @@ contains
     call fatal_error("Search state variable",&
                      "No such variable")
   end subroutine
-
-  subroutine configurate_state_variables()
-    !ammonium NH4+
-    call find_set_state_variable(_NH4_,is_gas = .true.)
-    !oxygen O2
-    call find_set_state_variable(_O2_,is_gas = .true.)
-    call find_set_state_variable(_H2S_,is_gas = .true.)
-    call find_set_state_variable(_CH4_,is_gas = .true.)
-
-    !calcite - CaCO3
-    call find_set_state_variable(_CaCO3_,&
-      is_solid = .true.,density = 2.80E7_rk)
-    !S0
-    call find_set_state_variable(_S0_,&
-      is_solid = .true.,density = 6.56E7_rk)
-    !Fe
-    call find_set_state_variable(_Fe3_,&
-      is_solid = .true.,density = 3.27E7_rk)
-    call find_set_state_variable(_FeCO3_,&
-      is_solid = .true.,density = 2.93E7_rk)
-    call find_set_state_variable(_FeS_,&
-      is_solid = .true.,density = 5.90E7_rk)
-    call find_set_state_variable(_FeS2_,&
-      is_solid = .true.,density = 4.17E7_rk)
-    !Mn
-    call find_set_state_variable(_Mn4_,&
-      is_solid = .true.,density = 5.78E7_rk)
-    call find_set_state_variable(_MnCO3_,&
-      is_solid = .true.,density = 3.20E7_rk)
-    call find_set_state_variable(_MnS_,&
-      is_solid = .true.,density = 4.60E7_rk)
-    !Silicon particulate
-    call find_set_state_variable(_Sipart_,&
-      is_solid = .true.,density = 4.40E7_rk)
-    !organic compounds
-    call find_set_state_variable(_Phy_,&
-      is_solid = .true.,density = 1.5E7_rk)
-    call find_set_state_variable(_PON_,&
-      is_solid = .true.,density = 1.5E7_rk)
-    !!small-size POM
-    !call find_set_state_variable("R4_c",&
-    !  is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
-    !call find_set_state_variable("R4_n",&
-    !  is_solid = .true.,density = 1.5E7_rk)
-    !call find_set_state_variable("R4_p",&
-    !  is_solid = .true.,density = 1.5E7_rk*1._rk/16._rk)
-    !call find_set_state_variable("R4_f",&
-    !  is_solid = .true.,density = 1.5E7_rk*5._rk/1260._rk)
-    !!medium-size POM
-    !call find_set_state_variable("R6_c",&
-    !  is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
-    !call find_set_state_variable("R6_n",&
-    !  is_solid = .true.,density = 1.5E7_rk)
-    !call find_set_state_variable("R6_p",&
-    !  is_solid = .true.,density = 1.5E7_rk*1._rk/16._rk)
-    !call find_set_state_variable("R6_s",&
-    !  is_solid = .true.,density = 1.5E7_rk*1._rk/1000._rk)
-    !call find_set_state_variable("R6_f",&
-    !  is_solid = .true.,density = 1.5E7_rk*5._rk/1260._rk)
-    !!large-size POM
-    !call find_set_state_variable("R8_c",&
-    !  is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
-    !call find_set_state_variable("R8_n",&
-    !  is_solid = .true.,density = 1.5E7_rk)
-    !call find_set_state_variable("R8_p",&
-    !  is_solid = .true.,density = 1.5E7_rk*1._rk/16._rk)
-    !call find_set_state_variable("R8_s",&
-    !  is_solid = .true.,density = 1.5E7_rk*1._rk/1000._rk)
-    !diatoms
-    call find_set_state_variable("P1_c",&
-      is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
-    call find_set_state_variable("P1_n",&
-      is_solid = .true.,density = 1.5E7_rk)
-    call find_set_state_variable("P1_p",&
-      is_solid = .true.,density = 1.5E7_rk*1._rk/16._rk)
-    !call find_set_state_variable("P1_f",&
-    !  is_solid = .true.,density = 1.5E7_rk*5._rk/1260._rk)
-    call find_set_state_variable("P1_s",& !rios 1998
-      is_solid = .true.,density = 1.5E7_rk*6.2_rk/15.7_rk)
-    call find_set_state_variable("P1_Chl",&
-      is_solid = .true.,density = 1.2E7_rk)!1200e6 from wiki
-    !microzooplankton
-    call find_set_state_variable("Z5_c",&
-      is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
-    call find_set_state_variable("Z5_n",&
-      is_solid = .true.,density = 1.5E7_rk)
-    call find_set_state_variable("Z5_p",&
-      is_solid = .true.,density = 1.5E7_rk*1._rk/16._rk)
-    !!nanophytoplankton
-    !call find_set_state_variable("P2_c",&
-    !  is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
-    !call find_set_state_variable("P2_n",&
-    !  is_solid = .true.,density = 1.5E7_rk)
-    !call find_set_state_variable("P2_p",&
-    !  is_solid = .true.,density = 1.5E7_rk*1._rk/16._rk)
-    !call find_set_state_variable("P2_f",&
-    !  is_solid = .true.,density = 1.5E7_rk*5._rk/1260._rk)
-    !call find_set_state_variable("P2_Chl",&
-    !  is_solid = .true.,density = 1.2E7_rk)!1200e6 from wiki
-    !!picophytoplankton
-    !call find_set_state_variable("P3_c",&
-    !  is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
-    !call find_set_state_variable("P3_n",&
-    !  is_solid = .true.,density = 1.5E7_rk)
-    !call find_set_state_variable("P3_p",&
-    !  is_solid = .true.,density = 1.5E7_rk*1._rk/16._rk)
-    !call find_set_state_variable("P3_f",&
-    !  is_solid = .true.,density = 1.5E7_rk*5._rk/1260._rk)
-    !call find_set_state_variable("P3_Chl",&
-    !  is_solid = .true.,density = 1.2E7_rk)!1200e6 from wiki
-    !microphytoplankton
-    call find_set_state_variable("P4_c",&
-      is_solid = .true.,density = 1.5E7_rk*106._rk/16._rk)
-    call find_set_state_variable("P4_n",&
-      is_solid = .true.,density = 1.5E7_rk)
-    call find_set_state_variable("P4_p",&
-      is_solid = .true.,density = 1.5E7_rk*1._rk/16._rk)
-    !call find_set_state_variable("P4_f",&
-    !  is_solid = .true.,density = 1.5E7_rk*5._rk/1260._rk)
-    call find_set_state_variable("P4_Chl",&
-      is_solid = .true.,density = 1.2E7_rk)!1200e6 from wiki
-  end subroutine
   !
   !sets inflows on ice_water_index-1(water_surface)
   !
@@ -1426,8 +1436,19 @@ contains
          value=sinusoidal(day,0.5_rk),layer=ice_water_index-1)
     call find_set_state_variable(_Si_,&
          value=sinusoidal(day,10._rk),layer=ice_water_index-1)
-  end subroutine
+  contains
+    pure function sinusoidal(julian_day,multiplier)
+      integer, intent(in):: julian_day
+      real(rk),intent(in):: multiplier
+      real(rk) sinusoidal
 
+      sinusoidal = (1.02_rk+sin(2._rk*_PI_*(&
+                    julian_day-40._rk)/365._rk))*multiplier
+    end function
+  end subroutine
+  !
+  !returns type brom_state_variable by name
+  !
   function find_state_variable(inname)
     character(len=*),intent(in):: inname
     type(brom_state_variable):: find_state_variable
