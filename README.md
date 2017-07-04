@@ -25,7 +25,7 @@ Then:
   
   download biogeochemistry model from the same directory as BROM2
   
-  `$ git clone https://github.com/limash/brom_niva_module.git`
+  `$ git clone https://github.com/limash/brom_niva_module.git --branch dev-sham`
 
   download ecosystem model from the same directory as BROM2
 
