@@ -64,7 +64,7 @@ Then:
   
   to download biogeochemistry model type
   
-  `$ git clone https://github.com/limash/brom_niva_module.git`
+  `$ git clone https://github.com/limash/brom_niva_module.git --branch dev-sham`
 
   and to download ecosystem model type
 
