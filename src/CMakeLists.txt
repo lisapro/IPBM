@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 2.8)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
 # Create main project.
-project(brom2 Fortran)
+project(IPBM Fortran)
 
 # Specify default build type for single-type systems (not VS)
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
@@ -42,7 +42,7 @@ add_subdirectory(${FABM_BASE}/src fabm)
 set(FABM_LIBRARIES fabm)
 set(FABM_INCLUDE_DIRS ${CMAKE_CURRENT_BINARY_DIR}/fabm/modules)
 
-add_executable(brom2 WIN32
+add_executable(IPBM WIN32
                transport.F90
                diff_mod.F90
                variables_mod.F90
@@ -52,24 +52,24 @@ add_executable(brom2 WIN32
                list_mod.F90
                item_mod.F90
                ice_mod.F90
-               ../include/brom.h
+               ../include/ipbm.h
                ../include/parameters.h)
 
-set_property(TARGET brom2 APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
-set_property(TARGET brom2 APPEND PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
-set_property(TARGET brom2 PROPERTY Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/modules)
-set_property(TARGET brom2 APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
+set_property(TARGET IPBM APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
+set_property(TARGET IPBM APPEND PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
+set_property(TARGET IPBM PROPERTY Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/modules)
+set_property(TARGET IPBM APPEND PROPERTY INCLUDE_DIRECTORIES "${FABM_INCLUDE_DIRS}")
 
-target_link_libraries(brom2 ${FABM_LIBRARIES})
-target_link_libraries(brom2 "${NetCDF_LIBRARIES}")
+target_link_libraries(IPBM ${FABM_LIBRARIES})
+target_link_libraries(IPBM "${NetCDF_LIBRARIES}")
 
 if(${CMAKE_Fortran_COMPILER_ID} STREQUAL "Intel")
   if(WIN32)
-    target_compile_options(brom2 PRIVATE /nothreads /libs:static /libs:qwin)
+    target_compile_options(IPBM PRIVATE /nothreads /libs:static /libs:qwin)
   endif()
 endif()
 
 if (NetCDF_STATIC_MSVC_BUILD)
-  set_property(TARGET brom2 PROPERTY LINK_FLAGS_DEBUG "/NODEFAULTLIB:\"libcmt\"")
-  set_property(TARGET brom2 PROPERTY LINK_FLAGS_DEBUG "/NODEFAULTLIB:\"libcmtd\"")
+  set_property(TARGET IPBM PROPERTY LINK_FLAGS_DEBUG "/NODEFAULTLIB:\"libcmt\"")
+  set_property(TARGET IPBM PROPERTY LINK_FLAGS_DEBUG "/NODEFAULTLIB:\"libcmtd\"")
 endif()

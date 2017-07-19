@@ -1,16 +1,16 @@
 !-----------------------------------------------------------------------
-! BROM2 is free software: you can redistribute it and/or modify it under
+! IPBM is free software: you can redistribute it and/or modify it under
 ! the terms of the GNU General Public License as published by the Free
 ! Software Foundation (https://www.gnu.org/licenses/gpl.html).
 ! It is distributed in the hope that it will be useful, but WITHOUT ANY
 ! WARRANTY; without even the implied warranty of MERCHANTABILITY or
 ! FITNESS FOR A PARTICULAR PURPOSE. A copy of the license is provided in
-! the COPYING file at the root of the BROM2 distribution.
+! the COPYING file at the root of the IPBM distribution.
 !-----------------------------------------------------------------------
 ! Original author(s): Shamil Yakubov
 !-----------------------------------------------------------------------
 
-#include "../include/brom.h"
+#include "../include/ipbm.h"
 #include "../include/parameters.h"
 
 module variables_mod
@@ -25,7 +25,7 @@ module variables_mod
   !          TRANSFER((/ Z'00000000', Z'7FF80000' /),1.0_rk)
   real(rk) D_QNAN
 
-  type,extends(list_variables):: brom_standard_variables
+  type,extends(list_variables):: ipbm_standard_variables
     type(ice) type_ice
   contains
     private
@@ -42,7 +42,7 @@ module variables_mod
     procedure,public:: first_day
   end type
 
-  type,extends(variable_1d):: brom_state_variable
+  type,extends(variable_1d):: ipbm_state_variable
     logical  is_solid
     logical  is_gas
     integer  use_bound_up
@@ -53,28 +53,28 @@ module variables_mod
     real(rk),allocatable,dimension(:):: sinking_velocity
     !real(rk),allocatable,dimension(:):: fabm_value
   contains
-    procedure:: set_brom_state_variable
+    procedure:: set_ipbm_state_variable
     procedure:: print_state_variable
   end type
 
-  interface brom_standard_variables
-    module procedure brom_standard_variables_constructor
+  interface ipbm_standard_variables
+    module procedure ipbm_standard_variables_constructor
   end interface
 contains
-  function brom_standard_variables_constructor()
-    type(brom_standard_variables):: brom_standard_variables_constructor
+  function ipbm_standard_variables_constructor()
+    type(ipbm_standard_variables):: ipbm_standard_variables_constructor
 
     !NaN
     D_QNAN = 0._rk
     D_QNAN = D_QNAN / D_QNAN
 
-    call brom_standard_variables_constructor%initialize()
+    call ipbm_standard_variables_constructor%initialize()
   end function
   !
   !Initialize standard variables list
   !
   subroutine initialize_standard_variables(self)
-    class(brom_standard_variables),intent(inout):: self
+    class(ipbm_standard_variables),intent(inout):: self
     type(type_input):: kara_input
 
     !open input netcdf and make list with all variables
@@ -109,7 +109,7 @@ contains
     call self%add_diffusivity(kara_input,_TURBULENCE_,&
                               "molecular_diffusivity",&
                               "bioturbation_diffusivity")
-    call self%print_list_variables('Allocated brom_standard_variables:')
+    call self%print_list_variables('Allocated ipbm_standard_variables:')
     !call self%print_var("porosity")
     !call self%print_var("porosity_on_interfaces")
     !delete unneeded list
@@ -117,7 +117,7 @@ contains
   end subroutine
 
   subroutine add_standard_var(self,name_input,inname)
-    class(brom_standard_variables),intent(inout):: self
+    class(ipbm_standard_variables),intent(inout):: self
     type(type_input)              ,intent(in)   :: name_input
     character(len=*)              ,intent(in)   :: inname
     class(variable),allocatable:: var
@@ -132,7 +132,7 @@ contains
   !Add discretized ice_thicknesses
   !
   subroutine add_ice_thickness(self,name_input)
-    class(brom_standard_variables),intent(inout):: self
+    class(ipbm_standard_variables),intent(inout):: self
     type(type_input)              ,intent(in)   :: name_input
     class(variable),allocatable:: var
     type(variable_1d) new_var_1d
@@ -143,7 +143,7 @@ contains
     class is(variable_1d)
       allocate(value_1d(size(var%value,1)))
       value_1d = var%value-mod(var%value,_ICE_LAYERS_RESOLUTION_)
-      new_var_1d = variable_1d(var%name,'',value_1d)
+      new_var_1d = variable_1d(var%name,var%long_name,var%units,value_1d)
       call self%add_item(new_var_1d)
     end select
   end subroutine
@@ -154,7 +154,7 @@ contains
              inname,ice_layers,ice_water_index,&
              water_bbl_index,bbl_sediments_index,&
              number_of_boundaries)
-    class(brom_standard_variables),intent(inout):: self
+    class(ipbm_standard_variables),intent(inout):: self
     type(type_input),intent(in):: name_input
     character(len=*),intent(in):: inname
     integer         ,intent(in):: ice_layers
@@ -196,13 +196,13 @@ contains
     total_boundaries = ice_layers+length+bbl_count+sediments_count
 
     !adding indexes of inner boundaries
-    new_var = alone_variable(ice_water_index,'',ice_water)
+    new_var = alone_variable(ice_water_index,'','',ice_water)
     call self%add_item(new_var)
-    new_var = alone_variable(water_bbl_index,'',water_bbl)
+    new_var = alone_variable(water_bbl_index,'','',water_bbl)
     call self%add_item(new_var)
-    new_var = alone_variable(bbl_sediments_index,'',bbl_sediments)
+    new_var = alone_variable(bbl_sediments_index,'','',bbl_sediments)
     call self%add_item(new_var)
-    new_var = alone_variable(number_of_boundaries,'',total_boundaries)
+    new_var = alone_variable(number_of_boundaries,'','',total_boundaries)
     call self%add_item(new_var)
 
     select type(var)
@@ -221,7 +221,7 @@ contains
       do i = 2,(bbl_sediments-1)
         value_2d(i,:) = value_2d(i-1,:)-resolution_sediments
       end do
-      new_var_2d = variable_2d(var%name,'',value_2d)
+      new_var_2d = variable_2d(var%name,var%long_name,var%units,value_2d)
       call self%add_item(new_var_2d)
     class default
       call fatal_error("Adding layers","Wrong type")
@@ -230,7 +230,7 @@ contains
 
   subroutine add_grid_on_centers(self,inname,inname_increments,&
                                  number_of_layers,air_ice_indexes)
-    class(brom_standard_variables),intent(inout):: self
+    class(ipbm_standard_variables),intent(inout):: self
 
     character(len=*),intent(in):: inname
     character(len=*),intent(in):: inname_increments
@@ -254,11 +254,11 @@ contains
     allocate(active_layers(time))
     ice_water_i = self%get_value("ice_water_index")
     active_layers = ice_water_i+self%type_ice%get_active_layers()
-    new_var_1d = variable_1d(air_ice_indexes,'',active_layers)
+    new_var_1d = variable_1d(air_ice_indexes,'','',active_layers)
     call self%add_item(new_var_1d)
 
     length = self%get_value("number_of_boundaries")-1._rk
-    new_var = alone_variable(number_of_layers,'',length)
+    new_var = alone_variable(number_of_layers,'','',length)
     call self%add_item(new_var)
 
     call self%get_var(_DEPTH_ON_BOUNDARY_,var)
@@ -272,7 +272,7 @@ contains
                           var%value(i,j))/2._rk)
         end do
       end do
-      new_var_2d = variable_2d(inname,'',mid_depths)
+      new_var_2d = variable_2d(inname,'',var%units,mid_depths)
       call self%add_item(new_var_2d)
       !for example: for 4 boundaries exists 3 layers
       !and 3 midpoints of these layers and 2 dz
@@ -283,7 +283,7 @@ contains
           dz(i-1,j) = abs(mid_depths(i,j)-mid_depths(i-1,j))
         end do
       end do
-      new_var_2d = variable_2d(inname_increments,'',dz)
+      new_var_2d = variable_2d(inname_increments,'',var%units,dz)
       call self%add_item(new_var_2d)
     class default
       call fatal_error("Add grid on centers",&
@@ -292,7 +292,7 @@ contains
   end subroutine
 
   subroutine add_day_number(self,inname)
-    class(brom_standard_variables),intent(inout):: self
+    class(ipbm_standard_variables),intent(inout):: self
     character(len=*)              ,intent(in)   :: inname
     class(variable),allocatable:: var
 
@@ -309,7 +309,7 @@ contains
   end subroutine
 
   integer function first_day(self)
-    class(brom_standard_variables),intent(in):: self
+    class(ipbm_standard_variables),intent(in):: self
     class(variable),allocatable:: var
 
     call self%get_var("day_number",var)
@@ -320,7 +320,7 @@ contains
   end function
 
   subroutine add_layer_thicknesses(self,inname)
-    class(brom_standard_variables),intent(inout):: self
+    class(ipbm_standard_variables),intent(inout):: self
     character(len=*)              ,intent(in)   :: inname
     class(variable)        ,allocatable:: var
     real(rk),dimension(:)  ,allocatable:: air_ice_indexes
@@ -346,7 +346,7 @@ contains
                           var%value(i,j))
         end do
       end do
-      new_var = variable_2d(inname,'',value_2d)
+      new_var = variable_2d(inname,'',var%units,value_2d)
       call self%add_item(new_var)
     class default
       call fatal_error("Add layer_thicknesses",&
@@ -355,7 +355,7 @@ contains
   end subroutine
 
   subroutine add_constant_in_sed(self,name_input,inname)
-    class(brom_standard_variables),intent(inout):: self
+    class(ipbm_standard_variables),intent(inout):: self
     type(type_input)              ,intent(in)   :: name_input
     character(len=*)              ,intent(in)   :: inname
     class(variable),allocatable        :: var
@@ -401,7 +401,7 @@ contains
       forall (i = 1:time)&
         value_2d(:water_bbl_index-1,i) =&
         value_2d(water_bbl_index,i)
-      new_var = variable_2d(inname,'',value_2d)
+      new_var = variable_2d(inname,var%long_name,var%units,value_2d)
       call self%add_item(new_var)
     class default
       call fatal_error("Adding constant in sediments variable",&
@@ -427,7 +427,7 @@ contains
     ! dC/dt = d/dz(kzti*dC/dz)                   in the water column
     ! dC/dt = d/dz((1-phi)*kzti*d/dz(C/(1-phi))) in the sediments
     !
-    class(brom_standard_variables),intent(inout):: self
+    class(ipbm_standard_variables),intent(inout):: self
     character(len=*),intent(in):: name_porosity
     character(len=*),intent(in):: name_porosity_faces
     character(len=*),intent(in):: name_pf_solutes_1
@@ -467,16 +467,19 @@ contains
     allocate(swi_depth,source = depth_boundary(swi_index,:))
 
     !Indices of layer interfaces in the sediments
-    var_1d = variable_1d("k_sed","",(/(i,i=1,swi_index-1)/))
+    var_1d = variable_1d("k_sed","Indices of layer interfaces",&
+                         "",(/(i,i=1,swi_index-1)/))
     call self%add_item(var_1d)
     !Indices of layer interfaces in the sediments including the SWI
-    var_1d = variable_1d("k_sed1","",(/(i,i=1,swi_index)/))
+    var_1d = variable_1d("k_sed1","Indices of layer interfaces with SWI",&
+                         "",(/(i,i=1,swi_index)/))
     call self%add_item(var_1d)
 
     !alone variable
     !dphi/dz on SWI for sedimentation velocity caclulations
-    dphidz_SWI = alone_variable("dphidz_SWI","",&
-      1.0_rk*(max_porosity-min_porosity)/porosity_decay)
+    dphidz_SWI = alone_variable("dphidz_SWI",&
+                 "dphi/dz on SWI for sedimentation velocity caclulations",&
+                 "m^-1",1.0_rk*(max_porosity-min_porosity)/porosity_decay)
     call self%add_item(dphidz_SWI)
 
     !for layers
@@ -490,7 +493,7 @@ contains
     end forall
     porosity(ice_water_index:,:) = self%type_ice%do_brine_relative_volume(&
           .true.,self%get_column(_ICE_THICKNESS_))
-    new_var = variable_2d(name_porosity,'',porosity)
+    new_var = variable_2d(name_porosity,'','',porosity)
     call self%add_item(new_var)
 
     !porosity factor 1 for solutes
@@ -499,7 +502,9 @@ contains
     !PW:
     !Factor to convert [mass per unit total volume]
     !to [mass per unit volume pore water] for solutes in sediments
-    new_var = variable_2d(name_pf_solutes_1,'',porosity_factor)
+    new_var = variable_2d(name_pf_solutes_1,&
+                          "Total vol. to pore water vol.",&
+                          '',porosity_factor)
     call self%add_item(new_var)
 
     !porosity factor 1 for solids
@@ -512,7 +517,9 @@ contains
     !PW:
     !Factor to convert [mass per unit total volume]
     !to [mass per unit volume solids] for solids in sediments
-    new_var = variable_2d(name_pf_solids_1,'',porosity_factor)
+    new_var = variable_2d(name_pf_solids_1,&
+                          "Total vol. to vol. solids",&
+                          '',porosity_factor)
     call self%add_item(new_var)
 
     deallocate(porosity)
@@ -538,7 +545,7 @@ contains
     porosity(ice_water_index+1:,:) = &
           self%type_ice%do_brine_relative_volume(&
           .false.,self%get_column(_ICE_THICKNESS_))
-    new_var = variable_2d(name_porosity_faces,'',porosity)
+    new_var = variable_2d(name_porosity_faces,'','',porosity)
     call self%add_item(new_var)
     w_b = 0._rk
     u_b = 0._rk
@@ -546,9 +553,9 @@ contains
                        (1._rk-porosity(1:swi_index,1)))*_BURIAL_VELOCITY_
     u_b(1:swi_index) = -(min_porosity)/&
                        (porosity(1:swi_index,1))*_BURIAL_VELOCITY_
-    var_1d = variable_1d("w_b","",w_b)
+    var_1d = variable_1d("w_b","Particulates velocities","m s^-1",w_b)
     call self%add_item(var_1d)
-    var_1d = variable_1d("u_b","",u_b)
+    var_1d = variable_1d("u_b","Solutes velocities","m s^-1",u_b)
     call self%add_item(var_1d)
 
     !porosity factor 2 for solutes
@@ -557,7 +564,9 @@ contains
     !PW:
     !Porosity-related area restriction factor for fluxes
     !across layer interfaces
-    new_var = variable_2d(name_pf_solutes_2,'',porosity_factor)
+    new_var = variable_2d(name_pf_solutes_2,&
+                          "Area restriction factor - solutes",&
+                          '',porosity_factor)
     call self%add_item(new_var)
 
     !porosity factor 2 for solids
@@ -570,21 +579,25 @@ contains
     !PW:
     !Porosity-related area restriction factor for fluxes
     !across layer interfaces
-    new_var = variable_2d(name_pf_solids_2,'',porosity_factor)
+    new_var = variable_2d(name_pf_solids_2,&
+                          "Area restriction factor - solids",&
+                          '',porosity_factor)
     call self%add_item(new_var)
 
     !tortuosity on layer interfaces
     !Boudreau 1996, eq. 4.120
     allocate(tortuosity(length+1,time))
     tortuosity = sqrt(1._rk-2._rk*log(porosity))
-    new_var = variable_2d(name_tortuosity,'',tortuosity)
+    new_var = variable_2d(name_tortuosity,&
+                          "Tortousity on layer interfaces",&
+                          '',tortuosity)
     call self%add_item(new_var)
   end subroutine
 
   subroutine add_diffusivity(self,name_input,name_eddy_diffusivity,&
                             name_molecular_diffusivity,&
                             name_bioturbation_diffusivity)
-    class(brom_standard_variables),intent(inout):: self
+    class(ipbm_standard_variables),intent(inout):: self
     type(type_input),intent(in):: name_input
     character(len=*),intent(in):: name_eddy_diffusivity
     character(len=*),intent(in):: name_molecular_diffusivity
@@ -639,7 +652,8 @@ contains
       do i = 1,time
         eddy_kz(air_ice_indexes(i)+1:,i) = D_QNAN
       end do
-      new_var_2d = variable_2d(name_eddy_diffusivity,'',eddy_kz)
+      new_var_2d = variable_2d(name_eddy_diffusivity,&
+                               'Eddy diffusivity',var%units,eddy_kz)
       call self%add_item(new_var_2d)
     class default
       call fatal_error("Adding turbulence",&
@@ -659,7 +673,8 @@ contains
       value_2d(ice_water_index:air_ice_indexes(i),i) = 0._rk
       value_2d(air_ice_indexes(i)+1:,i) = D_QNAN
     end do
-    new_var_2d = variable_2d(name_molecular_diffusivity,'',value_2d)
+    new_var_2d = variable_2d(name_molecular_diffusivity,&
+                             "Molecular diffusivity",var%units,value_2d)
     call self%add_item(new_var_2d)
 
     !add bioturbation diffusivity
@@ -678,7 +693,8 @@ contains
     do i = 1,time
       value_2d(air_ice_indexes(i)+1:,i) = D_QNAN
     end do
-    new_var_2d = variable_2d(name_bioturbation_diffusivity,'',value_2d)
+    new_var_2d = variable_2d(name_bioturbation_diffusivity,&
+                             "Bioturbation diffusivity",var%units,value_2d)
     call self%add_item(new_var_2d)
 
     !add brine channel gravity drainage diffusivity
@@ -700,14 +716,16 @@ contains
           z_conv*_GRAVITY_DRAINAGE_
       end if
     end do
-    new_var_2d = variable_2d("ice_gravity_drainage",'',value_2d)
+    new_var_2d = variable_2d("ice_gravity_drainage",&
+                             "Ice gravity drainage diffusivity",&
+                              var%units,value_2d)
     call self%add_item(new_var_2d)
   end subroutine
 
-  pure subroutine set_brom_state_variable(self,is_solid,&
+  pure subroutine set_ipbm_state_variable(self,is_solid,&
       is_gas,use_bound_up,use_bound_low,bound_up,&
       bound_low,density,sinking_velocity,value,layer)
-    class(brom_state_variable),intent(inout):: self
+    class(ipbm_state_variable),intent(inout):: self
     logical,optional          ,intent(in)   :: is_solid
     logical,optional          ,intent(in)   :: is_gas
     integer,optional          ,intent(in)   :: use_bound_up
@@ -732,7 +750,7 @@ contains
   end subroutine
 
   subroutine print_state_variable(self)
-    class(brom_state_variable),intent(in):: self
+    class(ipbm_state_variable),intent(in):: self
 
     integer i
 

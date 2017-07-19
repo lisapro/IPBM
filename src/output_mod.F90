@@ -1,19 +1,23 @@
 !-----------------------------------------------------------------------
-! BROM2 is free software: you can redistribute it and/or modify it under
+! IPBM is free software: you can redistribute it and/or modify it under
 ! the terms of the GNU General Public License as published by the Free
 ! Software Foundation (https://www.gnu.org/licenses/gpl.html).
 ! It is distributed in the hope that it will be useful, but WITHOUT ANY
 ! WARRANTY; without even the implied warranty of MERCHANTABILITY or
 ! FITNESS FOR A PARTICULAR PURPOSE. A copy of the license is provided in
-! the COPYING file at the root of the BROM2 distribution.
+! the COPYING file at the root of the IPBM distribution.
 !-----------------------------------------------------------------------
 ! Original author(s): Shamil Yakubov
 !-----------------------------------------------------------------------
 
+#include "../include/ipbm.h"
+
 module output_mod
-  use variables_mod
+  use types_mod
+  use variables_mod,only: ipbm_standard_variables,&
+                          ipbm_state_variable
   use fabm_driver
-  use fabm, only: type_model,fabm_get_bulk_diagnostic_data
+  use fabm      , only: type_model,fabm_get_bulk_diagnostic_data
   use fabm_types, only: rk
   use netcdf
 
@@ -45,30 +49,34 @@ module output_mod
     module procedure type_output_constructor
   end interface
 contains
-  function type_output_constructor(model,infile,&
+  function type_output_constructor(model,standard_vars,infile,&
                                    first_layer,last_layer,&
                                    number_of_layers)
     type(type_output):: type_output_constructor
-    type(type_model),intent(in):: model
-    character(len=*),intent(in):: infile
-    integer         ,intent(in):: first_layer
-    integer         ,intent(in):: last_layer
-    integer         ,intent(in):: number_of_layers
+    type(type_model)              ,intent(in):: model
+    type(ipbm_standard_variables) ,intent(in):: standard_vars
+    character(len=*)              ,intent(in):: infile
+    integer                       ,intent(in):: first_layer
+    integer                       ,intent(in):: last_layer
+    integer                       ,intent(in):: number_of_layers
 
-    call type_output_constructor%initialize(model,infile,&
+    call type_output_constructor%initialize(model,standard_vars,infile,&
                                             first_layer,last_layer,&
                                             number_of_layers)
   end function
 
-  subroutine initialize(self,model,infile,&
+  subroutine initialize(self,model,standard_vars,infile,&
                         first_layer,last_layer,number_of_layers)
-    class(type_output),intent(inout):: self
-    type(type_model)  ,intent(in):: model
-    character(len=*)  ,intent(in):: infile
-    integer           ,intent(in):: first_layer
-    integer           ,intent(in):: last_layer
-    integer           ,intent(in):: number_of_layers
+    class(type_output)            ,intent(inout):: self
+    type(type_model)              ,intent(in):: model
+    type(ipbm_standard_variables) ,intent(in):: standard_vars
+    character(len=*)              ,intent(in):: infile
+    integer                       ,intent(in):: first_layer
+    integer                       ,intent(in):: last_layer
+    integer                       ,intent(in):: number_of_layers
 
+    class(variable),allocatable:: time_var
+    
     !dimension lengths
     integer,parameter:: time_len = NF90_UNLIMITED
     integer nlev
@@ -94,6 +102,10 @@ contains
     call check(nf90_def_var(self%nc_id,"z",NF90_REAL,dim1d,self%z_id))
     dim1d = time_dim_id
     call check(nf90_def_var(self%nc_id,"time",NF90_REAL,dim1d,self%time_id))
+    call standard_vars%get_var(_OCEAN_TIME_,time_var)
+    call check(set_attributes(ncid=self%nc_id,id=self%time_id,&
+                              units=time_var%units,&
+                              long_name=time_var%long_name))
     !define variables
     dim_ids(1) = z_dim_id
     dim_ids(2) = time_dim_id
@@ -132,13 +144,14 @@ contains
     call check(nf90_enddef(self%nc_id))
   end subroutine initialize
 
-  subroutine save(self,model,state_vars,z,day,&
+  subroutine save(self,model,standard_vars,state_vars,z,day,&
                   temp,salt,depth,radiative_flux,&
                   air_ice_index)
 
     class(type_output),intent(inout):: self
     type (type_model)                    ,intent(in):: model
-    type(brom_state_variable),allocatable,intent(in):: state_vars(:)
+    type(ipbm_standard_variables)        ,intent(in):: standard_vars
+    type(ipbm_state_variable),allocatable,intent(in):: state_vars(:)
     real(rk),allocatable,dimension(:)    ,intent(in):: z
     integer                              ,intent(in):: day
     real(rk),allocatable,dimension(:)    ,intent(in):: temp
@@ -146,7 +159,7 @@ contains
     real(rk),allocatable,dimension(:)    ,intent(in):: depth
     real(rk),allocatable,dimension(:)    ,intent(in):: radiative_flux
     integer                              ,intent(in):: air_ice_index
-
+    
     !NaN value
     !REAL(rk), PARAMETER :: D_QNAN = &
     !          TRANSFER((/ Z'00000000', Z'7FF80000' /),1.0_rk)
@@ -175,8 +188,9 @@ contains
       self%first = .false.
     end if
 
-    foo(1) = real(day)
+    !foo(1) = real(day)
     if (self%nc_id.ne.-1) then
+      foo(1) = standard_vars%get_value(_OCEAN_TIME_,day)
       call check(nf90_put_var(self%nc_id,self%time_id,foo,&
                               start_time,edges_time))
       do ip = 1,size(model%state_variables)

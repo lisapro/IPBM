@@ -1,11 +1,11 @@
 !-----------------------------------------------------------------------
-! BROM2 is free software: you can redistribute it and/or modify it under
+! IPBM is free software: you can redistribute it and/or modify it under
 ! the terms of the GNU General Public License as published by the Free
 ! Software Foundation (https://www.gnu.org/licenses/gpl.html).
 ! It is distributed in the hope that it will be useful, but WITHOUT ANY
 ! WARRANTY; without even the implied warranty of MERCHANTABILITY or
 ! FITNESS FOR A PARTICULAR PURPOSE. A copy of the license is provided in
-! the COPYING file at the root of the BROM2 distribution.
+! the COPYING file at the root of the IPBM distribution.
 !-----------------------------------------------------------------------
 ! Original author(s): Shamil Yakubov
 !-----------------------------------------------------------------------
@@ -79,6 +79,8 @@ contains
     integer,dimension(NF90_MAX_VAR_DIMS):: dimids
     character(len=NF90_MAX_NAME):: name  !Returned dimension name
     character(len=NF90_MAX_NAME):: vname !Returned variable name
+    character(len=NF90_MAX_NAME):: long_name
+    character(len=NF90_MAX_NAME):: units
 
     call check(nf90_open(infile,nf90_nowrite,ncid))
     call check(nf90_inquire(ncid,ndims,nvars,nglobalatts,unlimdimid))
@@ -95,20 +97,26 @@ contains
       call check(nf90_inquire_variable(ncid,i,vname,xtype,ndims,dimids))
       if (ndims==0) then
         call check(nf90_get_var(ncid,i,value))
-        alone_var = alone_variable(vname,'',value)
+        call get_att(ncid,i,"long_name",long_name)
+        call get_att(ncid,i,"units",units)
+        alone_var = alone_variable(vname,long_name,units,value)
         call self%add_input(alone_var)
       else if (ndims==1) then
         len_dim_2d = list_dim%get_netcdf_dimension(dimids(1))
         allocate(value_1d(len_dim_2d(1)))
         call check(nf90_get_var(ncid,i,value_1d))
-        var_1d = variable_1d(vname,'',value_1d)
+        call get_att(ncid,i,"long_name",long_name)
+        call get_att(ncid,i,"units",units)
+        var_1d = variable_1d(vname,long_name,units,value_1d)
         call self%add_input(var_1d)
         deallocate(value_1d)
       else if (ndims==2) then
         len_dim_2d = list_dim%get_netcdf_dimension(dimids(1),dimids(2))
         allocate(value_2d(len_dim_2d(1),len_dim_2d(2)))
         call check(nf90_get_var(ncid,i,value_2d))
-        var_2d = variable_2d(vname,'',value_2d)
+        call get_att(ncid,i,"long_name",long_name)
+        call get_att(ncid,i,"units",units)
+        var_2d = variable_2d(vname,long_name,units,value_2d)
         call self%add_input(var_2d)
         deallocate(value_2d)
       end if
@@ -174,6 +182,20 @@ contains
     if (status .ne. NF90_NOERR) then
       call fatal_error("Netcdf internal",&
                         nf90_strerror(status))
+    end if
+  end subroutine
+  
+  subroutine get_att(ncid,i,name_to_check,name)
+    integer,intent(in):: ncid
+    integer,intent(in):: i
+    character(len=*),intent(in) :: name_to_check
+    character(len=NF90_MAX_NAME),intent(out):: name
+
+    integer :: status
+    
+    status = nf90_get_att(ncid,i,name_to_check,name)
+    if (status .ne. NF90_NOERR) then
+      name = ''
     end if
   end subroutine
 end module

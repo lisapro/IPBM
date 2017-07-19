@@ -1,16 +1,16 @@
 !-----------------------------------------------------------------------
-! BROM2 is free software: you can redistribute it and/or modify it under
+! IPBM is free software: you can redistribute it and/or modify it under
 ! the terms of the GNU General Public License as published by the Free
 ! Software Foundation (https://www.gnu.org/licenses/gpl.html).
 ! It is distributed in the hope that it will be useful, but WITHOUT ANY
 ! WARRANTY; without even the implied warranty of MERCHANTABILITY or
 ! FITNESS FOR A PARTICULAR PURPOSE. A copy of the license is provided in
-! the COPYING file at the root of the BROM2 distribution.
+! the COPYING file at the root of the IPBM distribution.
 !-----------------------------------------------------------------------
 ! Original author(s): Shamil Yakubov
 !-----------------------------------------------------------------------
 
-#include "../include/brom.h"
+#include "../include/ipbm.h"
 #include "../include/parameters.h"
 !
 !main module for transport calculations
@@ -20,12 +20,12 @@ module transport
   use fabm_config
   use fabm_driver
   use fabm_types
-  use variables_mod,only: brom_standard_variables,&
-                          brom_state_variable
+  use variables_mod,only: ipbm_standard_variables,&
+                          ipbm_state_variable
 
   implicit none
   private
-  public initialize_brom,sarafan
+  public initialize_ipbm,sarafan
 
   integer previous_ice_index
   integer number_of_parameters
@@ -48,8 +48,8 @@ module transport
   !bcc and scc - arrays for bottom and surface fabm variables
   real(rk),allocatable,dimension(:),target:: bcc,scc
   !variables for model
-  type(brom_standard_variables) standard_vars
-  type(brom_state_variable),allocatable,&
+  type(ipbm_standard_variables) standard_vars
+  type(ipbm_state_variable),allocatable,&
                        dimension(:),target:: state_vars
   !fabm model
   type(type_model) fabm_model
@@ -64,9 +64,9 @@ module transport
   !type(type_horizontal_variable_id),save:: ssf_id !- ersem light
 contains
   !
-  !initialize brom
+  !initialize ipbm
   !
-  subroutine initialize_brom()
+  subroutine initialize_ipbm()
     real(rk),allocatable,dimension(:):: air_ice_indexes
     real(rk),allocatable,dimension(:):: zeros
     !NaN value
@@ -86,9 +86,9 @@ contains
     call fabm_create_model_from_yaml_file(fabm_model)
     _LINE_
     !
-    !initializing brom standard_variables
+    !initializing ipbm standard_variables
     !makes grid, it starts from bottom (1) to surface (end point)
-    standard_vars = brom_standard_variables()
+    standard_vars = ipbm_standard_variables()
     number_of_layers = standard_vars%get_value(&
                            "number_of_layers")
     !
@@ -108,7 +108,7 @@ contains
       !allocate(state_vars(i)%fabm_value(number_of_layers))
       allocate(state_vars(i)%sinking_velocity(number_of_layers))
       state_vars(i)%value = fabm_model%state_variables(i)%initial_value
-      call state_vars(i)%set_brom_state_variable(.false.,.false.,&
+      call state_vars(i)%set_ipbm_state_variable(.false.,.false.,&
         _NEUMANN_,_NEUMANN_,0._rk,0._rk,0._rk,zeros)
       !vertical movement rates (m/s, positive for upwards),
       !and set these to the values provided by the model.
@@ -235,7 +235,7 @@ contains
 
     !check all needed by fabm model variables
     call fabm_check_ready(fabm_model)
-    !brom needs to know is variable a solid or gas
+    !ipbm needs to know is variable a solid or gas
     call configurate_state_variables()
 
     previous_ice_index=0
@@ -402,13 +402,13 @@ contains
     call first_year_circle(day,year,ice_water_index,&
                            water_bbl_index,bbl_sediments_index,indices)
 
-    netcdf_ice = type_output(fabm_model,_FILE_NAME_ICE_,&
+    netcdf_ice = type_output(fabm_model,standard_vars,_FILE_NAME_ICE_,&
                              ice_water_index,ice_water_index+20,&
                              number_of_layers)
-    netcdf_water = type_output(fabm_model,_FILE_NAME_WATER_,&
+    netcdf_water = type_output(fabm_model,standard_vars,_FILE_NAME_WATER_,&
                                bbl_sediments_index,ice_water_index-1,&
                                number_of_layers)
-    netcdf_sediments = type_output(fabm_model,_FILE_NAME_SEDIMENTS_,&
+    netcdf_sediments = type_output(fabm_model,standard_vars,_FILE_NAME_SEDIMENTS_,&
                                    1,water_bbl_index-1,&
                                    number_of_layers)
     do i = 1,number_of_days
@@ -450,13 +450,13 @@ contains
 
       call cpu_time(t1)
       call day_circle(i,surface_index,day)
-      call netcdf_ice%save(fabm_model,state_vars,indices,i,&
+      call netcdf_ice%save(fabm_model,standard_vars,state_vars,indices,i,&
                            temp,salt,depth,radiative_flux,&
                            int(air_ice_indexes(i)))
-      call netcdf_water%save(fabm_model,state_vars,depth,i,&
+      call netcdf_water%save(fabm_model,standard_vars,state_vars,depth,i,&
                              temp,salt,depth,radiative_flux,&
                              int(air_ice_indexes(i)))
-      call netcdf_sediments%save(fabm_model,state_vars,depth,i,&
+      call netcdf_sediments%save(fabm_model,standard_vars,state_vars,depth,i,&
                                  temp,salt,depth,radiative_flux,&
                                  int(air_ice_indexes(i)))
       call cpu_time(t2)
@@ -507,13 +507,13 @@ contains
     allocate(air_ice_indexes,source = &
              standard_vars%get_column("air_ice_indexes"))
     !
-    netcdf_ice = type_output(fabm_model,'ice_day.nc',&
+    netcdf_ice = type_output(fabm_model,standard_vars,'ice_day.nc',&
                          ice_water_index,number_of_layers,&
                          number_of_layers)
-    netcdf_water = type_output(fabm_model,'water_day.nc',&
+    netcdf_water = type_output(fabm_model,standard_vars,'water_day.nc',&
                          water_bbl_index,ice_water_index-1,&
                          number_of_layers)
-    netcdf_sediments = type_output(fabm_model,'sediments_day.nc',&
+    netcdf_sediments = type_output(fabm_model,standard_vars,'sediments_day.nc',&
                          1,water_bbl_index-1,&
                          number_of_layers)
     !
@@ -550,13 +550,13 @@ contains
     do i = 1,counter
       call day_circle(1,surface_index,14)
 
-      call netcdf_ice%save(fabm_model,state_vars,indices,i,&
+      call netcdf_ice%save(fabm_model,standard_vars,state_vars,indices,i,&
                            temp,salt,depth,radiative_flux,&
                            int(air_ice_indexes(1)))
-      call netcdf_water%save(fabm_model,state_vars,depth,i,&
+      call netcdf_water%save(fabm_model,standard_vars,state_vars,depth,i,&
                              temp,salt,depth,radiative_flux,&
                              int(air_ice_indexes(1)))
-      call netcdf_sediments%save(fabm_model,state_vars,depth,i,&
+      call netcdf_sediments%save(fabm_model,standard_vars,state_vars,depth,i,&
                                  temp,salt,depth,radiative_flux,&
                                  int(air_ice_indexes(1)))
 
@@ -595,13 +595,13 @@ contains
     days_in_year = 365+merge(1,0,(mod(year,4).eq.0))
     counter = days_in_year*10
 
-    netcdf_ice = type_output(fabm_model,'ice_year.nc',&
+    netcdf_ice = type_output(fabm_model,standard_vars,'ice_year.nc',&
                          ice_water_index,ice_water_index+20,&
                          number_of_layers)
-    netcdf_water = type_output(fabm_model,'water_year.nc',&
+    netcdf_water = type_output(fabm_model,standard_vars,'water_year.nc',&
                          bbl_sediments_index,ice_water_index-1,&
                          number_of_layers)
-    netcdf_sediments = type_output(fabm_model,'sediments_year.nc',&
+    netcdf_sediments = type_output(fabm_model,standard_vars,'sediments_year.nc',&
                          1,water_bbl_index-1,&
                          number_of_layers)
     do i = 1,counter
@@ -649,13 +649,16 @@ contains
 
       call day_circle(pseudo_day,surface_index,day)
 
-      call netcdf_ice%save(fabm_model,state_vars,indices,pseudo_day,&
+      call netcdf_ice%save(fabm_model,standard_vars,state_vars,&
+                           indices,pseudo_day,&
                            temp,salt,depth,radiative_flux,&
                            int(air_ice_indexes(pseudo_day)))
-      call netcdf_water%save(fabm_model,state_vars,depth,pseudo_day,&
+      call netcdf_water%save(fabm_model,standard_vars,state_vars,&
+                             depth,pseudo_day,&
                              temp,salt,depth,radiative_flux,&
                              int(air_ice_indexes(pseudo_day)))
-      call netcdf_sediments%save(fabm_model,state_vars,depth,pseudo_day,&
+      call netcdf_sediments%save(fabm_model,standard_vars,state_vars,&
+                                 depth,pseudo_day,&
                                  temp,salt,depth,radiative_flux,&
                                  int(air_ice_indexes(pseudo_day)))
 
@@ -803,9 +806,9 @@ contains
     layer_thicknesses = &
     (/ 0._rk,standard_vars%get_column("layer_thicknesses",id) /)
     !
-    !is needed by brom_do_sedimentation
+    !is needed by ipbm_do_sedimentation
     dphidz_SWI    = standard_vars%get_value("dphidz_SWI")
-    !is needed by brom_do_sedimentation
+    !is needed by ipbm_do_sedimentation
     face_porosity = &
     standard_vars%get_column("porosity_on_interfaces",id)
     !is needed to constrain production in ice and seds
@@ -838,7 +841,7 @@ contains
       !end if
       dcc = 0._rk
       !diffusion
-      call brom_do_diffusion(surface_index,bbl_sed_index,ice_water_index,&
+      call ipbm_do_diffusion(surface_index,bbl_sed_index,ice_water_index,&
                              pF1_solutes,pF2_solutes,pF1_solids,&
                              pF2_solids,kz_mol,kz_bio,kz_turb,kz_ice_gravity,&
                              layer_thicknesses,brine_release,dcc)
@@ -874,7 +877,7 @@ contains
       !call check_array("after_fabm_do",surface_index,id,i)
       call fabm_check_state(fabm_model,1,surface_index-1,repair,valid)
       !sedimentation
-      call brom_do_sedimentation(surface_index,bbl_sed_index,&
+      call ipbm_do_sedimentation(surface_index,bbl_sed_index,&
                                  ice_water_index,k_sed1,w_b,u_b,&
                                  dphidz_SWI,&
                                  increment,&
@@ -889,7 +892,7 @@ contains
   !
   !diffusion part
   !
-  subroutine brom_do_diffusion(&
+  subroutine ipbm_do_diffusion(&
              surface_index,bbl_sed_index,ice_water_index,&
              pF1_solutes,pF2_solutes,pF1_solids,&
              pF2_solids,kz_mol,kz_bio,kz_turb,kz_ice_gravity,&
@@ -913,7 +916,7 @@ contains
     real(rk),dimension(surface_index-1,number_of_parameters),&
                                            intent(out):: increment
 
-    type(brom_state_variable):: oxygen
+    type(ipbm_state_variable):: oxygen
     real(rk),dimension(number_of_layers+1):: ones
     real(rk),dimension(number_of_layers+1):: zeros
     real(rk),dimension(number_of_layers+1):: taur_r
@@ -956,7 +959,7 @@ contains
     end if
     !
     do i = 1,number_of_parameters
-      call state_vars(i)%set_brom_state_variable(&
+      call state_vars(i)%set_ipbm_state_variable(&
         use_bound_up = _NEUMANN_,bound_up = surface_flux(i))
     end do
 
@@ -1034,7 +1037,7 @@ contains
   !calculates vertical advection (sedimentation)
   !in the water column and sediments
   !
-  subroutine brom_do_sedimentation(surface_index,bbl_sed_index,&
+  subroutine ipbm_do_sedimentation(surface_index,bbl_sed_index,&
                                    ice_water_index,k_sed1,w_b,u_b,&
                                    dphidz_SWI,increment,&
                                    face_porosity,kz_bio,&
@@ -1057,7 +1060,7 @@ contains
     real(rk),intent(in):: dz(surface_index-2)
 
     !Local variables
-    type(brom_state_variable):: oxygen
+    type(ipbm_state_variable):: oxygen
 
     !NaN value
     REAL(rk), PARAMETER :: D_QNAN = &
@@ -1274,7 +1277,7 @@ contains
       end do
     end do
     !call state_vars(1)%print_state_variable()
-  end subroutine brom_do_sedimentation
+  end subroutine ipbm_do_sedimentation
   !
   !recalculates state variables concentrations due to freezing or melting
   !
@@ -1400,7 +1403,7 @@ contains
     number_of_vars = size(state_vars)
     do i = 1,number_of_vars
       if (state_vars(i)%name.eq.inname) then
-        call state_vars(i)%set_brom_state_variable(is_solid,&
+        call state_vars(i)%set_ipbm_state_variable(is_solid,&
           is_gas,use_bound_up,use_bound_low,bound_up,&
           bound_low,density,sinking_velocity,value,layer)
         return
@@ -1447,11 +1450,11 @@ contains
     end function
   end subroutine
   !
-  !returns type brom_state_variable by name
+  !returns type ipbm_state_variable by name
   !
   function find_state_variable(inname)
     character(len=*),intent(in):: inname
-    type(brom_state_variable):: find_state_variable
+    type(ipbm_state_variable):: find_state_variable
     integer number_of_vars
     integer i
 
@@ -1520,6 +1523,6 @@ end module
 program main
   use transport
 
-  call initialize_brom()
+  call initialize_ipbm()
   call sarafan()
 end program
