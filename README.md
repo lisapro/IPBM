@@ -18,7 +18,7 @@ Then:
 
   `$ git clone https://github.com/limash/IPBM.git`
    
-  download [FABM] from here and switch to dev-sham branch
+  download [FABM] and switch to dev-sham branch
 
   `$ git clone https://github.com/limash/FABM.git --branch dev-sham`
   
@@ -55,13 +55,13 @@ Then:
 
 ## Windows 10, 8:
 
-1. Download IPBM
+1. Download all required programs 
 
-  Right-click in Windows Explorer within the directory where you want to place the IPBM direcrory, and choose "Git Bash Here", or use PowerShell program. In the terminal that appears type:
+  Right-click in Windows Explorer within the directory where you want to place the IPBM directory, and choose "Git Bash Here", or use PowerShell program. In the terminal that appears to download IPBM type:
 
   `$ git clone https://github.com/limash/IPBM.git`
    
-  then download [FABM] from here and switch to dev-sham branch
+  then download [FABM] and switch to dev-sham branch
 
   `$ git clone https://github.com/limash/FABM.git --branch dev-sham`
   

@@ -184,7 +184,7 @@ contains
                         nf90_strerror(status))
     end if
   end subroutine
-  
+
   subroutine get_att(ncid,i,name_to_check,name)
     integer,intent(in):: ncid
     integer,intent(in):: i
@@ -192,7 +192,7 @@ contains
     character(len=NF90_MAX_NAME),intent(out):: name
 
     integer :: status
-    
+
     status = nf90_get_att(ncid,i,name_to_check,name)
     if (status .ne. NF90_NOERR) then
       name = ''

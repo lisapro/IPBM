@@ -76,7 +76,7 @@ contains
     integer                       ,intent(in):: number_of_layers
 
     class(variable),allocatable:: time_var
-    
+
     !dimension lengths
     integer,parameter:: time_len = NF90_UNLIMITED
     integer nlev
@@ -159,7 +159,7 @@ contains
     real(rk),allocatable,dimension(:)    ,intent(in):: depth
     real(rk),allocatable,dimension(:)    ,intent(in):: radiative_flux
     integer                              ,intent(in):: air_ice_index
-    
+
     !NaN value
     !REAL(rk), PARAMETER :: D_QNAN = &
     !          TRANSFER((/ Z'00000000', Z'7FF80000' /),1.0_rk)
