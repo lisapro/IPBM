@@ -37,7 +37,7 @@ endif()
 
 find_path(FABM_BASE src/fabm.F90 DOC "Path to FABM source directory.")
 mark_as_advanced(CLEAR FABM_BASE)
-set(FABM_FORCED_HOST brom)
+set(FABM_FORCED_HOST ipbm)
 add_subdirectory(${FABM_BASE}/src fabm)
 set(FABM_LIBRARIES fabm)
 set(FABM_INCLUDE_DIRS ${CMAKE_CURRENT_BINARY_DIR}/fabm/modules)
