@@ -461,7 +461,7 @@ contains
                                  int(air_ice_indexes(i)))
       call cpu_time(t2)
 
-      write(*,*) "number / ","julianday / ","year",i,day,year
+      write(*,*) "number / ","day / ","year",i,day,year
       write(*,*) "Time taken by day circle:",t2-t1," seconds"
       day = day+1
     end do
@@ -476,10 +476,10 @@ contains
       integer,intent(inout):: first_year
       integer nydays
 
-      nydays = 365+merge(1,0,(mod(first_year,4).eq.0))
+      nydays = 365+is_leap(first_year)
       do
         if (day<=nydays) exit
-        nydays = 365+merge(1,0,(mod(first_year,4).eq.0))
+        nydays = 365+is_leap(first_year)
         day = day-nydays
         first_year = first_year+1
       end do
@@ -663,7 +663,7 @@ contains
                                  int(air_ice_indexes(pseudo_day)))
 
       write(*,*) "Stabilizing initial array of values, in progress ..."
-      write(*,*) "number / ","julianday / ","pseudo day",&
+      write(*,*) "number / ","day / ","pseudo day",&
                  i,day,pseudo_day
       day = day+1
     end do
@@ -672,25 +672,45 @@ contains
     call netcdf_sediments%close()
   end subroutine
   !
-  !keeps actual julian day and year
+  !keeps actual day and year
   !
   subroutine date(day,year)
     integer,intent(inout):: day
     integer,intent(inout):: year
     integer days
 
-    days = 365+merge(1,0,(mod(year,4).eq.0))
+    days = 365+is_leap(year)
     if (day==days+1) then
       year = year+1
       day = day-days
     end if
   end subroutine
   !
+  !return 1 (integer) in case of leap year
+  !
+  pure function is_leap(year)
+    integer,intent(in):: year
+    integer is_leap
+    
+    if (mod(year,400).eq.0) then
+      is_leap = 1
+      return
+    else if (mod(year,100).eq.0) then
+      is_leap = 0
+      return
+    else if (mod(year,4).eq.0) then
+      is_leap = 1
+      return
+    else
+      is_leap = 0
+    end if
+  end function is_leap
+  !
   !returns surface PAR
   !
-  pure function surface_radiative_flux(latitude,julian_day)
+  pure function surface_radiative_flux(latitude,day)
     real(rk),intent(in):: latitude
-    integer, intent(in):: julian_day
+    integer, intent(in):: day
     real(rk) surface_radiative_flux
 
     real(rk) Io,decl
@@ -701,7 +721,7 @@ contains
     Io = 180._rk
     !Compute surface shortwave downwelling irradiance [W m^-2, 24-hr average]
     !Solar declination in degrees
-    decl = 23.5_rk*sin(2.0_rk*_PI_*(real(julian_day,rk)-81.0_rk)/365.0_rk)
+    decl = 23.5_rk*sin(2.0_rk*_PI_*(real(day,rk)-81.0_rk)/365.0_rk)
     !This is the approximation used in Yakushev and Sorensen (2013) for OXYDEP
     surface_radiative_flux = max(0.0_rk, Io*cos((latitude-decl)*_PI_/180.0_rk))
     surface_radiative_flux = _PAR_PART_*surface_radiative_flux
@@ -750,7 +770,7 @@ contains
   subroutine day_circle(id,surface_index,day)
     integer,intent(in):: id !number of the count
     integer,intent(in):: surface_index
-    integer,intent(in):: day !julianday
+    integer,intent(in):: day !day
 
     real(rk),dimension(number_of_layers+1):: face_porosity
     real(rk),dimension(number_of_layers+1):: pF1_solutes
@@ -1440,13 +1460,13 @@ contains
     call find_set_state_variable(_Si_,&
          value=sinusoidal(day,10._rk),layer=ice_water_index-1)
   contains
-    pure function sinusoidal(julian_day,multiplier)
-      integer, intent(in):: julian_day
+    pure function sinusoidal(day,multiplier)
+      integer, intent(in):: day
       real(rk),intent(in):: multiplier
       real(rk) sinusoidal
 
       sinusoidal = (1.02_rk+sin(2._rk*_PI_*(&
-                    julian_day-40._rk)/365._rk))*multiplier
+                    day-40._rk)/365._rk))*multiplier
     end function
   end subroutine
   !
