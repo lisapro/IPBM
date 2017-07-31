@@ -380,11 +380,14 @@ contains
     !real(rk) ice
     !cpu time
     real(rk) t1,t2
-    real(rk),allocatable,dimension(:):: indices
+    real(rk),allocatable,dimension(:):: depth_faces
+    real(rk),allocatable,dimension(:):: indices,indices_faces
     real(rk),allocatable,dimension(:):: air_ice_indexes
 
     allocate(indices(number_of_layers))
     indices = (/(i,i=number_of_layers,1,-1)/)
+    allocate(indices_faces(number_of_layers+1))
+    indices_faces = (/(i,i=number_of_layers+1,1,-1)/)
 
     ice_water_index = standard_vars%get_value ("ice_water_index")
     water_bbl_index = standard_vars%get_value ("water_bbl_index")
@@ -396,11 +399,11 @@ contains
     day = standard_vars%first_day()
     call initial_date(day,year)
     !first day cycle
-    call first_day_circle(100,ice_water_index,&
-                          water_bbl_index,bbl_sediments_index,indices)
+    !call first_day_circle(100,ice_water_index,&
+    !                      water_bbl_index,bbl_sediments_index,indices)
     !cycle first year 10 times
-    call first_year_circle(day,year,ice_water_index,&
-                           water_bbl_index,bbl_sediments_index,indices)
+    !call first_year_circle(day,year,ice_water_index,&
+    !                       water_bbl_index,bbl_sediments_index,indices)
 
     netcdf_ice = type_output(fabm_model,standard_vars,_FILE_NAME_ICE_,&
                              ice_water_index,ice_water_index+20,&
@@ -418,6 +421,7 @@ contains
 
       !for netcdf output
       depth = standard_vars%get_column("middle_layer_depths",i)
+      allocate(depth_faces,source=standard_vars%get_column(_DEPTH_ON_BOUNDARY_,i))
 
       !change surface index due to ice depth
       !index for boundaries so for layers it should be -1
@@ -450,13 +454,16 @@ contains
 
       call cpu_time(t1)
       call day_circle(i,surface_index,day)
-      call netcdf_ice%save(fabm_model,standard_vars,state_vars,indices,i,&
+      call netcdf_ice%save(fabm_model,standard_vars,state_vars,&
+                           indices,indices_faces,i,&
                            temp,salt,depth,radiative_flux,&
                            int(air_ice_indexes(i)))
-      call netcdf_water%save(fabm_model,standard_vars,state_vars,depth,i,&
+      call netcdf_water%save(fabm_model,standard_vars,state_vars,&
+                             depth,depth_faces,i,&
                              temp,salt,depth,radiative_flux,&
                              int(air_ice_indexes(i)))
-      call netcdf_sediments%save(fabm_model,standard_vars,state_vars,depth,i,&
+      call netcdf_sediments%save(fabm_model,standard_vars,state_vars,&
+                                 depth,depth_faces,i,&
                                  temp,salt,depth,radiative_flux,&
                                  int(air_ice_indexes(i)))
       call cpu_time(t2)
@@ -464,6 +471,7 @@ contains
       write(*,*) "number / ","day / ","year",i,day,year
       write(*,*) "Time taken by day circle:",t2-t1," seconds"
       day = day+1
+      deallocate(depth_faces)
     end do
     call netcdf_ice%close()
     call netcdf_water%close()
@@ -550,15 +558,15 @@ contains
     do i = 1,counter
       call day_circle(1,surface_index,14)
 
-      call netcdf_ice%save(fabm_model,standard_vars,state_vars,indices,i,&
-                           temp,salt,depth,radiative_flux,&
-                           int(air_ice_indexes(1)))
-      call netcdf_water%save(fabm_model,standard_vars,state_vars,depth,i,&
-                             temp,salt,depth,radiative_flux,&
-                             int(air_ice_indexes(1)))
-      call netcdf_sediments%save(fabm_model,standard_vars,state_vars,depth,i,&
-                                 temp,salt,depth,radiative_flux,&
-                                 int(air_ice_indexes(1)))
+      !call netcdf_ice%save(fabm_model,standard_vars,state_vars,indices,i,&
+      !                     temp,salt,depth,radiative_flux,&
+      !                     int(air_ice_indexes(1)))
+      !call netcdf_water%save(fabm_model,standard_vars,state_vars,depth,i,&
+      !                       temp,salt,depth,radiative_flux,&
+      !                       int(air_ice_indexes(1)))
+      !call netcdf_sediments%save(fabm_model,standard_vars,state_vars,depth,i,&
+      !                           temp,salt,depth,radiative_flux,&
+      !                           int(air_ice_indexes(1)))
 
       write(*,*) "Stabilizing initial array of values, in progress ..."
       write(*,*) "number / ",i
@@ -649,18 +657,18 @@ contains
 
       call day_circle(pseudo_day,surface_index,day)
 
-      call netcdf_ice%save(fabm_model,standard_vars,state_vars,&
-                           indices,pseudo_day,&
-                           temp,salt,depth,radiative_flux,&
-                           int(air_ice_indexes(pseudo_day)))
-      call netcdf_water%save(fabm_model,standard_vars,state_vars,&
-                             depth,pseudo_day,&
-                             temp,salt,depth,radiative_flux,&
-                             int(air_ice_indexes(pseudo_day)))
-      call netcdf_sediments%save(fabm_model,standard_vars,state_vars,&
-                                 depth,pseudo_day,&
-                                 temp,salt,depth,radiative_flux,&
-                                 int(air_ice_indexes(pseudo_day)))
+      !call netcdf_ice%save(fabm_model,standard_vars,state_vars,&
+      !                     indices,pseudo_day,&
+      !                     temp,salt,depth,radiative_flux,&
+      !                     int(air_ice_indexes(pseudo_day)))
+      !call netcdf_water%save(fabm_model,standard_vars,state_vars,&
+      !                       depth,pseudo_day,&
+      !                       temp,salt,depth,radiative_flux,&
+      !                       int(air_ice_indexes(pseudo_day)))
+      !call netcdf_sediments%save(fabm_model,standard_vars,state_vars,&
+      !                           depth,pseudo_day,&
+      !                           temp,salt,depth,radiative_flux,&
+      !                           int(air_ice_indexes(pseudo_day)))
 
       write(*,*) "Stabilizing initial array of values, in progress ..."
       write(*,*) "number / ","day / ","pseudo day",&

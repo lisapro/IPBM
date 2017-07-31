@@ -27,15 +27,14 @@ module output_mod
 
   type:: type_output
     private
-    !logical first
+    logical first
     integer first_layer
     integer last_layer
     integer number_of_layers
     !netCDF file id
     integer            :: nc_id
     !parameter_ids
-    integer            :: z_id,time_id,iz_id
-    integer            :: t_id,s_id,depth_id
+    integer            :: z_id,z_id_faces
     integer,allocatable:: standard_id(:)
     integer,allocatable:: parameter_id(:)
     integer,allocatable:: parameter_id_diag(:)
@@ -87,7 +86,7 @@ contains
     integer z_dim_id, z_dim_id_faces, time_dim_id
     integer ip, number_of_variables
 
-    !self%first = .true.
+    self%first = .true.
     self%first_layer = first_layer
     self%last_layer = last_layer
     self%number_of_layers = number_of_layers
@@ -97,8 +96,8 @@ contains
     call check(nf90_create(infile,NF90_CLOBBER,self%nc_id))
     !define the dimensions
     call check(nf90_def_dim(self%nc_id,_OCEAN_TIME_,time_len,time_dim_id))
-    call check(nf90_def_dim(self%nc_id,"middle_layer_depths",nlev,z_dim_id))
-    call check(nf90_def_dim(self%nc_id,_DEPTH_ON_BOUNDARY_,&
+    call check(nf90_def_dim(self%nc_id,"z",nlev,z_dim_id))
+    call check(nf90_def_dim(self%nc_id,"z_faces",&
                             nlev+1,z_dim_id_faces))
     dim_ids(1) = z_dim_id
     dim_ids(2) = time_dim_id
@@ -106,6 +105,10 @@ contains
     dim_ids_faces(2) = time_dim_id
     
     !define variables
+    call check(nf90_def_var(self%nc_id,"z",&
+                NF90_REAL,z_dim_id,self%z_id))
+    call check(nf90_def_var(self%nc_id,"z_faces",&
+                NF90_REAL,z_dim_id_faces,self%z_id_faces))
     
     !to make standard_vars intent(in)
     temporary => standard_vars
@@ -139,6 +142,7 @@ contains
                       long_name=curr%long_name))
         end if
       end select
+      deallocate(curr)
     end do
     
     allocate(self%parameter_id(size(model%state_variables)))
@@ -172,7 +176,7 @@ contains
     call check(nf90_enddef(self%nc_id))
   end subroutine initialize
 
-  subroutine save(self,model,standard_vars,state_vars,z,day,&
+  subroutine save(self,model,standard_vars,state_vars,z,z_faces,day,&
                   temp,salt,depth,radiative_flux,&
                   air_ice_index)
 
@@ -181,6 +185,7 @@ contains
     type(ipbm_standard_variables),target ,intent(in):: standard_vars
     type(ipbm_state_variable),allocatable,intent(in):: state_vars(:)
     real(rk),allocatable,dimension(:)    ,intent(in):: z
+    real(rk),allocatable,dimension(:)    ,intent(in):: z_faces
     integer                              ,intent(in):: day
     real(rk),allocatable,dimension(:)    ,intent(in):: temp
     real(rk),allocatable,dimension(:)    ,intent(in):: salt
@@ -216,11 +221,13 @@ contains
     start_time(1) = day
     edges_time(1) = 1
     
-    !if (self%first) then
-    !  call check(nf90_put_var(self%nc_id,self%z_id,&
-    !             z(self%first_layer:self%last_layer),start,edges))
-    !  self%first = .false.
-    !end if
+    if (self%first) then
+      call check(nf90_put_var(self%nc_id,self%z_id,&
+                 z(self%first_layer:self%last_layer),start,edges))
+      call check(nf90_put_var(self%nc_id,self%z_id_faces,&
+                 z_faces(self%first_layer:self%last_layer+1),start,edges_faces))
+      self%first = .false.
+    end if
 
     !foo(1) = real(day)
     if (self%nc_id.ne.-1) then
@@ -252,6 +259,7 @@ contains
                         start,edges_faces))
           end if
         end select
+      deallocate(curr)
       end do
       
       do ip = 1,size(model%state_variables)
