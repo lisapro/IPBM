@@ -27,7 +27,7 @@ module output_mod
 
   type:: type_output
     private
-    logical first
+    !logical first
     integer first_layer
     integer last_layer
     integer number_of_layers
@@ -76,9 +76,8 @@ contains
     integer                              ,intent(in):: last_layer
     integer                              ,intent(in):: number_of_layers
 
-    class(variable),allocatable:: time_var,depth_var,&
-                                  depth_var_faces,curr
-    class(ipbm_standard_variables),pointer:: temporary
+    class(variable)               ,allocatable:: curr
+    class(ipbm_standard_variables),pointer    :: temporary
 
     !dimension lengths
     integer,parameter:: time_len = NF90_UNLIMITED
@@ -88,7 +87,7 @@ contains
     integer z_dim_id, z_dim_id_faces, time_dim_id
     integer ip, number_of_variables
 
-    self%first = .true.
+    !self%first = .true.
     self%first_layer = first_layer
     self%last_layer = last_layer
     self%number_of_layers = number_of_layers
@@ -96,14 +95,10 @@ contains
     nlev = last_layer-first_layer+1
     self%nc_id = -1
     call check(nf90_create(infile,NF90_CLOBBER,self%nc_id))
-    !getting standard variables
-    call standard_vars%get_var(_OCEAN_TIME_,time_var)
-    call standard_vars%get_var("middle_layer_depths",depth_var)
-    call standard_vars%get_var(_DEPTH_ON_BOUNDARY_,depth_var_faces)
     !define the dimensions
-    call check(nf90_def_dim(self%nc_id,time_var%name,time_len,time_dim_id))
-    call check(nf90_def_dim(self%nc_id,depth_var%name,nlev,z_dim_id))
-    call check(nf90_def_dim(self%nc_id,depth_var_faces%name,&
+    call check(nf90_def_dim(self%nc_id,_OCEAN_TIME_,time_len,time_dim_id))
+    call check(nf90_def_dim(self%nc_id,"middle_layer_depths",nlev,z_dim_id))
+    call check(nf90_def_dim(self%nc_id,_DEPTH_ON_BOUNDARY_,&
                             nlev+1,z_dim_id_faces))
     dim_ids(1) = z_dim_id
     dim_ids(2) = time_dim_id
@@ -120,23 +115,23 @@ contains
       call temporary%get_var_by_number(ip,curr)
       select type(curr)
       class is(variable_1d)
-        call check(nf90_def_var(self%nc_id,curr%name,&
-                    NF90_REAL,time_dim_id,self%standard_id(ip)))
-        call check(set_attributes(ncid=self%nc_id,id=self%standard_id(ip),&
-                    units=curr%units,&
-                    long_name=curr%long_name))
+        if(curr%name == _OCEAN_TIME_) then
+          call check(nf90_def_var(self%nc_id,curr%name,&
+                      NF90_REAL,time_dim_id,self%standard_id(ip)))
+          call check(set_attributes(ncid=self%nc_id,id=self%standard_id(ip),&
+                      units=curr%units,&
+                      long_name=curr%long_name))
+        end if
       class is(variable_2d)
         !for variables on layers
-        if (curr%variable_1d_size() == &
-            depth_var%variable_1d_size()) then
+        if (curr%variable_1d_size() == number_of_layers) then
           call check(nf90_def_var(self%nc_id,curr%name,&
                       NF90_REAL,dim_ids,self%standard_id(ip)))
           call check(set_attributes(ncid=self%nc_id,id=self%standard_id(ip),&
                       units=curr%units,&
                       long_name=curr%long_name))
         !for variables on interfaces
-        else if (curr%variable_1d_size() == &
-            depth_var_faces%variable_1d_size()) then
+        else if (curr%variable_1d_size() == number_of_layers+1) then
           call check(nf90_def_var(self%nc_id,curr%name,&
                       NF90_REAL,dim_ids_faces,self%standard_id(ip)))
           call check(set_attributes(ncid=self%nc_id,id=self%standard_id(ip),&
@@ -183,7 +178,7 @@ contains
 
     class(type_output),intent(inout):: self
     type (type_model)                    ,intent(in):: model
-    type(ipbm_standard_variables)        ,intent(in):: standard_vars
+    type(ipbm_standard_variables),target ,intent(in):: standard_vars
     type(ipbm_state_variable),allocatable,intent(in):: state_vars(:)
     real(rk),allocatable,dimension(:)    ,intent(in):: z
     integer                              ,intent(in):: day
@@ -193,14 +188,18 @@ contains
     real(rk),allocatable,dimension(:)    ,intent(in):: radiative_flux
     integer                              ,intent(in):: air_ice_index
 
+    class(variable)               ,allocatable:: curr
+    class(ipbm_standard_variables),pointer    :: temporary
+    
     !NaN value
     !REAL(rk), PARAMETER :: D_QNAN = &
     !          TRANSFER((/ Z'00000000', Z'7FF80000' /),1.0_rk)
     real(rk) D_QNAN
 
-    integer ip,i
-    integer edges(2),start(2),start_time(1),edges_time(1)
+    integer ip,number_of_variables
+    integer edges(2),edges_faces(2),start(2),start_time(1),edges_time(1)
     real(rk) temp_matrix(self%number_of_layers)
+    real(rk) temp_matrix_faces(self%number_of_layers+1)
     real(rk) foo(1)
 
     !NaN
@@ -210,22 +209,51 @@ contains
     !write data
     edges(1) = self%last_layer-self%first_layer+1
     edges(2) = 1
+    edges_faces(1) = edges(1)+1
+    edges_faces(2) = 1
     start(1) = 1
     start(2) = day
     start_time(1) = day
     edges_time(1) = 1
-
-    if (self%first) then
-      call check(nf90_put_var(self%nc_id,self%z_id,&
-                 z(self%first_layer:self%last_layer),start,edges))
-      self%first = .false.
-    end if
+    
+    !if (self%first) then
+    !  call check(nf90_put_var(self%nc_id,self%z_id,&
+    !             z(self%first_layer:self%last_layer),start,edges))
+    !  self%first = .false.
+    !end if
 
     !foo(1) = real(day)
     if (self%nc_id.ne.-1) then
-      foo(1) = standard_vars%get_value(_OCEAN_TIME_,day)
-      call check(nf90_put_var(self%nc_id,self%time_id,foo,&
-                              start_time,edges_time))
+      !to make standard_vars intent(in)
+      temporary => standard_vars
+      number_of_variables = temporary%count_list()
+      do ip = 1,number_of_variables
+        call temporary%get_var_by_number(ip,curr)
+        select type(curr)
+        class is(variable_1d)
+          if(curr%name == _OCEAN_TIME_) then
+            foo(1) = curr%value(day)
+            call check(nf90_put_var(self%nc_id,self%standard_id(ip),foo,&
+                                    start_time,edges_time))
+          end if
+        class is(variable_2d)
+        !for variables on layers
+          if (curr%variable_1d_size() == self%number_of_layers) then
+            temp_matrix = curr%value(:,day)
+            temp_matrix(air_ice_index:) = D_QNAN
+            call check(nf90_put_var(self%nc_id,self%standard_id(ip),&
+                        temp_matrix(self%first_layer:self%last_layer),&
+                        start,edges))
+          else if (curr%variable_1d_size() == self%number_of_layers+1) then
+            temp_matrix_faces = curr%value(:,day)
+            temp_matrix_faces(air_ice_index+1:) = D_QNAN
+            call check(nf90_put_var(self%nc_id,self%standard_id(ip),&
+                        temp_matrix_faces(self%first_layer:self%last_layer+1),&
+                        start,edges_faces))
+          end if
+        end select
+      end do
+      
       do ip = 1,size(model%state_variables)
         call check(nf90_put_var(self%nc_id,self%parameter_id(ip),&
                    state_vars(ip)%value(self%first_layer:self%last_layer),&
@@ -242,19 +270,19 @@ contains
           end if
         end if
       end do
-      call check(nf90_put_var(self%nc_id,self%t_id,&
-                              temp(self%first_layer:self%last_layer),&
-                              start,edges))
-      call check(nf90_put_var(self%nc_id,self%s_id,&
-                              salt(self%first_layer:self%last_layer),&
-                              start,edges))
-      call check(nf90_put_var(self%nc_id,self%depth_id,&
-                              depth(self%first_layer:self%last_layer),&
-                              start,edges))
-      call check(nf90_put_var(self%nc_id,self%iz_id,&
-                              radiative_flux(&
-                              self%first_layer:self%last_layer),&
-                              start,edges))
+      !call check(nf90_put_var(self%nc_id,self%t_id,&
+      !                        temp(self%first_layer:self%last_layer),&
+      !                        start,edges))
+      !call check(nf90_put_var(self%nc_id,self%s_id,&
+      !                        salt(self%first_layer:self%last_layer),&
+      !                        start,edges))
+      !call check(nf90_put_var(self%nc_id,self%depth_id,&
+      !                        depth(self%first_layer:self%last_layer),&
+      !                        start,edges))
+      !call check(nf90_put_var(self%nc_id,self%iz_id,&
+      !                        radiative_flux(&
+      !                        self%first_layer:self%last_layer),&
+      !                        start,edges))
       call check(nf90_sync(self%nc_id))
     end if
   end subroutine save
