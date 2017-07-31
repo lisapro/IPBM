@@ -36,6 +36,7 @@ module output_mod
     !parameter_ids
     integer            :: z_id,time_id,iz_id
     integer            :: t_id,s_id,depth_id
+    integer,allocatable:: standard_id(:)
     integer,allocatable:: parameter_id(:)
     integer,allocatable:: parameter_id_diag(:)
   contains
@@ -67,24 +68,25 @@ contains
 
   subroutine initialize(self,model,standard_vars,infile,&
                         first_layer,last_layer,number_of_layers)
-    class(type_output)            ,intent(inout):: self
-    type(type_model)              ,intent(in):: model
-    type(ipbm_standard_variables) ,intent(in):: standard_vars
-    character(len=*)              ,intent(in):: infile
-    integer                       ,intent(in):: first_layer
-    integer                       ,intent(in):: last_layer
-    integer                       ,intent(in):: number_of_layers
+    class(type_output)                  ,intent(inout):: self
+    type(type_model)                     ,intent(in):: model
+    class(ipbm_standard_variables),target,intent(in):: standard_vars
+    character(len=*)                     ,intent(in):: infile
+    integer                              ,intent(in):: first_layer
+    integer                              ,intent(in):: last_layer
+    integer                              ,intent(in):: number_of_layers
 
-    class(variable),allocatable:: time_var
+    class(variable),allocatable:: time_var,depth_var,&
+                                  depth_var_faces,curr
+    class(ipbm_standard_variables),pointer:: temporary
 
     !dimension lengths
     integer,parameter:: time_len = NF90_UNLIMITED
     integer nlev
-    integer dim1d
-    integer dim_ids(2)
+    integer dim_ids(2), dim_ids_faces(2)
 
-    integer z_dim_id, time_dim_id
-    integer ip
+    integer z_dim_id, z_dim_id_faces, time_dim_id
+    integer ip, number_of_variables
 
     self%first = .true.
     self%first_layer = first_layer
@@ -94,21 +96,56 @@ contains
     nlev = last_layer-first_layer+1
     self%nc_id = -1
     call check(nf90_create(infile,NF90_CLOBBER,self%nc_id))
-    !define the dimensions
-    call check(nf90_def_dim(self%nc_id,"z",nlev,z_dim_id))
-    call check(nf90_def_dim(self%nc_id,"time",time_len,time_dim_id))
-    !define coordinates
-    dim1d = z_dim_id
-    call check(nf90_def_var(self%nc_id,"z",NF90_REAL,dim1d,self%z_id))
-    dim1d = time_dim_id
-    call check(nf90_def_var(self%nc_id,"time",NF90_REAL,dim1d,self%time_id))
+    !getting standard variables
     call standard_vars%get_var(_OCEAN_TIME_,time_var)
-    call check(set_attributes(ncid=self%nc_id,id=self%time_id,&
-                              units=time_var%units,&
-                              long_name=time_var%long_name))
-    !define variables
+    call standard_vars%get_var("middle_layer_depths",depth_var)
+    call standard_vars%get_var(_DEPTH_ON_BOUNDARY_,depth_var_faces)
+    !define the dimensions
+    call check(nf90_def_dim(self%nc_id,time_var%name,time_len,time_dim_id))
+    call check(nf90_def_dim(self%nc_id,depth_var%name,nlev,z_dim_id))
+    call check(nf90_def_dim(self%nc_id,depth_var_faces%name,&
+                            nlev+1,z_dim_id_faces))
     dim_ids(1) = z_dim_id
     dim_ids(2) = time_dim_id
+    dim_ids_faces(1) = z_dim_id_faces
+    dim_ids_faces(2) = time_dim_id
+    
+    !define variables
+    
+    !to make standard_vars intent(in)
+    temporary => standard_vars
+    number_of_variables = temporary%count_list()
+    allocate(self%standard_id(number_of_variables))
+    do ip = 1,number_of_variables
+      call temporary%get_var_by_number(ip,curr)
+      select type(curr)
+      class is(variable_1d)
+        call check(nf90_def_var(self%nc_id,curr%name,&
+                    NF90_REAL,time_dim_id,self%standard_id(ip)))
+        call check(set_attributes(ncid=self%nc_id,id=self%standard_id(ip),&
+                    units=curr%units,&
+                    long_name=curr%long_name))
+      class is(variable_2d)
+        !for variables on layers
+        if (curr%variable_1d_size() == &
+            depth_var%variable_1d_size()) then
+          call check(nf90_def_var(self%nc_id,curr%name,&
+                      NF90_REAL,dim_ids,self%standard_id(ip)))
+          call check(set_attributes(ncid=self%nc_id,id=self%standard_id(ip),&
+                      units=curr%units,&
+                      long_name=curr%long_name))
+        !for variables on interfaces
+        else if (curr%variable_1d_size() == &
+            depth_var_faces%variable_1d_size()) then
+          call check(nf90_def_var(self%nc_id,curr%name,&
+                      NF90_REAL,dim_ids_faces,self%standard_id(ip)))
+          call check(set_attributes(ncid=self%nc_id,id=self%standard_id(ip),&
+                      units=curr%units,&
+                      long_name=curr%long_name))
+        end if
+      end select
+    end do
+    
     allocate(self%parameter_id(size(model%state_variables)))
     do ip = 1,size(model%state_variables)
       call check(nf90_def_var(self%nc_id,&
@@ -119,6 +156,7 @@ contains
                  long_name=model%state_variables(ip)%long_name,&
                  missing_value=model%state_variables(ip)%missing_value))
     end do
+    
     allocate(self%parameter_id_diag(size(model%diagnostic_variables)))
     do ip = 1,size(model%diagnostic_variables)
       if (model%diagnostic_variables(ip)%save) then
@@ -134,12 +172,7 @@ contains
                    model%diagnostic_variables(ip)%missing_value))
       end if
     end do
-    call check(nf90_def_var(self%nc_id,"temp",NF90_REAL,dim_ids,self%t_id))
-    call check(nf90_def_var(self%nc_id,"salt",NF90_REAL,dim_ids,self%s_id))
-    call check(nf90_def_var(self%nc_id,"depth",NF90_REAL,dim_ids,&
-                            self%depth_id))
-    call check(nf90_def_var(self%nc_id,"radiative_flux",&
-                            NF90_REAL,dim_ids,self%iz_id))
+
     !end define
     call check(nf90_enddef(self%nc_id))
   end subroutine initialize

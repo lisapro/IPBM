@@ -26,6 +26,7 @@ module types_mod
     procedure,non_overridable:: inverse
     procedure,non_overridable:: print_value
     procedure,non_overridable:: print_name
+    procedure,non_overridable:: variable_1d_size
   end type
 
   type,extends(variable):: alone_variable
@@ -42,6 +43,7 @@ module types_mod
 
   type,abstract,extends(list):: list_variables
   contains
+    procedure:: get_var_by_number
     procedure:: get_var
     procedure:: set_var
     procedure:: inv_var
@@ -94,6 +96,51 @@ contains
     class(variable),intent(in):: self
 
     write(*,*) self%name
+  end subroutine
+  !
+  integer function variable_1d_size(self)
+    class(variable),intent(in):: self
+
+    select type(self)
+    class is(alone_variable)
+      variable_1d_size = 1
+    class is(variable_1d)
+      variable_1d_size = size(self%value,1)
+    class is(variable_2d)
+      variable_1d_size = size(self%value,1)
+    class default
+      call fatal_error("Variable size function","Wrong type")
+    end select
+  end function
+
+  subroutine get_var_by_number(self,number,get_variable)
+    class(list_variables),target,intent(in):: self
+    integer                     ,intent(in):: number
+    class(variable),allocatable ,intent(out):: get_variable
+    class(*)             ,pointer:: curr
+    class(list_variables),pointer:: temporary
+    integer i
+
+    !to make self intent(in)
+    i = 1
+    temporary => self
+    call temporary%reset()
+    do
+      curr=>temporary%get_item()
+      select type(curr)
+      class is(variable)
+        if (i==number) then
+          allocate(get_variable,source=curr)
+          return
+        end if
+      end select
+      call temporary%next()
+      if (.not.temporary%moreitems()) then
+        call fatal_error("Getting variables",&
+                         "can't find variable")
+      end if
+      i = i+1
+    end do
   end subroutine
 
   subroutine get_var(self,inname,get_variable)
