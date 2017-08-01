@@ -176,9 +176,8 @@ contains
     call check(nf90_enddef(self%nc_id))
   end subroutine initialize
 
-  subroutine save(self,model,standard_vars,state_vars,z,z_faces,day,&
-                  temp,salt,depth,radiative_flux,&
-                  air_ice_index)
+  subroutine save(self,model,standard_vars,state_vars,&
+                  z,z_faces,day,air_ice_index)
 
     class(type_output),intent(inout):: self
     type (type_model)                    ,intent(in):: model
@@ -187,10 +186,6 @@ contains
     real(rk),allocatable,dimension(:)    ,intent(in):: z
     real(rk),allocatable,dimension(:)    ,intent(in):: z_faces
     integer                              ,intent(in):: day
-    real(rk),allocatable,dimension(:)    ,intent(in):: temp
-    real(rk),allocatable,dimension(:)    ,intent(in):: salt
-    real(rk),allocatable,dimension(:)    ,intent(in):: depth
-    real(rk),allocatable,dimension(:)    ,intent(in):: radiative_flux
     integer                              ,intent(in):: air_ice_index
 
     class(variable)               ,allocatable:: curr
@@ -229,7 +224,6 @@ contains
       self%first = .false.
     end if
 
-    !foo(1) = real(day)
     if (self%nc_id.ne.-1) then
       !to make standard_vars intent(in)
       temporary => standard_vars
@@ -278,19 +272,7 @@ contains
           end if
         end if
       end do
-      !call check(nf90_put_var(self%nc_id,self%t_id,&
-      !                        temp(self%first_layer:self%last_layer),&
-      !                        start,edges))
-      !call check(nf90_put_var(self%nc_id,self%s_id,&
-      !                        salt(self%first_layer:self%last_layer),&
-      !                        start,edges))
-      !call check(nf90_put_var(self%nc_id,self%depth_id,&
-      !                        depth(self%first_layer:self%last_layer),&
-      !                        start,edges))
-      !call check(nf90_put_var(self%nc_id,self%iz_id,&
-      !                        radiative_flux(&
-      !                        self%first_layer:self%last_layer),&
-      !                        start,edges))
+      
       call check(nf90_sync(self%nc_id))
     end if
   end subroutine save

@@ -399,11 +399,13 @@ contains
     day = standard_vars%first_day()
     call initial_date(day,year)
     !first day cycle
-    !call first_day_circle(100,ice_water_index,&
-    !                      water_bbl_index,bbl_sediments_index,indices)
+    call first_day_circle(100,ice_water_index,&
+                          water_bbl_index,bbl_sediments_index,&
+                          indices,indices_faces)
     !cycle first year 10 times
-    !call first_year_circle(day,year,ice_water_index,&
-    !                       water_bbl_index,bbl_sediments_index,indices)
+    call first_year_circle(day,year,ice_water_index,&
+                           water_bbl_index,bbl_sediments_index,&
+                           indices,indices_faces)
 
     netcdf_ice = type_output(fabm_model,standard_vars,_FILE_NAME_ICE_,&
                              ice_water_index,ice_water_index+20,&
@@ -421,7 +423,8 @@ contains
 
       !for netcdf output
       depth = standard_vars%get_column("middle_layer_depths",i)
-      allocate(depth_faces,source=standard_vars%get_column(_DEPTH_ON_BOUNDARY_,i))
+      allocate(depth_faces,source=&
+               standard_vars%get_column(_DEPTH_ON_BOUNDARY_,i))
 
       !change surface index due to ice depth
       !index for boundaries so for layers it should be -1
@@ -456,15 +459,12 @@ contains
       call day_circle(i,surface_index,day)
       call netcdf_ice%save(fabm_model,standard_vars,state_vars,&
                            indices,indices_faces,i,&
-                           temp,salt,depth,radiative_flux,&
                            int(air_ice_indexes(i)))
       call netcdf_water%save(fabm_model,standard_vars,state_vars,&
                              depth,depth_faces,i,&
-                             temp,salt,depth,radiative_flux,&
                              int(air_ice_indexes(i)))
       call netcdf_sediments%save(fabm_model,standard_vars,state_vars,&
                                  depth,depth_faces,i,&
-                                 temp,salt,depth,radiative_flux,&
                                  int(air_ice_indexes(i)))
       call cpu_time(t2)
 
@@ -497,13 +497,15 @@ contains
   !first day iteration
   !
   subroutine first_day_circle(counter,ice_water_index,&
-                              water_bbl_index,bbl_sediments_index,indices)
+                              water_bbl_index,bbl_sediments_index,&
+                              indices,indices_faces)
     use output_mod
 
     integer,intent(in):: counter
     integer,intent(in):: ice_water_index,water_bbl_index
     integer,intent(in):: bbl_sediments_index
     real(rk),allocatable,intent(in):: indices(:)
+    real(rk),allocatable,intent(in):: indices_faces(:)
 
     type(type_output):: netcdf_ice
     type(type_output):: netcdf_water
@@ -511,6 +513,7 @@ contains
     integer i
     integer surface_index
     real(rk),allocatable,dimension(:):: air_ice_indexes
+    real(rk),allocatable,dimension(:):: depth_faces
 
     allocate(air_ice_indexes,source = &
              standard_vars%get_column("air_ice_indexes"))
@@ -557,19 +560,22 @@ contains
     !
     do i = 1,counter
       call day_circle(1,surface_index,14)
+      allocate(depth_faces,source=&
+               standard_vars%get_column(_DEPTH_ON_BOUNDARY_,1))
 
-      !call netcdf_ice%save(fabm_model,standard_vars,state_vars,indices,i,&
-      !                     temp,salt,depth,radiative_flux,&
-      !                     int(air_ice_indexes(1)))
-      !call netcdf_water%save(fabm_model,standard_vars,state_vars,depth,i,&
-      !                       temp,salt,depth,radiative_flux,&
-      !                       int(air_ice_indexes(1)))
-      !call netcdf_sediments%save(fabm_model,standard_vars,state_vars,depth,i,&
-      !                           temp,salt,depth,radiative_flux,&
-      !                           int(air_ice_indexes(1)))
+      call netcdf_ice%save(fabm_model,standard_vars,state_vars,&
+                           indices,indices_faces,i,&
+                           int(air_ice_indexes(1)))
+      call netcdf_water%save(fabm_model,standard_vars,state_vars,&
+                             depth,depth_faces,i,&
+                             int(air_ice_indexes(1)))
+      call netcdf_sediments%save(fabm_model,standard_vars,state_vars,&
+                                 depth,depth_faces,i,&
+                                 int(air_ice_indexes(1)))
 
       write(*,*) "Stabilizing initial array of values, in progress ..."
       write(*,*) "number / ",i
+      deallocate(depth_faces)
     end do
     call netcdf_ice%close()
     call netcdf_water%close()
@@ -580,13 +586,14 @@ contains
   !
   subroutine first_year_circle(inday,inyear,ice_water_index,&
                                water_bbl_index,bbl_sediments_index,&
-                               indices)
+                               indices,indices_faces)
     use output_mod
 
     integer,intent(in):: inday,inyear
     integer,intent(in):: ice_water_index,water_bbl_index
     integer,intent(in):: bbl_sediments_index
     real(rk),allocatable,intent(in):: indices(:)
+    real(rk),allocatable,intent(in):: indices_faces(:)
 
     type(type_output):: netcdf_ice
     type(type_output):: netcdf_water
@@ -596,6 +603,7 @@ contains
     integer i
     integer surface_index
     real(rk),allocatable,dimension(:):: air_ice_indexes
+    real(rk),allocatable,dimension(:):: depth_faces
 
     allocate(air_ice_indexes,source = &
              standard_vars%get_column("air_ice_indexes"))
@@ -623,6 +631,8 @@ contains
 
       !for netcdf output
       depth = standard_vars%get_column("middle_layer_depths",pseudo_day)
+      allocate(depth_faces,source=&
+               standard_vars%get_column(_DEPTH_ON_BOUNDARY_,pseudo_day))
 
       call date(day,year)
       year = inyear
@@ -657,23 +667,21 @@ contains
 
       call day_circle(pseudo_day,surface_index,day)
 
-      !call netcdf_ice%save(fabm_model,standard_vars,state_vars,&
-      !                     indices,pseudo_day,&
-      !                     temp,salt,depth,radiative_flux,&
-      !                     int(air_ice_indexes(pseudo_day)))
-      !call netcdf_water%save(fabm_model,standard_vars,state_vars,&
-      !                       depth,pseudo_day,&
-      !                       temp,salt,depth,radiative_flux,&
-      !                       int(air_ice_indexes(pseudo_day)))
-      !call netcdf_sediments%save(fabm_model,standard_vars,state_vars,&
-      !                           depth,pseudo_day,&
-      !                           temp,salt,depth,radiative_flux,&
-      !                           int(air_ice_indexes(pseudo_day)))
+      call netcdf_ice%save(fabm_model,standard_vars,state_vars,&
+                           indices,indices_faces,pseudo_day,&
+                           int(air_ice_indexes(pseudo_day)))
+      call netcdf_water%save(fabm_model,standard_vars,state_vars,&
+                             depth,depth_faces,pseudo_day,&
+                             int(air_ice_indexes(pseudo_day)))
+      call netcdf_sediments%save(fabm_model,standard_vars,state_vars,&
+                                 depth,depth_faces,pseudo_day,&
+                                 int(air_ice_indexes(pseudo_day)))
 
       write(*,*) "Stabilizing initial array of values, in progress ..."
       write(*,*) "number / ","day / ","pseudo day",&
                  i,day,pseudo_day
       day = day+1
+      deallocate(depth_faces)
     end do
     call netcdf_ice%close()
     call netcdf_water%close()
