@@ -5,11 +5,11 @@ instances:
     long_name: main_nutrients
     model: niva/brom_main_nutrients
     initialization:
-      NH4: 0.1
+      NH4: 0.5
       NO2: 0.1
-      NO3: 0.1
-      PO4: 1.0
-      Si:  10.0
+      NO3: 0.5
+      PO4: 0.5
+      Si:  5.0
   B_EQ:
     long_name: equilibrium_constrants
     model: niva/brom_eq_constants
@@ -17,8 +17,8 @@ instances:
     long_name: carbon
     model: niva/brom_carbon
     initialization:
-      DIC: 2000.0 # total dissolved inorganic carbon (mmol C/m^3)
-      Alk: 2100.0 # umol/kg
+      DIC: 2100.0 # total dissolved inorganic carbon (mmol C/m^3)
+      Alk: 2200.0 # umol/kg
     coupling:
       Kc0:   B_EQ/Kc0
       Kc1:   B_EQ/Kc1
@@ -597,7 +597,7 @@ instances:
       RPc: R6/c
       RPn: B_BIO/PON
       RPp: R6/p
-      RPs: R6/s
+      RPs: B_NUT/Si
       N1p: B_NUT/PO4 # phosphate (mmol P/m^3)
       N4n: B_NUT/NH4 # ammonium (mmol N/m^3)
       R1c: R1/c # dissolved organic carbon (mg C/m^3)

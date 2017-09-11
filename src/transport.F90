@@ -136,6 +136,8 @@ contains
     _LINE_
     !
     !initializing values
+    !ipbm needs to know is variable a solid or gas
+    call configurate_state_variables()
     call fabm_initialize_state(fabm_model,1,number_of_layers)
     allocate(air_ice_indexes,source=&
              standard_vars%get_column("air_ice_indexes"))
@@ -144,16 +146,18 @@ contains
     !recalculating concentrations in the sediments
     !concentrations are per total volume of sediment
     water_sediments_index = standard_vars%get_value("bbl_sediments_index")
-    forall (i = 1:number_of_parameters)
-    !  state_vars(i)%value(:water_sediments_index)&
-    !    = state_vars(i)%value(:water_sediments_index)*&
-    !      porosity(:water_sediments_index)
-    !  state_vars(i)%value(air_ice_indexes(1):) = D_QNAN
-      state_vars(i)%value(:air_ice_indexes(1)-1)&
-        = state_vars(i)%value(:air_ice_indexes(1)-1)*&
-          porosity(:air_ice_indexes(1)-1)
+    do i = 1,number_of_parameters
+      if (state_vars(i)%is_solid.neqv..true.) then
+        state_vars(i)%value(:air_ice_indexes(1)-1)&
+          = state_vars(i)%value(:air_ice_indexes(1)-1)*&
+            porosity(:air_ice_indexes(1)-1)
+      else
+        state_vars(i)%value(:water_sediments_index-1)&
+          = state_vars(i)%value(:water_sediments_index-1)*&
+            (1-porosity(:water_sediments_index-1))
+      end if
       state_vars(i)%value(air_ice_indexes(1):) = D_QNAN
-    end forall
+    end do
     !
     !linking variables
     !yearday - ersem zenith_angle
@@ -235,8 +239,6 @@ contains
 
     !check all needed by fabm model variables
     call fabm_check_ready(fabm_model)
-    !ipbm needs to know is variable a solid or gas
-    call configurate_state_variables()
 
     previous_ice_index=0
   contains
@@ -609,7 +611,7 @@ contains
              standard_vars%get_column("air_ice_indexes"))
     day = inday; year = inyear;
     days_in_year = 365+merge(1,0,(mod(year,4).eq.0))
-    counter = days_in_year*10
+    counter = days_in_year*6
 
     netcdf_ice = type_output(fabm_model,standard_vars,'ice_year.nc',&
                          ice_water_index,ice_water_index+20,&
@@ -781,7 +783,7 @@ contains
     end if
   end subroutine
   !
-  !calculate iterations within day
+  !calculate iterations within a day
   !
   subroutine day_circle(id,surface_index,day)
     integer,intent(in):: id !number of the count
@@ -868,50 +870,106 @@ contains
       number_of_circles = int(60*60*24/_SECONDS_PER_CIRCLE_)
     end if
     call recalculate_ice(id,brine_release)
-    !sets inflow
-    call inflow(ice_water_index,bbl_sed_index,day)
     do i = 1,number_of_circles
-      ! a little bit more nutrients inflow
-      !if (mod(i,100)==0) then
-      !  call inflow(ice_water_index,bbl_sed_index,day)
-      !end if
-      dcc = 0._rk
+      !sets inflow
+      call inflow(ice_water_index,bbl_sed_index,day)
+      
       !diffusion
+      !dcc = 0._rk
       call ipbm_do_diffusion(surface_index,bbl_sed_index,ice_water_index,&
                              pF1_solutes,pF2_solutes,pF1_solids,&
                              pF2_solids,kz_mol,kz_bio,kz_turb,kz_ice_gravity,&
                              layer_thicknesses,brine_release,dcc)
       !call check_array("after_diffusion",surface_index,id,i)
       call fabm_check_state(fabm_model,1,surface_index-1,repair,valid)
+      
       !biogeochemistry
       increment = 0._rk
       do j = 1,number_of_parameters
         !if (state_vars(j)%is_solid.neqv..true. .and. &
         !    state_vars(j)%is_gas  .neqv..true.) then
+        !for solutes:
         if (state_vars(j)%is_solid.neqv..true.) then
-          state_vars(j)%value = state_vars(j)%value/porosity
+          !sedimants domain
+          state_vars(j)%value(:bbl_sed_index-1)&
+            = state_vars(j)%value(:bbl_sed_index-1)&
+            / porosity(:bbl_sed_index-1)
+          !ice domain
+          state_vars(j)%value(ice_water_index:surface_index-1)&
+            = state_vars(j)%value(ice_water_index:surface_index-1)&
+            / porosity(ice_water_index:surface_index-1)
+        !for solids:
+        else
+          !sediments domain
+          state_vars(j)%value(:bbl_sed_index-1)&
+            = state_vars(j)%value(:bbl_sed_index-1)&
+            * pF1_solids(2:bbl_sed_index)
+          !
+          !ice domain          
+          !all solids in the ice domain have similar
+          !both brine and total volume concentrations
         end if
       end do
       !call check_array("after_concentrations_recalculation",surface_index,id,i)
       call fabm_do(fabm_model,1,surface_index-1,increment)
-      !porosity is needed to constrain production
       do j = 1,number_of_parameters
         !if (state_vars(j)%is_solid.neqv..true. .and. &
         !    state_vars(j)%is_gas  .neqv..true.) then
+        !for solutes:
         if (state_vars(j)%is_solid.neqv..true.) then
-          increment(:,j) = _SECONDS_PER_CIRCLE_*increment(:,j)
-          state_vars(j)%value(:surface_index-1) = &
-            (state_vars(j)%value(:surface_index-1)+increment(:,j))&
-            *porosity(:surface_index-1)
+          !sediments_domain
+          increment(:bbl_sed_index-1,j) &
+            = _SECONDS_PER_CIRCLE_*increment(:bbl_sed_index-1,j)
+          state_vars(j)%value(:bbl_sed_index-1)&
+            = (state_vars(j)%value(:bbl_sed_index-1)&
+            + increment(:bbl_sed_index-1,j))&
+            * porosity(:bbl_sed_index-1)
+          !water domain
+          state_vars(j)%value(bbl_sed_index:ice_water_index-1)&
+            = state_vars(j)%value(bbl_sed_index:ice_water_index-1)&
+            + _SECONDS_PER_CIRCLE_&
+            * increment(bbl_sed_index:ice_water_index-1,j)
+          !ice_domain
+          increment(ice_water_index:surface_index-1,j) &
+            = _SECONDS_PER_CIRCLE_*increment(ice_water_index:surface_index-1,j)
+          state_vars(j)%value(ice_water_index:surface_index-1)&
+            = (state_vars(j)%value(ice_water_index:surface_index-1)&
+            + increment(ice_water_index:surface_index-1,j))&
+            * porosity(ice_water_index:surface_index-1)
+        !for solids:
         else
-          increment(:,j) = _SECONDS_PER_CIRCLE_*increment(:,j)&
-                           *porosity(:surface_index-1)
-          state_vars(j)%value(:surface_index-1) = &
-            state_vars(j)%value(:surface_index-1)+increment(:,j)
+          !sediments domain
+          increment(:bbl_sed_index-1,j) &
+            = _SECONDS_PER_CIRCLE_*increment(:bbl_sed_index-1,j)
+          state_vars(j)%value(:bbl_sed_index-1)&
+            = (state_vars(j)%value(:bbl_sed_index-1)&
+            + increment(:bbl_sed_index-1,j))&
+            / pF1_solids(2:bbl_sed_index)
+          !water domain
+          state_vars(j)%value(bbl_sed_index:ice_water_index-1)&
+            = state_vars(j)%value(bbl_sed_index:ice_water_index-1)&
+            + _SECONDS_PER_CIRCLE_&
+            * increment(bbl_sed_index:ice_water_index-1,j)
+          !ice_domain
+          !porosity is needed to constrain production
+          increment(ice_water_index:surface_index-1,j)&
+            = _SECONDS_PER_CIRCLE_&
+            * increment(ice_water_index:surface_index-1,j)&
+            * porosity(ice_water_index:surface_index-1)
+          state_vars(j)%value(ice_water_index:surface_index-1)&
+            = state_vars(j)%value(ice_water_index:surface_index-1)&
+            + increment(ice_water_index:surface_index-1,j)
+          
         end if
       end do
+      !do j = 1,number_of_parameters
+      !    state_vars(j)%value(:surface_index-1) = &
+      !      state_vars(j)%value(:surface_index-1)+&
+      !      _SECONDS_PER_CIRCLE_*increment(:,j)
+      !end do
       !call check_array("after_fabm_do",surface_index,id,i)
       call fabm_check_state(fabm_model,1,surface_index-1,repair,valid)
+      
       !sedimentation
       call ipbm_do_sedimentation(surface_index,bbl_sed_index,&
                                  ice_water_index,k_sed1,w_b,u_b,&
@@ -1011,12 +1069,12 @@ contains
     !and subscripts refer to SWI (0), below (1), and above (-1)
     !
     !top cell of sediments
-    pFSWIup_solutes = (pF1_solutes(bbl_sed_index)*&
+    pFSWIup_solutes = (pF1_solutes(bbl_sed_index+1)*&
       pF2_solutes(bbl_sed_index)*kz_mol(bbl_sed_index)+&
       kz_bio(bbl_sed_index)*O2stat)/(pF2_solutes(bbl_sed_index)*&
       (kz_mol(bbl_sed_index)+kz_bio(bbl_sed_index)*O2stat))
     !bottom cell of water column
-    pFSWIdw_solutes = (pF1_solutes(bbl_sed_index+1)*&
+    pFSWIdw_solutes = (pF1_solutes(bbl_sed_index)*&
       pF2_solutes(bbl_sed_index)*kz_mol(bbl_sed_index)+&
       kz_bio(bbl_sed_index)*O2stat)/(pF2_solutes(bbl_sed_index)*&
       (kz_mol(bbl_sed_index)+kz_bio(bbl_sed_index)*O2stat))
@@ -1062,7 +1120,8 @@ contains
           pFSWIup_solids = pFSWIup_solids,&
           pFSWIdw_solids = pFSWIdw_solids)
       increment(:surface_index-1,i) = temporary(1:surface_index-1,i)-&
-                                      state_vars(i)%value(:surface_index-1)
+                                      state_vars(i)%value(:surface_index-1)/&
+                                      _SECONDS_PER_CIRCLE_
       state_vars(i)%value(1:surface_index-1) = &
                           temporary(1:surface_index-1,i)
     !end forall
@@ -1455,26 +1514,65 @@ contains
     integer,intent(in):: ice_water_index,bbl_sed_index
     integer,intent(in):: day
 
-    call find_set_state_variable(_Mn4_,&
-         value=0.5e-4_rk,layer=ice_water_index-1)
-    call find_set_state_variable(_Fe3_,&
-         value=0.4e-4_rk,layer=ice_water_index-1)
-    call find_set_state_variable(_DIC_,&
-         value=1930._rk,layer=ice_water_index-1)
-    call find_set_state_variable(_DIC_,&
-         value=2280._rk,layer=bbl_sed_index)
-    call find_set_state_variable(_Alk_,&
-         value=2000._rk,layer=ice_water_index-1)
-    call find_set_state_variable(_Alk_,&
-         value=2350._rk,layer=bbl_sed_index)
-    call find_set_state_variable(_NH4_,&
-         value=5._rk,layer=bbl_sed_index-1)
-    call find_set_state_variable(_PO4_,&
-         value=sinusoidal(day,0.5_rk),layer=ice_water_index-1)
-    call find_set_state_variable(_NO3_,&
-         value=sinusoidal(day,0.5_rk),layer=ice_water_index-1)
-    call find_set_state_variable(_Si_,&
-         value=sinusoidal(day,10._rk),layer=ice_water_index-1)
+    integer number_of_vars
+    integer i
+    real(rk) dcc
+    
+    number_of_vars = size(state_vars)
+    do i = 1,number_of_vars
+      if (state_vars(i)%name.eq._DIC_) then
+        state_vars(i)%value(ice_water_index-1) = &
+          state_vars(i)%value(ice_water_index-1) &
+          + 0.00001_rk*1930._rk
+        state_vars(i)%value(bbl_sed_index) = &
+          state_vars(i)%value(bbl_sed_index) &
+          + 0.00001_rk*2280._rk
+      else if (state_vars(i)%name.eq._Alk_) then
+        state_vars(i)%value(ice_water_index-1) = &
+          state_vars(i)%value(ice_water_index-1) &
+          + 0.00001_rk*2000._rk
+        state_vars(i)%value(bbl_sed_index) = &
+          state_vars(i)%value(bbl_sed_index) &
+          + 0.00001_rk*2350._rk
+      else if (state_vars(i)%name.eq._NH4_) then
+        state_vars(i)%value(bbl_sed_index-1) = &
+          state_vars(i)%value(bbl_sed_index-1) &
+          + 0.00001_rk*10._rk
+      else if (state_vars(i)%name.eq._PO4_) then
+        state_vars(i)%value(ice_water_index-1) = &
+          state_vars(i)%value(ice_water_index-1) &
+          + 0.00001_rk*sinusoidal(day,2._rk)
+      else if (state_vars(i)%name.eq._NO3_) then
+        state_vars(i)%value(ice_water_index-1) = &
+          state_vars(i)%value(ice_water_index-1) &
+          + 0.00001_rk*sinusoidal(day,1.0_rk)
+      else if (state_vars(i)%name.eq._Si_) then
+        state_vars(i)%value(ice_water_index-1) = &
+          state_vars(i)%value(ice_water_index-1) &
+          + 0.00001_rk*sinusoidal(day,100._rk)
+      end if
+    end do
+    
+    !call find_set_state_variable(_Mn4_,&
+    !     value=0.5e-4_rk,layer=ice_water_index-1)
+    !call find_set_state_variable(_Fe3_,&
+    !     value=0.4e-4_rk,layer=ice_water_index-1)
+    !call find_set_state_variable(_DIC_,&
+    !     value=1930._rk,layer=ice_water_index-1)
+    !call find_set_state_variable(_DIC_,&
+    !     value=2280._rk,layer=bbl_sed_index)
+    !call find_set_state_variable(_Alk_,&
+    !     value=2000._rk,layer=ice_water_index-1)
+    !call find_set_state_variable(_Alk_,&
+    !     value=2350._rk,layer=bbl_sed_index)
+    !call find_set_state_variable(_NH4_,&
+    !     value=5._rk,layer=bbl_sed_index-1)
+    !call find_set_state_variable(_PO4_,&
+    !     value=sinusoidal(day,0.5_rk),layer=ice_water_index-1)
+    !call find_set_state_variable(_NO3_,&
+    !     value=sinusoidal(day,0.5_rk),layer=ice_water_index-1)
+    !call find_set_state_variable(_Si_,&
+    !     value=sinusoidal(day,10._rk),layer=ice_water_index-1)
   contains
     pure function sinusoidal(day,multiplier)
       integer, intent(in):: day
@@ -1490,7 +1588,7 @@ contains
   !
   function find_state_variable(inname)
     character(len=*),intent(in):: inname
-    type(ipbm_state_variable):: find_state_variable
+    type(ipbm_state_variable),target:: find_state_variable
     integer number_of_vars
     integer i
 
@@ -1539,9 +1637,9 @@ contains
     write(sday,'(i10)') day
 
     do j = 1,number_of_parameters
-      if (any(state_vars(j)%value<0._rk)) then
+      if (any(state_vars(j)%value(1:surface_index-1)<0._rk)) then
         _LINE_
-        write(*,*) "value=", state_vars(j)%value
+        write(*,*) "value=", state_vars(j)%value(1:surface_index-1)
         _LINE_
         call fatal_error("Negative value: ",&
                          location//": day="//trim(sday)//&
