@@ -1,11 +1,11 @@
-#define _FILE_NAME_                 'KaraSea.nc'
-#define _INITIALIZATION_SINCE_YEAR_  1970
-#define _DEPTH_ON_BOUNDARY_         'depth_w'
-#define _OCEAN_TIME_                'ocean_time'
+#define _FILE_NAME_                 'ROMS_Laptev_Sea.nc'
+#define _INITIALIZATION_SINCE_YEAR_  1948
+#define _DEPTH_ON_BOUNDARY_         'depth2'
+#define _OCEAN_TIME_                'time'
 #define _TEMPERATURE_               'temp'
-#define _SALINITY_                  'salt'
+#define _SALINITY_                  'sal'
 #define _RHO_                       'rho'
-#define _TURBULENCE_                'AKs'
+#define _TURBULENCE_                'Kz_s'
 #define _ICE_THICKNESS_             'hice'
 #define _SNOW_THICKNESS_            'snow_thick'
 #define _ICE_SURFACE_TEMPERATURE_   'tisrf'
@@ -16,8 +16,8 @@
 
 #define _SECONDS_PER_CIRCLE_        300
 
-#define _LONGITUDE_                 77.8_rk
-#define _LATITUDE_                  77.3_rk
+#define _LONGITUDE_                 126.82_rk
+#define _LATITUDE_                  76.77_rk
 
 #define _WIDTH_BBL_                 0.5_rk
 #define _RESOLUTION_BBL_            0.1_rk
