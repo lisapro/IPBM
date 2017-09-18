@@ -555,13 +555,13 @@ contains
     call fabm_link_bulk_data(fabm_model,rho_id,density)
     !par
     call calculate_radiative_flux(&
-      surface_radiative_flux(_LATITUDE_,14),& !kara case starts 14jan
+      surface_radiative_flux(_LATITUDE_,17),& !laptev case starts 17jan
       standard_vars%get_value(_SNOW_THICKNESS_,1),&
       standard_vars%get_value(_ICE_THICKNESS_ ,1))
     call fabm_link_bulk_data(fabm_model,par_id,radiative_flux)
     !
     do i = 1,counter
-      call day_circle(1,surface_index,14)
+      call day_circle(1,surface_index,17)
       allocate(depth_faces,source=&
                standard_vars%get_column(_DEPTH_ON_BOUNDARY_,1))
 
