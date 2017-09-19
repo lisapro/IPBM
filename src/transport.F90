@@ -761,12 +761,12 @@ contains
     !of the albedo curves depend strongly on the amount of liquid
     !water present in the upper part of the ice, so it fluctuates
     !throught year (true also for extinction coefficient)
-    !if (snow_thick <= 0.005) then
+    if (snow_thick <= 0.005) then
       par_alb = surface_flux*(1._rk-_ICE_ALBEDO_)
-    !else
-    !  par_alb = surface_flux*(1._rk-_SNOW_ALBEDO_)*&
-    !            exp(-_SNOW_EXTINCTION_*snow_thick)
-    !end if
+    else
+      par_alb = surface_flux*(1._rk-_SNOW_ALBEDO_)*&
+                exp(-_SNOW_EXTINCTION_*snow_thick)
+    end if
     !after scattered surface of ice
     par_scat = par_alb*_ICE_SCATTERED_
     allocate(ice_depths,source=ice_thick-depth(ice_water_index:))
