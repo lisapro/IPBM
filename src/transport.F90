@@ -611,7 +611,7 @@ contains
              standard_vars%get_column("air_ice_indexes"))
     day = inday; year = inyear;
     days_in_year = 365+merge(1,0,(mod(year,4).eq.0))
-    counter = days_in_year*6
+    counter = days_in_year*10
 
     netcdf_ice = type_output(fabm_model,standard_vars,'ice_year.nc',&
                          ice_water_index,ice_water_index+20,&
@@ -871,8 +871,8 @@ contains
     end if
     call recalculate_ice(id,brine_release)
     do i = 1,number_of_circles
-      !sets inflow
-      call inflow(ice_water_index,bbl_sed_index,day)
+      !
+      call relaxation(ice_water_index,bbl_sed_index,day)
       
       !diffusion
       !dcc = 0._rk
@@ -1508,80 +1508,56 @@ contains
                      "No such variable")
   end subroutine
   !
-  !sets inflows on ice_water_index-1(water_surface)
   !
-  subroutine inflow(ice_water_index,bbl_sed_index,day)
+  !
+  subroutine relaxation(ice_water_index,bbl_sed_index,day)
     integer,intent(in):: ice_water_index,bbl_sed_index
     integer,intent(in):: day
 
     integer number_of_vars
     integer i
-    real(rk) dcc
     
     number_of_vars = size(state_vars)
     do i = 1,number_of_vars
       if (state_vars(i)%name.eq._DIC_) then
-        state_vars(i)%value(ice_water_index-1) = &
-          state_vars(i)%value(ice_water_index-1) &
-          + 0.00001_rk*1930._rk
-        state_vars(i)%value(bbl_sed_index) = &
-          state_vars(i)%value(bbl_sed_index) &
-          + 0.00001_rk*2280._rk
+        call do_relaxation(1930._rk,ice_water_index-1,i)
+        call do_relaxation(2280._rk,bbl_sed_index,i)
       else if (state_vars(i)%name.eq._Alk_) then
-        state_vars(i)%value(ice_water_index-1) = &
-          state_vars(i)%value(ice_water_index-1) &
-          + 0.00001_rk*2000._rk
-        state_vars(i)%value(bbl_sed_index) = &
-          state_vars(i)%value(bbl_sed_index) &
-          + 0.00001_rk*2350._rk
-      else if (state_vars(i)%name.eq._NH4_) then
-        state_vars(i)%value(bbl_sed_index-1) = &
-          state_vars(i)%value(bbl_sed_index-1) &
-          + 0.00001_rk*10._rk
+        call do_relaxation(2000._rk,ice_water_index-1,i)
+        call do_relaxation(2350._rk,bbl_sed_index,i)
+      !else if (state_vars(i)%name.eq._NH4_) then
+      !  call do_relaxation(1._rk,bbl_sed_index-1,i)
       else if (state_vars(i)%name.eq._PO4_) then
-        state_vars(i)%value(ice_water_index-1) = &
-          state_vars(i)%value(ice_water_index-1) &
-          + 0.00001_rk*sinusoidal(day,2._rk)
+        call do_relaxation(sinusoidal(day,0.5_rk),ice_water_index-1,i)
       else if (state_vars(i)%name.eq._NO3_) then
-        state_vars(i)%value(ice_water_index-1) = &
-          state_vars(i)%value(ice_water_index-1) &
-          + 0.00001_rk*sinusoidal(day,1.0_rk)
+        call do_relaxation(sinusoidal(day,0.5_rk),ice_water_index-1,i)
       else if (state_vars(i)%name.eq._Si_) then
-        state_vars(i)%value(ice_water_index-1) = &
-          state_vars(i)%value(ice_water_index-1) &
-          + 0.00001_rk*sinusoidal(day,100._rk)
+        call do_relaxation(sinusoidal(day,1.0_rk),ice_water_index-1,i)
       end if
     end do
-    
-    !call find_set_state_variable(_Mn4_,&
-    !     value=0.5e-4_rk,layer=ice_water_index-1)
-    !call find_set_state_variable(_Fe3_,&
-    !     value=0.4e-4_rk,layer=ice_water_index-1)
-    !call find_set_state_variable(_DIC_,&
-    !     value=1930._rk,layer=ice_water_index-1)
-    !call find_set_state_variable(_DIC_,&
-    !     value=2280._rk,layer=bbl_sed_index)
-    !call find_set_state_variable(_Alk_,&
-    !     value=2000._rk,layer=ice_water_index-1)
-    !call find_set_state_variable(_Alk_,&
-    !     value=2350._rk,layer=bbl_sed_index)
-    !call find_set_state_variable(_NH4_,&
-    !     value=5._rk,layer=bbl_sed_index-1)
-    !call find_set_state_variable(_PO4_,&
-    !     value=sinusoidal(day,0.5_rk),layer=ice_water_index-1)
-    !call find_set_state_variable(_NO3_,&
-    !     value=sinusoidal(day,0.5_rk),layer=ice_water_index-1)
-    !call find_set_state_variable(_Si_,&
-    !     value=sinusoidal(day,10._rk),layer=ice_water_index-1)
   contains
     pure function sinusoidal(day,multiplier)
       integer, intent(in):: day
       real(rk),intent(in):: multiplier
       real(rk) sinusoidal
 
-      sinusoidal = (1.02_rk+sin(2._rk*_PI_*(&
+      sinusoidal = (1._rk+sin(2._rk*_PI_*(&
                     day-40._rk)/365._rk))*multiplier
-    end function
+    end function sinusoidal
+    !
+    subroutine do_relaxation(value,index,i)
+      real(rk),intent(in):: value
+      integer ,intent(in):: index
+      integer, intent(in):: i
+    
+      real(rk) dcc
+      
+      dcc = _HMIX_RATE_ &
+        * (value-state_vars(i)%value(index))
+      state_vars(i)%value(index) = state_vars(i)%value(index) &
+        + _SECONDS_PER_CIRCLE_*dcc
+
+    end subroutine do_relaxation
   end subroutine
   !
   !returns type ipbm_state_variable by name

@@ -37,3 +37,6 @@
 !Half-saturation constant for the effect of oxygen on bioturbation
 !and bioirrigation [uM] (default = 5.0 uM)
 #define _KO2_                                      5._rk
+
+!horizontal flux rate
+#define _HMIX_RATE_								   0.00333_rk
