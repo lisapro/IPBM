@@ -17,7 +17,8 @@ module output_mod
   use variables_mod,only: ipbm_standard_variables,&
                           ipbm_state_variable
   use fabm_driver
-  use fabm      , only: type_model,fabm_get_bulk_diagnostic_data
+  use fabm      , only: type_model,fabm_get_bulk_diagnostic_data,&
+                        type_bulk_variable_id,standard_variables
   use fabm_types, only: rk
   use netcdf
 
@@ -35,6 +36,7 @@ module output_mod
     integer            :: nc_id
     !parameter_ids
     integer            :: z_id,z_id_faces
+    integer            :: par_id
     integer,allocatable:: standard_id(:)
     integer,allocatable:: parameter_id(:)
     integer,allocatable:: parameter_id_diag(:)
@@ -75,6 +77,8 @@ contains
     integer                              ,intent(in):: last_layer
     integer                              ,intent(in):: number_of_layers
 
+    type(type_bulk_variable_id):: fabm_standard_id
+  
     class(variable)               ,allocatable:: curr
     class(ipbm_standard_variables),pointer    :: temporary
 
@@ -160,8 +164,7 @@ contains
     do ip = 1,size(model%diagnostic_variables)
       if (model%diagnostic_variables(ip)%save) then
         call check(nf90_def_var(&
-                   self%nc_id,model%diagnostic_variables(ip)%&
-                   name,&
+                   self%nc_id,model%diagnostic_variables(ip)%name,&
                    NF90_REAL,dim_ids,self%parameter_id_diag(ip)))
         call check(set_attributes(ncid=self%nc_id,&
                    id=self%parameter_id_diag(ip),&
@@ -172,6 +175,18 @@ contains
       end if
     end do
 
+    !fabm standard variables
+    fabm_standard_id = model%get_bulk_variable_id(&
+               standard_variables%downwelling_photosynthetic_radiative_flux)
+    call check(nf90_def_var(&
+               self%nc_id,fabm_standard_id%variable%name,&
+               NF90_REAL,dim_ids,self%par_id))
+    call check(set_attributes(ncid=self%nc_id,&
+               id=self%par_id,&
+               units=fabm_standard_id%variable%units,&
+               long_name=fabm_standard_id%variable%long_name,&
+               missing_value = &
+               fabm_standard_id%variable%missing_value))
     !end define
     call check(nf90_enddef(self%nc_id))
   end subroutine initialize
@@ -202,6 +217,9 @@ contains
     real(rk) temp_matrix_faces(self%number_of_layers+1)
     real(rk) foo(1)
 
+    type(type_bulk_variable_id)  :: fabm_standard_id
+    real(rk),dimension(:),pointer:: dat
+    
     !NaN
     D_QNAN = 0._rk
     D_QNAN = D_QNAN / D_QNAN
@@ -273,6 +291,14 @@ contains
         end if
       end do
       
+      !fabm standard variables
+      fabm_standard_id = model%get_bulk_variable_id(&
+                standard_variables%downwelling_photosynthetic_radiative_flux)
+      dat => model%get_data(fabm_standard_id)
+      call check(nf90_put_var(self%nc_id,self%par_id,&
+                  dat(self%first_layer:self%last_layer),&
+                  start,edges))
+    
       call check(nf90_sync(self%nc_id))
     end if
   end subroutine save
