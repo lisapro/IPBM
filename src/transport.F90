@@ -404,7 +404,7 @@ contains
     call first_day_circle(100,ice_water_index,&
                           water_bbl_index,bbl_sediments_index,&
                           indices,indices_faces)
-    !cycle first year 10 times
+    !cycle first year 5 times
     call first_year_circle(day,year,ice_water_index,&
                            water_bbl_index,bbl_sediments_index,&
                            indices,indices_faces)
@@ -611,7 +611,7 @@ contains
              standard_vars%get_column("air_ice_indexes"))
     day = inday; year = inyear;
     days_in_year = 365+merge(1,0,(mod(year,4).eq.0))
-    counter = days_in_year*10
+    counter = days_in_year*5
 
     netcdf_ice = type_output(fabm_model,standard_vars,'ice_year.nc',&
                          ice_water_index,ice_water_index+20,&
@@ -1333,8 +1333,8 @@ contains
           ip==find_index_of_state_variable('P1_n').or.&
           ip==find_index_of_state_variable('P1_p').or.&
           ip==find_index_of_state_variable('P1_s').or.&
-          ip==find_index_of_state_variable('P1_Chl')&
-          ) then
+          ip==find_index_of_state_variable('P1_Chl')) then
+      !if (ip==find_index_of_state_variable(_Phy_)) then
         !set velocity 3 cm/day
         wti(ice_water_index+1:surface_index-1,ip) = -0.03_rk/86400._rk
         wti(ice_water_index,ip) = 0._rk
@@ -1410,6 +1410,7 @@ contains
             j==find_index_of_state_variable('P1_p').or.&
             j==find_index_of_state_variable('P1_s').or.&
             j==find_index_of_state_variable('P1_Chl'))&
+        !if ((j==find_index_of_state_variable(_Phy_))&
             .and.air_ice_indexes(id)/=ice_water_index) then
           do i=1,ice_growth
             state_vars(j)%value(ice_water_index) =&
@@ -1525,14 +1526,12 @@ contains
       else if (state_vars(i)%name.eq._Alk_) then
         call do_relaxation(2000._rk,ice_water_index-1,i)
         call do_relaxation(2350._rk,bbl_sed_index,i)
-      !else if (state_vars(i)%name.eq._NH4_) then
-      !  call do_relaxation(1._rk,bbl_sed_index-1,i)
       else if (state_vars(i)%name.eq._PO4_) then
-        call do_relaxation(sinusoidal(day,0.5_rk),ice_water_index-1,i)
+        call do_relaxation(0.7_rk,ice_water_index-1,i)
       else if (state_vars(i)%name.eq._NO3_) then
-        call do_relaxation(sinusoidal(day,0.5_rk),ice_water_index-1,i)
+        call do_relaxation(0.7_rk,ice_water_index-1,i)
       else if (state_vars(i)%name.eq._Si_) then
-        call do_relaxation(sinusoidal(day,1.0_rk),ice_water_index-1,i)
+        call do_relaxation(1.2_rk,ice_water_index-1,i)
       end if
     end do
   contains
