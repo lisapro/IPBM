@@ -99,6 +99,10 @@ Then:
 
   Now you have **IPBM.exe** file in your `path:\to\IPBM\build\Debug(Release)` directory. It needs `fabm.yaml` and `KaraSea.nc` files as input data. You can find it in `..\IPBM\data` folder. In case of running IPBM under Visual Studio remember to specify the working directory (`..\IPBM\data`).
 
+## Results visualisation
+
+For the IPBM output files visualisation you can use: https://github.com/lisapro/ice_brom_pic
+
 [Git]:https://git-scm.com/downloads
 [FABM]:http://fabm.net
 [CMake]:https://cmake.org/
