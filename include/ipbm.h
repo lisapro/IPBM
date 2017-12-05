@@ -25,7 +25,7 @@
 #define _WIDTH_SEDIMENTS_           0.1_rk
 #define _RESOLUTION_SEDIMENTS_      0.02_rk
 
-#define _ICE_LAYERS_RESOLUTION_     0.03_rk
+#define _ICE_LAYERS_RESOLUTION_     0.06_rk
 
 #define _Alk_                       'B_C_Alk'
 #define _DIC_                       'B_C_DIC'

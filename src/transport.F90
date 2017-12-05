@@ -1522,16 +1522,19 @@ contains
     do i = 1,number_of_vars
       if (state_vars(i)%name.eq._DIC_) then
         call do_relaxation(1930._rk,ice_water_index-1,i)
-        call do_relaxation(2280._rk,bbl_sed_index,i)
+        call do_relaxation(2400._rk,bbl_sed_index,i)
       else if (state_vars(i)%name.eq._Alk_) then
-        call do_relaxation(2000._rk,ice_water_index-1,i)
+        call do_relaxation(1990._rk,ice_water_index-1,i)
         call do_relaxation(2350._rk,bbl_sed_index,i)
       else if (state_vars(i)%name.eq._PO4_) then
-        call do_relaxation(0.7_rk,ice_water_index-1,i)
+        call do_relaxation(0.2_rk,ice_water_index-1,i)
+        call do_relaxation(1._rk,bbl_sed_index,i)        
       else if (state_vars(i)%name.eq._NO3_) then
-        call do_relaxation(0.7_rk,ice_water_index-1,i)
+        call do_relaxation(0.25_rk,ice_water_index-1,i)
+        call do_relaxation(8._rk,bbl_sed_index,i)
       else if (state_vars(i)%name.eq._Si_) then
-        call do_relaxation(1.2_rk,ice_water_index-1,i)
+        call do_relaxation(25._rk,ice_water_index-1,i)
+        call do_relaxation(6._rk,bbl_sed_index,i)
       end if
     end do
   contains
