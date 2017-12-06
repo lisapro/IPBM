@@ -62,6 +62,12 @@ module transport
   type(type_horizontal_variable_id),save:: lon_id,lat_id,ws_id
   type(type_horizontal_variable_id),save:: taub_id,bdepth_id
   !type(type_horizontal_variable_id),save:: ssf_id !- ersem light
+  
+  interface do_relaxation
+    module procedure do_relaxation_single
+    module procedure do_relaxation_array
+  end interface
+  
 contains
   !
   !initialize ipbm
@@ -1546,21 +1552,42 @@ contains
       sinusoidal = (1._rk+sin(2._rk*_PI_*(&
                     day-40._rk)/365._rk))*multiplier
     end function sinusoidal
-    !
-    subroutine do_relaxation(value,index,i)
-      real(rk),intent(in):: value
-      integer ,intent(in):: index
-      integer, intent(in):: i
-    
-      real(rk) dcc
-      
-      dcc = _HMIX_RATE_ &
-        * (value-state_vars(i)%value(index))
-      state_vars(i)%value(index) = state_vars(i)%value(index) &
-        + _SECONDS_PER_CIRCLE_*dcc
-
-    end subroutine do_relaxation
   end subroutine
+  !
+  !
+  !
+  subroutine do_relaxation_single(value,index,i)
+    real(rk),intent(in):: value
+    integer ,intent(in):: index
+    integer, intent(in):: i
+    
+    real(rk) dcc
+      
+    dcc = _HMIX_RATE_ &
+      * (value-state_vars(i)%value(index))
+    state_vars(i)%value(index) = state_vars(i)%value(index) &
+      + _SECONDS_PER_CIRCLE_*dcc
+
+  end subroutine do_relaxation_single
+  !
+  !indexes from bottom upwards
+  !
+  subroutine do_relaxation_array(from,till,i,value)
+    integer ,intent(in):: from
+    integer ,intent(in):: till
+    integer, intent(in):: i
+    real(rk),dimension(from:till),intent(in):: value
+    
+    integer j
+    real(rk) dcc
+      
+    do j = from,till
+      dcc = _HMIX_RATE_ &
+        * (value(j)-state_vars(i)%value(j))
+      state_vars(i)%value(j) = state_vars(i)%value(j) &
+        + _SECONDS_PER_CIRCLE_*dcc
+    end do
+  end subroutine do_relaxation_array
   !
   !returns type ipbm_state_variable by name
   !
